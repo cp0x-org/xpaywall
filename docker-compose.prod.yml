@@ -4,11 +4,6 @@ networks:
 
 services:
   adminpanel:
-    build:
-      context: ./frontend/adminpanel
-      dockerfile: Dockerfile
-      args:
-        VITE_APP_BASE_NAME: /
     image: philpher/xpaywall-adminpanel:latest
     container_name: xpaywall-adminpanel
     restart: unless-stopped
@@ -23,9 +18,6 @@ services:
       - "3100:80"
 
   control-api:
-    build:
-      context: ./control-api
-      dockerfile: Dockerfile
     image: philpher/xpaywall-control-api:latest
     container_name: xpaywall-control-api
     restart: unless-stopped
@@ -47,9 +39,6 @@ services:
       - "3101:9091"
 
   xgateway:
-    build:
-      context: ./xgateway
-      dockerfile: Dockerfile
     image: philpher/xpaywall-xgateway:latest
     container_name: xpaywall-xgateway
     restart: unless-stopped
@@ -68,9 +57,6 @@ services:
       - "3102:8081"
 
   example-server:
-    build:
-      context: ./examples/server
-      dockerfile: Dockerfile
     image: philpher/xpaywall-example-server:latest
     container_name: xpaywall-example-server
     restart: unless-stopped
