@@ -1,0 +1,28 @@
+# Go
+/xgateway/bin/
+/control-api/bin/
+*.exe
+
+# Config with secrets
+/xgateway/config.yaml
+/xgateway/.env
+/control-api/.env
+/frontend/adminpanel/.env
+/frontend/adminpanel/.env.qa
+/control-api/data
+
+# Frontend
+frontend/adminpanel/node_modules/
+frontend/adminpanel/dist/
+
+# Local runtime data
+/.data/
+/data/
+
+# Local agent/IDE state
+**/.claude/settings.local.json
+
+# IDE
+.idea/
+.vscode/
+*.iml

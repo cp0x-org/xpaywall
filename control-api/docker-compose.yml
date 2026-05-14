@@ -1,0 +1,11 @@
+services:
+  control-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xpaywall-control-api
+    ports:
+      - "9090:9090"
+    environment:
+      CONTROL_DB_DSN: ${CONTROL_DB_DSN}
+    restart: unless-stopped

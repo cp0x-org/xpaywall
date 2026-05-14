@@ -1,0 +1,36 @@
+version: "2"
+
+sql:
+  - engine: "postgresql"
+    queries:
+      - "internal/storage/postgres/queries"
+    schema:
+      - "migrations"
+    gen:
+      go:
+        package: "postgres"
+        out: "internal/storage/postgres/generated"
+        sql_package: "pgx/v5"
+        overrides:
+          - db_type: "uuid"
+            go_type: "github.com/google/uuid.UUID"
+
+          - db_type: "text"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true
+
+          - db_type: "text"
+            nullable: false
+            go_type: "string"
+
+          - db_type: "varchar"
+            nullable: true
+            go_type:
+              type: "string"
+              pointer: true
+
+          - db_type: "varchar"
+            nullable: false
+            go_type: "string"
