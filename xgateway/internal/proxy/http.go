@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -19,11 +21,20 @@ func (a *ginAdapter) GetPath() string              { return a.ctx.Request.URL.Pa
 func (a *ginAdapter) GetAcceptHeader() string      { return a.ctx.GetHeader("Accept") }
 func (a *ginAdapter) GetUserAgent() string         { return a.ctx.GetHeader("User-Agent") }
 func (a *ginAdapter) GetURL() string {
+	if pub := strings.TrimRight(os.Getenv("PUBLIC_URL"), "/"); pub != "" {
+		return pub + a.ctx.Request.URL.RequestURI()
+	}
 	scheme := "http"
 	if a.ctx.Request.TLS != nil {
 		scheme = "https"
 	}
-	host := a.ctx.Request.Host
+	if fwdProto := a.ctx.GetHeader("X-Forwarded-Proto"); fwdProto != "" {
+		scheme = fwdProto
+	}
+	host := a.ctx.GetHeader("X-Forwarded-Host")
+	if host == "" {
+		host = a.ctx.Request.Host
+	}
 	if host == "" {
 		host = a.ctx.GetHeader("Host")
 	}

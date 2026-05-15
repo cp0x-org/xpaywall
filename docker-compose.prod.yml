@@ -3,6 +3,7 @@ networks:
     driver: bridge
 
 services:
+  # https://xpaywall.cp0x.com/
   adminpanel:
     image: philpher/xpaywall-adminpanel:latest
     container_name: xpaywall-adminpanel
@@ -12,11 +13,14 @@ services:
     depends_on:
       - control-api
     environment:
-      API_URL: http://127.0.0.1:3101/
-      PROXY_URL: http://127.0.0.1:3102/
+      #      API_URL: http://127.0.0.1:3101/
+      #      PROXY_URL: http://127.0.0.1:3102/
+      API_URL: https://xpaywall-api.cp0x.com/
+      PROXY_URL: https://xpaywall-gate.cp0x.com/
     ports:
       - "3100:80"
 
+  # https://xpaywall-api.cp0x.com/
   control-api:
     image: philpher/xpaywall-control-api:latest
     container_name: xpaywall-control-api
@@ -32,14 +36,15 @@ services:
       MODE: release
       INTERNAL_API_KEY: change-me-internal-secret-key
       JWT_SECRET: change-me-jwt-secret-key
-      PROXY_URL: http://localhost:8081
+      PROXY_URL: https://xpaywall-gate.cp0x.com/
       SUPERADMIN_USERNAME: superadmin
       SUPERADMIN_PASSWORD: superadmin
     ports:
       - "3101:9091"
 
+  # https://xpaywall-gate.cp0x.com/
   xgateway:
-    image: philpher/xpaywall-xgateway:latest
+    image: philpher/xpaywall-xgateway:0.1.1
     container_name: xpaywall-xgateway
     restart: unless-stopped
     networks:
@@ -53,9 +58,11 @@ services:
       CONTROL_API_URL: http://xpaywall-control-api:9091
       INTERNAL_API_KEY: change-me-internal-secret-key
       GIN_MODE: release
+      PROXY_URL: https://xpaywall-gate.cp0x.com/
     ports:
       - "3102:8081"
 
+  # https://xpaywall-demo-server.cp0x.com/
   example-server:
     image: philpher/xpaywall-example-server:latest
     container_name: xpaywall-example-server
