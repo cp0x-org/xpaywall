@@ -106,6 +106,20 @@ FROM request_logs
 WHERE project_id = $4 AND created_at >= $3 AND created_at < $2
 `
 
+// GetDailyStats returns time-series request and earnings data.
+// @Summary     Get daily/hourly stats
+// @Tags        stats
+// @Produce     json
+// @Param       period query string false "Period: day, week, month, custom (default: 7 days)"
+// @Param       from query string false "Start date (YYYY-MM-DD or DD.MM.YYYY) — required for period=custom"
+// @Param       to query string false "End date (YYYY-MM-DD or DD.MM.YYYY) — required for period=custom"
+// @Param       days query int false "Number of days (used when period is not set, default 7, max 90)"
+// @Param       project_id query string false "Filter by Project ID (UUID)"
+// @Success     200 {object} chartStatsResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/stats/daily [get]
 func (h *Handler) GetDailyStats(c *gin.Context) {
 	pt := c.DefaultQuery("period", "")
 	fromStr := c.Query("from")
@@ -308,6 +322,19 @@ func computeDashboardPeriod(periodType, fromStr, toStr string) (periodStart, per
 	return
 }
 
+// GetDashboardStats returns aggregated stats for the dashboard.
+// @Summary     Get dashboard stats
+// @Tags        stats
+// @Produce     json
+// @Param       period query string false "Period: day, week (default), month, custom"
+// @Param       from query string false "Start date (YYYY-MM-DD or DD.MM.YYYY) — required for period=custom"
+// @Param       to query string false "End date (YYYY-MM-DD or DD.MM.YYYY) — required for period=custom"
+// @Param       project_id query string false "Filter by Project ID (UUID)"
+// @Success     200 {object} dashboardStatsResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/stats/dashboard [get]
 func (h *Handler) GetDashboardStats(c *gin.Context) {
 	pt := c.DefaultQuery("period", "week")
 	fromStr := c.Query("from")
@@ -404,6 +431,16 @@ type topRouteItem struct {
 	RevenueUsd    float64 `json:"revenue_usd"`
 }
 
+// GetDashboardTopRoutes returns the top routes by request volume.
+// @Summary     Get top routes
+// @Tags        stats
+// @Produce     json
+// @Param       project_id query string false "Filter by Project ID (UUID)"
+// @Success     200 {array} topRouteItem
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/stats/top-routes [get]
 func (h *Handler) GetDashboardTopRoutes(c *gin.Context) {
 	var projectID *uuid.UUID
 	if pidStr := c.Query("project_id"); pidStr != "" {
@@ -470,6 +507,16 @@ func toRecentItem(id uuid.UUID, path, method string, createdAt pgtype.Timestamp,
 	return item
 }
 
+// GetDashboardRecentRequests returns the most recent requests for the dashboard.
+// @Summary     Get recent requests
+// @Tags        stats
+// @Produce     json
+// @Param       project_id query string false "Filter by Project ID (UUID)"
+// @Success     200 {array} recentRequestItem
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/stats/recent-requests [get]
 func (h *Handler) GetDashboardRecentRequests(c *gin.Context) {
 	var projectID *uuid.UUID
 	if pidStr := c.Query("project_id"); pidStr != "" {

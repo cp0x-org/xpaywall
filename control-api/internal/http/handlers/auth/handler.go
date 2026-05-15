@@ -44,6 +44,21 @@ type authResponse struct {
 	User  userResponse `json:"user"`
 }
 
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
+// Login authenticates a user and returns a JWT token.
+// @Summary     Login
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body loginRequest true "Login credentials"
+// @Success     200 {object} authResponse
+// @Failure     400 {object} errorResponse
+// @Failure     401 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Router      /auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req loginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -91,6 +106,15 @@ func (h *Handler) Login(c *gin.Context) {
 	})
 }
 
+// Me returns the currently authenticated user.
+// @Summary     Get current user
+// @Tags        auth
+// @Produce     json
+// @Success     200 {object} userResponse
+// @Failure     401 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /auth/me [get]
 func (h *Handler) Me(c *gin.Context) {
 	userIDVal, exists := c.Get("user_id")
 	if !exists {

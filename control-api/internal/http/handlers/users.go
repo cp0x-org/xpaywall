@@ -10,6 +10,14 @@ import (
 	postgres "github.com/cp0x-org/xpaywall/control-api/internal/storage/postgres/generated"
 )
 
+// ListUsers returns all users.
+// @Summary     List users
+// @Tags        users
+// @Produce     json
+// @Success     200 {array} object "Array of user objects"
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/users [get]
 func (h *Handler) ListUsers(c *gin.Context) {
 	users, err := h.q.ListUsers(c.Request.Context())
 	if err != nil {
@@ -19,6 +27,16 @@ func (h *Handler) ListUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
+// GetUser returns a user by ID.
+// @Summary     Get user
+// @Tags        users
+// @Produce     json
+// @Param       id path string true "User ID (UUID)"
+// @Success     200 {object} object "User object"
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/users/{id} [get]
 func (h *Handler) GetUser(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -38,6 +56,17 @@ type createUserRequest struct {
 	Password string `json:"password" binding:"required,min=8"`
 }
 
+// CreateUser creates a new user.
+// @Summary     Create user
+// @Tags        users
+// @Accept      json
+// @Produce     json
+// @Param       body body createUserRequest true "User data"
+// @Success     201 {object} object "Created user object"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/users [post]
 func (h *Handler) CreateUser(c *gin.Context) {
 	var req createUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -67,6 +96,18 @@ type updateUserRequest struct {
 	Username *string `json:"username"`
 }
 
+// UpdateUser updates a user by ID.
+// @Summary     Update user
+// @Tags        users
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "User ID (UUID)"
+// @Param       body body updateUserRequest true "Fields to update"
+// @Success     200 {object} object "Updated user object"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/users/{id} [put]
 func (h *Handler) UpdateUser(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -91,6 +132,15 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
+// DeleteUser deletes a user by ID.
+// @Summary     Delete user
+// @Tags        users
+// @Param       id path string true "User ID (UUID)"
+// @Success     204 "No Content"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/users/{id} [delete]
 func (h *Handler) DeleteUser(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

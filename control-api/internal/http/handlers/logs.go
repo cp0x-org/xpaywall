@@ -127,7 +127,7 @@ type requestEventResponse struct {
 	ID           uuid.UUID       `json:"id"`
 	RequestLogID uuid.UUID       `json:"request_log_id"`
 	EventType    string          `json:"event_type"`
-	Metadata     json.RawMessage `json:"metadata,omitempty"`
+	Metadata     json.RawMessage `json:"metadata,omitempty" swaggertype:"object"`
 	CreatedAt    time.Time       `json:"created_at"`
 }
 
@@ -173,6 +173,18 @@ func toRequestEventResponse(e postgres.RequestEvent) requestEventResponse {
 
 // ─── Request Logs ─────────────────────────────────────────────────────────────
 
+// ListRequestLogs returns request logs with optional pagination and project filter.
+// @Summary     List request logs
+// @Tags        request-logs
+// @Produce     json
+// @Param       limit query int false "Max results (default 50)"
+// @Param       offset query int false "Offset for pagination (default 0)"
+// @Param       project_id query string false "Filter by Project ID (UUID)"
+// @Success     200 {array} requestLogResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/request-logs [get]
 func (h *Handler) ListRequestLogs(c *gin.Context) {
 	limit := int32(50)
 	offset := int32(0)
@@ -225,6 +237,16 @@ func (h *Handler) ListRequestLogs(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// GetRequestLog returns a single request log by ID.
+// @Summary     Get request log
+// @Tags        request-logs
+// @Produce     json
+// @Param       id path string true "Request Log ID (UUID)"
+// @Success     200 {object} requestLogResponse
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/request-logs/{id} [get]
 func (h *Handler) GetRequestLog(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -265,6 +287,17 @@ type createRequestLogRequest struct {
 	ErrorMessage           *string    `json:"error_message"`
 }
 
+// CreateRequestLog creates a new request log entry (internal — called by xgateway).
+// @Summary     Create request log
+// @Tags        request-logs
+// @Accept      json
+// @Produce     json
+// @Param       body body createRequestLogRequest true "Request log data"
+// @Success     201 {object} requestLogResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    ApiKeyAuth
+// @Router      /api/v1/request-logs [post]
 func (h *Handler) CreateRequestLog(c *gin.Context) {
 	var req createRequestLogRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -326,6 +359,18 @@ type updateRequestLogRequest struct {
 	ErrorMessage           *string    `json:"error_message"`
 }
 
+// UpdateRequestLog updates a request log entry (internal — called by xgateway).
+// @Summary     Update request log
+// @Tags        request-logs
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "Request Log ID (UUID)"
+// @Param       body body updateRequestLogRequest true "Fields to update"
+// @Success     200 {object} requestLogResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    ApiKeyAuth
+// @Router      /api/v1/request-logs/{id} [put]
 func (h *Handler) UpdateRequestLog(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -365,6 +410,16 @@ func (h *Handler) UpdateRequestLog(c *gin.Context) {
 
 // ─── Request Events ───────────────────────────────────────────────────────────
 
+// ListRequestEvents returns all events for a given request log.
+// @Summary     List request events
+// @Tags        request-logs
+// @Produce     json
+// @Param       id path string true "Request Log ID (UUID)"
+// @Success     200 {array} requestEventResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/request-logs/{id}/events [get]
 func (h *Handler) ListRequestEvents(c *gin.Context) {
 	logID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -386,9 +441,20 @@ func (h *Handler) ListRequestEvents(c *gin.Context) {
 type createRequestEventRequest struct {
 	RequestLogID uuid.UUID       `json:"request_log_id" binding:"required"`
 	EventType    string          `json:"event_type" binding:"required"`
-	Metadata     json.RawMessage `json:"metadata"`
+	Metadata     json.RawMessage `json:"metadata" swaggertype:"object"`
 }
 
+// CreateRequestEvent creates a request event (internal — called by xgateway).
+// @Summary     Create request event
+// @Tags        request-logs
+// @Accept      json
+// @Produce     json
+// @Param       body body createRequestEventRequest true "Event data"
+// @Success     201 {object} requestEventResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    ApiKeyAuth
+// @Router      /api/v1/request-events [post]
 func (h *Handler) CreateRequestEvent(c *gin.Context) {
 	var req createRequestEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

@@ -97,6 +97,16 @@ func routeUpdateRowToResponse(r postgres.UpdateOutboundRouteRow) outboundRouteRe
 	}
 }
 
+// ListOutboundRoutes returns all outbound routes, optionally filtered by project.
+// @Summary     List outbound routes
+// @Tags        outbound-routes
+// @Produce     json
+// @Param       project_id query string false "Filter by Project ID (UUID)"
+// @Success     200 {array} outboundRouteResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/outbound-routes [get]
 func (h *Handler) ListOutboundRoutes(c *gin.Context) {
 	projects, _ := h.q.ListProjects(c.Request.Context())
 	projectNames := make(map[uuid.UUID]string, len(projects))
@@ -139,6 +149,16 @@ func (h *Handler) ListOutboundRoutes(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// GetOutboundRoute returns an outbound route by ID.
+// @Summary     Get outbound route
+// @Tags        outbound-routes
+// @Produce     json
+// @Param       id path string true "Route ID (UUID)"
+// @Success     200 {object} outboundRouteResponse
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/outbound-routes/{id} [get]
 func (h *Handler) GetOutboundRoute(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -163,6 +183,17 @@ type createOutboundRouteRequest struct {
 	Free        bool      `json:"free"`
 }
 
+// CreateOutboundRoute creates a new outbound route.
+// @Summary     Create outbound route
+// @Tags        outbound-routes
+// @Accept      json
+// @Produce     json
+// @Param       body body createOutboundRouteRequest true "Route data"
+// @Success     201 {object} outboundRouteResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/outbound-routes [post]
 func (h *Handler) CreateOutboundRoute(c *gin.Context) {
 	var req createOutboundRouteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -195,6 +226,18 @@ type updateOutboundRouteRequest struct {
 	Free        *bool   `json:"free"`
 }
 
+// UpdateOutboundRoute updates an outbound route by ID.
+// @Summary     Update outbound route
+// @Tags        outbound-routes
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "Route ID (UUID)"
+// @Param       body body updateOutboundRouteRequest true "Fields to update"
+// @Success     200 {object} outboundRouteResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/outbound-routes/{id} [put]
 func (h *Handler) UpdateOutboundRoute(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -222,6 +265,15 @@ func (h *Handler) UpdateOutboundRoute(c *gin.Context) {
 	c.JSON(http.StatusOK, routeUpdateRowToResponse(row))
 }
 
+// DeleteOutboundRoute deletes an outbound route by ID.
+// @Summary     Delete outbound route
+// @Tags        outbound-routes
+// @Param       id path string true "Route ID (UUID)"
+// @Success     204 "No Content"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/outbound-routes/{id} [delete]
 func (h *Handler) DeleteOutboundRoute(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -237,8 +289,51 @@ func (h *Handler) DeleteOutboundRoute(c *gin.Context) {
 
 // ─── Project Payment Configs (stubs) ─────────────────────────────────────────
 
-func (h *Handler) ListProjectPaymentConfigs(c *gin.Context)  {}
-func (h *Handler) GetProjectPaymentConfig(c *gin.Context)    {}
+// ListProjectPaymentConfigs lists project payment configs (not yet implemented).
+// @Summary     List project payment configs
+// @Tags        project-payment-configs
+// @Produce     json
+// @Success     200 {array} object
+// @Security    BearerAuth
+// @Router      /api/v1/project-payment-configs [get]
+func (h *Handler) ListProjectPaymentConfigs(c *gin.Context) {}
+
+// GetProjectPaymentConfig returns a project payment config (not yet implemented).
+// @Summary     Get project payment config
+// @Tags        project-payment-configs
+// @Produce     json
+// @Param       id path string true "Config ID (UUID)"
+// @Success     200 {object} object
+// @Security    BearerAuth
+// @Router      /api/v1/project-payment-configs/{id} [get]
+func (h *Handler) GetProjectPaymentConfig(c *gin.Context) {}
+
+// CreateProjectPaymentConfig creates a project payment config (not yet implemented).
+// @Summary     Create project payment config
+// @Tags        project-payment-configs
+// @Accept      json
+// @Produce     json
+// @Success     201 {object} object
+// @Security    BearerAuth
+// @Router      /api/v1/project-payment-configs [post]
 func (h *Handler) CreateProjectPaymentConfig(c *gin.Context) {}
+
+// UpdateProjectPaymentConfig updates a project payment config (not yet implemented).
+// @Summary     Update project payment config
+// @Tags        project-payment-configs
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "Config ID (UUID)"
+// @Success     200 {object} object
+// @Security    BearerAuth
+// @Router      /api/v1/project-payment-configs/{id} [put]
 func (h *Handler) UpdateProjectPaymentConfig(c *gin.Context) {}
+
+// DeleteProjectPaymentConfig deletes a project payment config (not yet implemented).
+// @Summary     Delete project payment config
+// @Tags        project-payment-configs
+// @Param       id path string true "Config ID (UUID)"
+// @Success     204 "No Content"
+// @Security    BearerAuth
+// @Router      /api/v1/project-payment-configs/{id} [delete]
 func (h *Handler) DeleteProjectPaymentConfig(c *gin.Context) {}

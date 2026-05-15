@@ -40,6 +40,14 @@ func toProjectResponse(p postgres.Project) projectResponse {
 	}
 }
 
+// ListProjects returns all projects.
+// @Summary     List projects
+// @Tags        projects
+// @Produce     json
+// @Success     200 {array} projectResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects [get]
 func (h *Handler) ListProjects(c *gin.Context) {
 	projects, err := h.q.ListProjects(c.Request.Context())
 	if err != nil {
@@ -62,6 +70,16 @@ func (h *Handler) ListProjects(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// GetProject returns a project by ID.
+// @Summary     Get project
+// @Tags        projects
+// @Produce     json
+// @Param       id path string true "Project ID (UUID)"
+// @Success     200 {object} projectResponse
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects/{id} [get]
 func (h *Handler) GetProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -76,6 +94,16 @@ func (h *Handler) GetProject(c *gin.Context) {
 	c.JSON(http.StatusOK, toProjectResponse(project))
 }
 
+// GetFullProject returns a project with its route settings.
+// @Summary     Get project with settings
+// @Tags        projects
+// @Produce     json
+// @Param       id path string true "Project ID (UUID)"
+// @Success     200 {object} fullProjectResponse
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects/{id}/full [get]
 func (h *Handler) GetFullProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -111,6 +139,17 @@ type createProjectRequest struct {
 	AllowUnmatched  bool      `json:"allow_unmatched"`
 }
 
+// CreateProject creates a new project with route settings.
+// @Summary     Create project
+// @Tags        projects
+// @Accept      json
+// @Produce     json
+// @Param       body body createProjectRequest true "Project data"
+// @Success     201 {object} fullProjectResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects [post]
 func (h *Handler) CreateProject(c *gin.Context) {
 	var req createProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -162,6 +201,18 @@ type updateProjectRequest struct {
 	AllowUnmatched  bool    `json:"allow_unmatched"`
 }
 
+// UpdateProject updates a project and its route settings.
+// @Summary     Update project
+// @Tags        projects
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "Project ID (UUID)"
+// @Param       body body updateProjectRequest true "Fields to update"
+// @Success     200 {object} fullProjectResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects/{id} [put]
 func (h *Handler) UpdateProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -206,6 +257,15 @@ func (h *Handler) UpdateProject(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// DeleteProject deletes a project by ID.
+// @Summary     Delete project
+// @Tags        projects
+// @Param       id path string true "Project ID (UUID)"
+// @Success     204 "No Content"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects/{id} [delete]
 func (h *Handler) DeleteProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -232,6 +292,14 @@ type projectWithConfigResponse struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+// ListProjectsWithConfig returns all projects with their payment configuration.
+// @Summary     List projects with config
+// @Tags        projects
+// @Produce     json
+// @Success     200 {array} projectWithConfigResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects/with-config [get]
 func (h *Handler) ListProjectsWithConfig(c *gin.Context) {
 	projects, err := h.q.ListProjectsWithConfig(c.Request.Context())
 	if err != nil {
@@ -280,5 +348,23 @@ func toStringSlice(v any) []string {
 	return result
 }
 
-func (h *Handler) GetProjectSettings(c *gin.Context)    {}
+// GetProjectSettings returns project settings (not yet implemented).
+// @Summary     Get project settings
+// @Tags        projects
+// @Produce     json
+// @Param       projectId path string true "Project ID (UUID)"
+// @Success     200 {object} object
+// @Security    BearerAuth
+// @Router      /api/v1/project-settings/{projectId} [get]
+func (h *Handler) GetProjectSettings(c *gin.Context) {}
+
+// UpdateProjectSettings updates project settings (not yet implemented).
+// @Summary     Update project settings
+// @Tags        projects
+// @Accept      json
+// @Produce     json
+// @Param       projectId path string true "Project ID (UUID)"
+// @Success     200 {object} object
+// @Security    BearerAuth
+// @Router      /api/v1/project-settings/{projectId} [put]
 func (h *Handler) UpdateProjectSettings(c *gin.Context) {}

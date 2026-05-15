@@ -4,7 +4,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 
+	_ "github.com/cp0x-org/xpaywall/control-api/docs"
 	"github.com/cp0x-org/xpaywall/control-api/internal/http/handlers"
 	authhandler "github.com/cp0x-org/xpaywall/control-api/internal/http/handlers/auth"
 	"github.com/cp0x-org/xpaywall/control-api/internal/http/handlers/gateway"
@@ -29,6 +32,9 @@ func corsMiddleware() gin.HandlerFunc {
 func SetupRouter(h *handlers.Handler, authHandler *authhandler.Handler, gatewayHandler *gateway.Handler, internalAPIKey, jwtSecret string) *gin.Engine {
 	router := gin.Default()
 	router.Use(corsMiddleware())
+
+	// Swagger UI — available at /swagger/index.html
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Public auth endpoints
 	auth := router.Group("/auth")

@@ -20,7 +20,7 @@ type paymentChannelResponse struct {
 	Method    string          `json:"method"`
 	Scheme    string          `json:"scheme"`
 	Enabled   bool            `json:"enabled"`
-	Metadata  json.RawMessage `json:"metadata,omitempty"`
+	Metadata  json.RawMessage `json:"metadata,omitempty" swaggertype:"object"`
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`
 }
@@ -42,6 +42,14 @@ func toPaymentChannelResponse(ch postgres.PaymentChannel) paymentChannelResponse
 	}
 }
 
+// ListPaymentChannels returns all payment channels.
+// @Summary     List payment channels
+// @Tags        payment-channels
+// @Produce     json
+// @Success     200 {array} paymentChannelResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/payment-channels [get]
 func (h *Handler) ListPaymentChannels(c *gin.Context) {
 	channels, err := h.q.ListPaymentChannels(c.Request.Context())
 	if err != nil {
@@ -55,6 +63,16 @@ func (h *Handler) ListPaymentChannels(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// GetPaymentChannel returns a payment channel by ID.
+// @Summary     Get payment channel
+// @Tags        payment-channels
+// @Produce     json
+// @Param       id path string true "Payment Channel ID (UUID)"
+// @Success     200 {object} paymentChannelResponse
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/payment-channels/{id} [get]
 func (h *Handler) GetPaymentChannel(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -74,9 +92,20 @@ type createPaymentChannelRequest struct {
 	Method   string          `json:"method" binding:"required"`
 	Scheme   string          `json:"scheme" binding:"required"`
 	Enabled  bool            `json:"enabled"`
-	Metadata json.RawMessage `json:"metadata"`
+	Metadata json.RawMessage `json:"metadata" swaggertype:"object"`
 }
 
+// CreatePaymentChannel creates a new payment channel.
+// @Summary     Create payment channel
+// @Tags        payment-channels
+// @Accept      json
+// @Produce     json
+// @Param       body body createPaymentChannelRequest true "Payment channel data"
+// @Success     201 {object} paymentChannelResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/payment-channels [post]
 func (h *Handler) CreatePaymentChannel(c *gin.Context) {
 	var req createPaymentChannelRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -104,9 +133,21 @@ type updatePaymentChannelRequest struct {
 	Method   *string         `json:"method"`
 	Scheme   *string         `json:"scheme"`
 	Enabled  *bool           `json:"enabled"`
-	Metadata json.RawMessage `json:"metadata"`
+	Metadata json.RawMessage `json:"metadata" swaggertype:"object"`
 }
 
+// UpdatePaymentChannel updates a payment channel by ID.
+// @Summary     Update payment channel
+// @Tags        payment-channels
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "Payment Channel ID (UUID)"
+// @Param       body body updatePaymentChannelRequest true "Fields to update"
+// @Success     200 {object} paymentChannelResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/payment-channels/{id} [put]
 func (h *Handler) UpdatePaymentChannel(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -135,6 +176,15 @@ func (h *Handler) UpdatePaymentChannel(c *gin.Context) {
 	c.JSON(http.StatusOK, toPaymentChannelResponse(channel))
 }
 
+// DeletePaymentChannel deletes a payment channel by ID.
+// @Summary     Delete payment channel
+// @Tags        payment-channels
+// @Param       id path string true "Payment Channel ID (UUID)"
+// @Success     204 "No Content"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/payment-channels/{id} [delete]
 func (h *Handler) DeletePaymentChannel(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -150,6 +200,14 @@ func (h *Handler) DeletePaymentChannel(c *gin.Context) {
 
 // PaymentChannelAssets
 
+// ListPaymentChannelAssets returns all payment channel assets.
+// @Summary     List payment channel assets
+// @Tags        payment-channel-assets
+// @Produce     json
+// @Success     200 {array} object "Array of payment channel asset objects"
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/payment-channel-assets [get]
 func (h *Handler) ListPaymentChannelAssets(c *gin.Context) {
 	assets, err := h.q.ListPaymentChannelAssets(c.Request.Context())
 	if err != nil {
@@ -159,6 +217,16 @@ func (h *Handler) ListPaymentChannelAssets(c *gin.Context) {
 	c.JSON(http.StatusOK, assets)
 }
 
+// GetPaymentChannelAsset returns a payment channel asset by ID.
+// @Summary     Get payment channel asset
+// @Tags        payment-channel-assets
+// @Produce     json
+// @Param       id path string true "Asset ID (UUID)"
+// @Success     200 {object} object "Payment channel asset object"
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/payment-channel-assets/{id} [get]
 func (h *Handler) GetPaymentChannelAsset(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -178,9 +246,20 @@ type createPaymentChannelAssetRequest struct {
 	AssetSymbol      string          `json:"asset_symbol" binding:"required"`
 	AssetAddress     *string         `json:"asset_address"`
 	Decimals         *int32          `json:"decimals"`
-	Metadata         json.RawMessage `json:"metadata"`
+	Metadata         json.RawMessage `json:"metadata" swaggertype:"object"`
 }
 
+// CreatePaymentChannelAsset creates a new payment channel asset.
+// @Summary     Create payment channel asset
+// @Tags        payment-channel-assets
+// @Accept      json
+// @Produce     json
+// @Param       body body createPaymentChannelAssetRequest true "Asset data"
+// @Success     201 {object} object "Created asset object"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/payment-channel-assets [post]
 func (h *Handler) CreatePaymentChannelAsset(c *gin.Context) {
 	var req createPaymentChannelAssetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -213,9 +292,21 @@ type updatePaymentChannelAssetRequest struct {
 	AssetSymbol  *string         `json:"asset_symbol"`
 	AssetAddress *string         `json:"asset_address"`
 	Decimals     *int32          `json:"decimals"`
-	Metadata     json.RawMessage `json:"metadata"`
+	Metadata     json.RawMessage `json:"metadata" swaggertype:"object"`
 }
 
+// UpdatePaymentChannelAsset updates a payment channel asset by ID.
+// @Summary     Update payment channel asset
+// @Tags        payment-channel-assets
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "Asset ID (UUID)"
+// @Param       body body updatePaymentChannelAssetRequest true "Fields to update"
+// @Success     200 {object} object "Updated asset object"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/payment-channel-assets/{id} [put]
 func (h *Handler) UpdatePaymentChannelAsset(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -243,6 +334,15 @@ func (h *Handler) UpdatePaymentChannelAsset(c *gin.Context) {
 	c.JSON(http.StatusOK, asset)
 }
 
+// DeletePaymentChannelAsset deletes a payment channel asset by ID.
+// @Summary     Delete payment channel asset
+// @Tags        payment-channel-assets
+// @Param       id path string true "Asset ID (UUID)"
+// @Success     204 "No Content"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/payment-channel-assets/{id} [delete]
 func (h *Handler) DeletePaymentChannelAsset(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

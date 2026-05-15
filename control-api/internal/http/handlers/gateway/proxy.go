@@ -47,8 +47,20 @@ type channelDTO struct {
 	AssetID       *uuid.UUID        `json:"asset_id,omitempty"`
 }
 
-// ResolveRoute resolves an inbound path to a full proxy rule including target config.
-// Path format: /{projectSlug}/{inboundPath...}
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
+// ResolveRoute resolves an inbound path to a full proxy rule including target config and payment channels.
+// @Summary     Resolve route
+// @Tags        gateway
+// @Produce     json
+// @Param       path path string true "Path in format {projectSlug}/{inboundPath}"
+// @Success     200 {object} resolveRouteResponse
+// @Failure     404 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    ApiKeyAuth
+// @Router      /proxy/resolve/{path} [get]
 func (h *Handler) ResolveRoute(c *gin.Context) {
 	fullPath := c.Param("path")
 	fullPath = strings.TrimPrefix(fullPath, "/")
