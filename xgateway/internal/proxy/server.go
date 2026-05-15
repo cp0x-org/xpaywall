@@ -12,12 +12,6 @@ import (
 	"github.com/cp0x-org/xpaywall/xgateway/internal/rules"
 )
 
-const upstreamSettlementAmountKey = "X-X402-Settlement-Amount"
-
-type requestContextKey string
-
-const matchedRuleSchemeContextKey requestContextKey = "proxy.rule_scheme"
-
 // Server wraps an HTTP handler with payment gateway logic.
 type Server struct {
 	handler http.Handler

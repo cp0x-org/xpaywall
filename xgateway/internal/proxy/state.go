@@ -6,25 +6,26 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	x402 "github.com/x402-foundation/x402/go"
-	x402http "github.com/x402-foundation/x402/go/http"
 
 	"github.com/cp0x-org/xpaywall/xgateway/internal/logger"
 	"github.com/cp0x-org/xpaywall/xgateway/internal/rules"
 )
 
-// state holds the shared, per-Server resources used across the request lifecycle:
-// the rule provider, optional fallback handler, async logger client, and two
-// caches keyed by inbound path / facilitator URL.
+// state holds the shared, per-Server resources used across the request
+// lifecycle: the rule provider, optional fallback handler, async logger
+// client, the registered payment protocols, and the route cache.
 type state struct {
 	provider  rules.Provider
 	fallback  http.Handler
 	logger    *logger.Client
 	startedAt time.Time
 
+	// protocols is the ordered list of payment protocols this Server knows
+	// about. Order is significant — it defines selection precedence.
+	protocols []protocolEntry
+
 	mu         sync.RWMutex
 	routeCache map[string]*entry
-	facilCache map[string]x402.FacilitatorClient
 
 	pendingLogs sync.Map // logFingerprint → pendingLogEntry
 }
@@ -35,8 +36,8 @@ func newState(provider rules.Provider, fallback http.Handler, lg *logger.Client)
 		fallback:   fallback,
 		logger:     lg,
 		startedAt:  time.Now(),
+		protocols:  defaultProtocols(newFacilitatorCache()),
 		routeCache: make(map[string]*entry),
-		facilCache: make(map[string]x402.FacilitatorClient),
 	}
 }
 
@@ -51,25 +52,6 @@ func (s *state) putRoute(path string, e *entry) {
 	s.mu.Lock()
 	s.routeCache[path] = e
 	s.mu.Unlock()
-}
-
-// facilitator returns a cached x402 facilitator client for url, constructing
-// one on first use. The cache key is the URL itself.
-func (s *state) facilitator(url string) x402.FacilitatorClient {
-	s.mu.RLock()
-	fac, ok := s.facilCache[url]
-	s.mu.RUnlock()
-	if ok {
-		return fac
-	}
-	fac = x402http.NewHTTPFacilitatorClient(&x402http.FacilitatorConfig{
-		URL:        url,
-		HTTPClient: FacilitatorHTTPClient(),
-	})
-	s.mu.Lock()
-	s.facilCache[url] = fac
-	s.mu.Unlock()
-	return fac
 }
 
 // pendingLogEntry tracks a 402-response log entry waiting for its payment retry.

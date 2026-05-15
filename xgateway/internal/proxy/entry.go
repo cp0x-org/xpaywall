@@ -9,74 +9,72 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/tempoxyz/mpp-go/pkg/mpp"
-	mppserver "github.com/tempoxyz/mpp-go/pkg/server"
-	x402 "github.com/x402-foundation/x402/go"
-	x402http "github.com/x402-foundation/x402/go/http"
-	evmexact "github.com/x402-foundation/x402/go/mechanisms/evm/exact/server"
-	evmupto "github.com/x402-foundation/x402/go/mechanisms/evm/upto/server"
 
 	"github.com/cp0x-org/xpaywall/xgateway/internal/config"
 	"github.com/cp0x-org/xpaywall/xgateway/internal/rules"
 )
 
 // entry is the per-route resource bundle resolved on first request and cached.
-// It owns the upstream reverse proxy plus any payment-protocol handlers.
+// It owns the upstream reverse proxy plus any payment protocols configured for
+// the route. Protocols are stored in the Server's registry order so that the
+// first entry acts as the default fallback.
 type entry struct {
-	rule    rules.Rule
-	rp      *httputil.ReverseProxy
-	x402Srv *x402http.HTTPServer
-	mppCfgs []mppserver.ComposeConfig
-	scheme  string
+	rule      rules.Rule
+	rp        *httputil.ReverseProxy
+	protocols []PaymentProtocol
+	scheme    string
 }
 
 // hasPayment reports whether any payment protocol is configured for this entry.
 func (e *entry) hasPayment() bool {
-	return e.x402Srv != nil || len(e.mppCfgs) > 0
+	return len(e.protocols) > 0
 }
 
-// runPayment dispatches to the appropriate protocol middleware based on what
-// the entry has configured and what the client signaled in the request.
-// Returns the protocol name used ("x402" or "mpp") for logging; an empty
-// string when no protocol fired (should not happen — hasPayment guards this).
+// runPayment dispatches the request to one of the entry's protocols. Selection:
+//   - if any protocol's HasClientAuth reports true, that protocol handles the
+//     request; the other protocols contribute Challenge decorators so the 402
+//     response (if any) still advertises them.
+//   - otherwise the first registered protocol handles the request, with every
+//     other protocol contributing Challenge decorators.
 //
-// Selection rules (mirrors the original switch):
-//   - MPP only        → MPP
-//   - x402 only       → x402
-//   - both, MPP auth  → MPP
-//   - both, otherwise → x402 (response is decorated with MPP challenges so the
-//     client can opt into MPP on the next request).
+// Returns the protocol name used for logging; empty when no protocol is
+// configured (caller guards via hasPayment).
 func (e *entry) runPayment(c *gin.Context) string {
-	hasX402 := e.x402Srv != nil
-	hasMPP := len(e.mppCfgs) > 0
-
-	switch {
-	case hasMPP && !hasX402:
-		runMPPMiddleware(c, e.mppCfgs)
-		return "mpp"
-	case hasX402 && !hasMPP:
-		runX402Middleware(c, e.x402Srv)
-		return "x402"
-	case hasX402 && hasMPP:
-		if mpp.FindPaymentAuthorization(c.GetHeader("Authorization")) != "" {
-			runMPPMiddleware(c, e.mppCfgs)
-			return "mpp"
-		}
-		runX402Middleware(c, e.x402Srv, func(headers http.Header) {
-			appendMPPChallenges(c.Request.Context(), headers, e.mppCfgs)
-		})
-		return "x402"
+	if len(e.protocols) == 0 {
+		return ""
 	}
-	return ""
+
+	chosen := 0
+	for i, p := range e.protocols {
+		if p.HasClientAuth(c) {
+			chosen = i
+			break
+		}
+	}
+
+	decorators := make([]func(http.Header), 0, len(e.protocols)-1)
+	for i, p := range e.protocols {
+		if i == chosen {
+			continue
+		}
+		other := p
+		decorators = append(decorators, func(h http.Header) {
+			other.Challenge(c.Request.Context(), h)
+		})
+	}
+
+	e.protocols[chosen].Handle(c, decorators...)
+	return e.protocols[chosen].Name()
 }
 
 // buildEntry constructs and initializes the per-route entry: upstream proxy
-// (if a target is configured) plus payment-protocol handlers for every enabled
-// channel.
+// (if a target is configured) plus payment protocols built from the rule's
+// enabled channels grouped by protocol name. Protocols are instantiated in the
+// Server's registry order; a protocol factory that returns (nil, nil) is
+// skipped without aborting entry construction.
 func (s *state) buildEntry(ctx context.Context, rule *rules.Rule, reqPath string) (*entry, error) {
 	log.Printf("[entry] building entry for %s: free=%v channels=%d", reqPath, rule.Free, len(rule.PaymentChannels))
 	e := &entry{rule: *rule}
@@ -93,23 +91,47 @@ func (s *state) buildEntry(ctx context.Context, rule *rules.Rule, reqPath string
 		return e, nil
 	}
 
-	x402Options, mppCfgs, scheme, err := compilePaymentChannels(rule)
-	if err != nil {
-		return nil, err
+	// Effective scheme is taken from the first enabled channel — matches the
+	// previous behavior of compilePaymentChannels.
+	for _, ch := range rule.PaymentChannels {
+		if !ch.Enabled {
+			continue
+		}
+		e.scheme = config.NormalizeScheme(ch.Scheme)
+		break
 	}
-	e.scheme = scheme
-	e.mppCfgs = mppCfgs
 
-	if len(x402Options) == 0 {
-		return e, nil
+	byProto := groupEnabledChannelsByProtocol(rule.PaymentChannels)
+	for _, reg := range s.protocols {
+		channels := byProto[reg.name]
+		if len(channels) == 0 {
+			continue
+		}
+		p, err := reg.factory(ctx, rule, reqPath, channels)
+		if err != nil {
+			return nil, fmt.Errorf("build %s protocol: %w", reg.name, err)
+		}
+		if p == nil {
+			continue
+		}
+		e.protocols = append(e.protocols, p)
 	}
 
-	srv, err := s.buildX402Server(ctx, rule, reqPath, x402Options)
-	if err != nil {
-		return nil, err
-	}
-	e.x402Srv = srv
 	return e, nil
+}
+
+// groupEnabledChannelsByProtocol bucketises the rule's enabled channels by
+// their Protocol field while preserving the original channel order within each
+// bucket.
+func groupEnabledChannelsByProtocol(channels []*rules.PaymentChannel) map[string][]*rules.PaymentChannel {
+	byProto := make(map[string][]*rules.PaymentChannel)
+	for _, ch := range channels {
+		if !ch.Enabled {
+			continue
+		}
+		byProto[ch.Protocol] = append(byProto[ch.Protocol], ch)
+	}
+	return byProto
 }
 
 // buildUpstreamProxy creates the reverse proxy for the rule's Target. It strips
@@ -158,130 +180,6 @@ func buildUpstreamProxy(rule *rules.Rule, reqPath string) (*httputil.ReverseProx
 			return nil
 		},
 	}, nil
-}
-
-// compilePaymentChannels iterates over the rule's enabled channels and produces
-// per-protocol data structures: a list of x402 PaymentOptions, a list of MPP
-// compose configs, and the entry's effective scheme (taken from the first
-// channel that contributes one). Channel-level price overrides the route price.
-func compilePaymentChannels(rule *rules.Rule) (
-	x402Options x402http.PaymentOptions,
-	mppCfgs []mppserver.ComposeConfig,
-	scheme string,
-	err error,
-) {
-	x402Options = make(x402http.PaymentOptions, 0)
-
-	for _, ch := range rule.PaymentChannels {
-		if !ch.Enabled {
-			continue
-		}
-		price := ch.Price
-		if price == "" {
-			price = rule.Price
-		}
-		switch ch.Protocol {
-		case "x402":
-			x402Options = append(x402Options, x402http.PaymentOption{
-				Scheme:  config.NormalizeScheme(ch.Scheme),
-				PayTo:   ch.ChannelConfig["merchant"],
-				Price:   price,
-				Network: x402.Network(ch.ChannelConfig["network"]),
-			})
-			if scheme == "" {
-				scheme = config.NormalizeScheme(ch.Scheme)
-			}
-		case "mpp":
-			mppSrv, err := buildMPPServer(config.MPPMethod{
-				Method:    ch.Method,
-				Scheme:    ch.Scheme,
-				RPCURL:    ch.ChannelConfig["rpc_url"],
-				Merchant:  ch.ChannelConfig["merchant"],
-				Asset:     ch.ChannelConfig["asset"],
-				SecretKey: ch.ChannelConfig["secret_key"],
-			})
-			if err != nil {
-				return nil, nil, "", fmt.Errorf("build MPP server: %w", err)
-			}
-			mppCfgs = append(mppCfgs, mppserver.ComposeConfig{
-				Mpp: mppSrv,
-				Params: mppserver.ChargeParams{
-					Amount:      parseMPPAmount(price),
-					Currency:    ch.ChannelConfig["asset"],
-					Recipient:   ch.ChannelConfig["merchant"],
-					Description: rule.Description,
-				},
-			})
-			if scheme == "" {
-				scheme = config.NormalizeScheme(ch.Scheme)
-			}
-		}
-	}
-	return x402Options, mppCfgs, scheme, nil
-}
-
-// buildX402Server initializes the x402 HTTP server for a rule's x402 channels:
-// attaches each channel's facilitator client (via state.facilitator cache),
-// registers EVM exact/upto scheme handlers, and runs the library's Initialize
-// step under a 30s timeout.
-//
-// Channels missing a facilitator_url are skipped with a warning — verification
-// will fail later but route construction does not abort.
-func (s *state) buildX402Server(
-	ctx context.Context,
-	rule *rules.Rule,
-	reqPath string,
-	options x402http.PaymentOptions,
-) (*x402http.HTTPServer, error) {
-	// Always use the full proxy path (with project slug) as the x402 route key.
-	// The payment challenge must reference the same URL the client originally requested
-	// so the retry after payment hits the proxy at the correct slug-bearing path.
-	routeKey := reqPath
-	log.Printf("[entry] x402 routeKey=%s options=%d", routeKey, len(options))
-
-	routes := x402http.RoutesConfig{
-		routeKey: x402http.RouteConfig{
-			Accepts:     options,
-			Description: rule.Description,
-			MimeType:    rule.MimeType,
-		},
-	}
-
-	var x402Opts []x402.ResourceServerOption
-	for _, ch := range rule.PaymentChannels {
-		if ch.Protocol != "x402" || !ch.Enabled {
-			continue
-		}
-		facURL := ch.ChannelConfig["facilitator_url"]
-		log.Printf("[entry] x402 channel scheme=%s network=%s facilitator_url=%q merchant=%q",
-			ch.Scheme, ch.ChannelConfig["network"], facURL, ch.ChannelConfig["merchant"])
-		if facURL == "" {
-			log.Printf("[entry] WARNING: x402 channel missing facilitator_url — payment verification will fail")
-			continue
-		}
-		x402Opts = append(x402Opts, x402.WithFacilitatorClient(s.facilitator(facURL)))
-	}
-
-	srv := x402http.Newx402HTTPResourceServer(routes, x402Opts...)
-	for _, ch := range rule.PaymentChannels {
-		if ch.Protocol != "x402" || !ch.Enabled {
-			continue
-		}
-		network := x402.Network(ch.ChannelConfig["network"])
-		switch config.NormalizeScheme(ch.Scheme) {
-		case config.SchemeExact:
-			srv.Register(network, evmexact.NewExactEvmScheme())
-		case config.SchemeUpto:
-			srv.Register(network, evmupto.NewUptoEvmScheme())
-		}
-	}
-
-	initCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	if err := srv.Initialize(initCtx); err != nil {
-		return nil, fmt.Errorf("initialize x402 server: %w", err)
-	}
-	return srv, nil
 }
 
 // classifyUpstreamResult maps a (status, err) pair from the reverse proxy into
