@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -89,7 +90,8 @@ func stringPtrToPgNumeric(s *string) pgtype.Numeric {
 	if s == nil {
 		return n
 	}
-	_ = n.Scan(*s)
+	v := strings.TrimLeft(*s, "$")
+	_ = n.Scan(v)
 	return n
 }
 

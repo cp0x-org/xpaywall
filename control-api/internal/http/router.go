@@ -49,6 +49,7 @@ func SetupRouter(h *handlers.Handler, authHandler *authhandler.Handler, gatewayH
 	// Internal proxy endpoints (gateway → control-api)
 	proxy := router.Group("/")
 	proxy.Use(middleware.InternalAPIKey(internalAPIKey))
+	proxy.Use(middleware.LogRequestBody())
 	routes.RegisterProxyRoutes(proxy, gatewayHandler)
 	routes.RegisterInternalRoutes(proxy, h)
 

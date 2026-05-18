@@ -244,7 +244,13 @@ func writeX402Error(c *gin.Context, response *x402http.HTTPResponseInstructions,
 	c.Abort()
 }
 
-func handleX402Verified(c *gin.Context, server *x402http.HTTPServer, ctx context.Context, reqCtx x402http.HTTPRequestContext, result x402http.HTTPProcessResult) {
+func handleX402Verified(
+	c *gin.Context,
+	server *x402http.HTTPServer,
+	ctx context.Context,
+	reqCtx x402http.HTTPRequestContext,
+	result x402http.HTTPProcessResult,
+) {
 	writer := &responseCapture{
 		ResponseWriter: c.Writer,
 		body:           &bytes.Buffer{},

@@ -130,13 +130,27 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
       },
       xaxis: {
         type: 'datetime',
+        tickPlacement: 'on',
+        axisBorder: {
+          show: true,
+          color: gridColor
+        },
+        axisTicks: {
+          show: true,
+          color: gridColor
+        },
         labels: {
+          show: true,
+          rotate: 0,
+          hideOverlappingLabels: false,
           style: { colors: textPrimary },
+          datetimeUTC: false,
+          format: isHourly ? 'HH:mm' : 'dd MMM',
           datetimeFormatter: isHourly
             ? { year: 'yyyy', month: 'MMM dd', day: 'dd MMM', hour: 'HH:mm', minute: 'HH:mm' }
             : { year: 'yyyy', month: 'MMM yyyy', day: 'dd MMM', hour: 'HH:mm' }
         },
-        tooltip: { enabled: false }
+        tooltip: { enabled: true }
       },
       yaxis: [
         {
@@ -156,8 +170,10 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
         }
       ],
       tooltip: {
+        enabled: true,
         shared: true,
         intersect: false,
+        followCursor: true,
         theme: isDark ? 'dark' : 'light',
         x: { format: isHourly ? 'dd MMM HH:mm' : 'dd MMM yyyy' },
         y: [
