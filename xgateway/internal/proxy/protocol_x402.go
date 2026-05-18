@@ -31,10 +31,8 @@ type requestContextKey string
 
 const matchedRuleSchemeContextKey requestContextKey = "proxy.rule_scheme"
 
-// ---------- Facilitator HTTP client (used by every x402 protocol instance) --
+// ---------- Facilitator HTTP client ------------------------------------------
 
-// facilitatorLoggingTransport wraps http.DefaultTransport and logs every
-// request sent to the facilitator and the full response received.
 type facilitatorLoggingTransport struct{}
 
 func (t *facilitatorLoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -57,16 +55,14 @@ func (t *facilitatorLoggingTransport) RoundTrip(req *http.Request) (*http.Respon
 	return resp, nil
 }
 
-// FacilitatorHTTPClient returns an http.Client with facilitator request/response logging.
-func FacilitatorHTTPClient() *http.Client {
+func facilitatorHTTPClient() *http.Client {
 	return &http.Client{
 		Timeout:   x402DefaultTimeout,
 		Transport: &facilitatorLoggingTransport{},
 	}
 }
 
-// facilitatorCache memoises x402 facilitator clients across all routes within
-// a single Server. The cache key is the facilitator URL.
+// facilitatorCache memoises x402 facilitator clients keyed by URL.
 type facilitatorCache struct {
 	mu sync.RWMutex
 	m  map[string]x402.FacilitatorClient
@@ -76,7 +72,7 @@ func newFacilitatorCache() *facilitatorCache {
 	return &facilitatorCache{m: make(map[string]x402.FacilitatorClient)}
 }
 
-func (f *facilitatorCache) Get(url string) x402.FacilitatorClient {
+func (f *facilitatorCache) get(url string) x402.FacilitatorClient {
 	f.mu.RLock()
 	fac, ok := f.m[url]
 	f.mu.RUnlock()
@@ -85,7 +81,7 @@ func (f *facilitatorCache) Get(url string) x402.FacilitatorClient {
 	}
 	fac = x402http.NewHTTPFacilitatorClient(&x402http.FacilitatorConfig{
 		URL:        url,
-		HTTPClient: FacilitatorHTTPClient(),
+		HTTPClient: facilitatorHTTPClient(),
 	})
 	f.mu.Lock()
 	f.m[url] = fac
@@ -93,22 +89,14 @@ func (f *facilitatorCache) Get(url string) x402.FacilitatorClient {
 	return fac
 }
 
-// ---------- x402 protocol implementation ------------------------------------
+// ---------- x402 protocol ----------------------------------------------------
 
-// x402Protocol is a PaymentProtocol backed by an initialized x402 HTTP server
-// covering one route's enabled x402 channels.
+// x402Protocol handles payment verification for one route using the x402 protocol.
 type x402Protocol struct {
 	srv *x402http.HTTPServer
 }
 
-func (p *x402Protocol) Name() string { return protoX402 }
-
-// HasClientAuth: x402 is the registry's default protocol. Selection rolls back
-// to the first registered protocol when no other protocol's HasClientAuth
-// matches, so x402 does not need to advertise its own positive signal here.
-func (p *x402Protocol) HasClientAuth(_ *gin.Context) bool { return false }
-
-func (p *x402Protocol) Handle(c *gin.Context, decorators ...func(http.Header)) {
+func (p *x402Protocol) Handle(c *gin.Context) {
 	if p.srv == nil {
 		c.Next()
 		return
@@ -138,102 +126,113 @@ func (p *x402Protocol) Handle(c *gin.Context, decorators ...func(http.Header)) {
 		if result.Response != nil {
 			log.Printf("[x402] payment error: status=%d body=%v", result.Response.Status, result.Response.Body)
 		}
-		writeX402Error(c, result.Response, decorators...)
+		writeX402Error(c, result.Response)
 	case x402http.ResultPaymentVerified:
 		log.Printf("[x402] payment verified, proceeding to upstream")
 		handleX402Verified(c, p.srv, ctx, reqCtx, result)
 	}
 }
 
-// Challenge: x402 expresses its requirements via the full 402 response body
-// (JSON with payment requirements), not via standalone headers — so this is a
-// no-op. Other protocols ignore x402 as a fallback challenge.
-func (p *x402Protocol) Challenge(_ context.Context, _ http.Header) {}
+// buildX402Protocol constructs and initialises an x402Protocol for a route.
+//
+// Price is passed as map[string]interface{}{"asset": ..., "amount": ...} when an
+// explicit asset is configured (v2 mode). If no asset is specified in ChannelConfig
+// the library falls back to its default USD→USDC conversion for the network.
+func buildX402Protocol(
+	ctx context.Context,
+	rule *rules.Rule,
+	reqPath string,
+	channels []*rules.PaymentChannel,
+	cache *facilitatorCache,
+) (*x402Protocol, error) {
+	options := make(x402http.PaymentOptions, 0, len(channels))
+	for _, ch := range channels {
+		price := ch.Price
+		if price == "" {
+			price = rule.Price
+		}
 
-// ---------- x402 factory ----------------------------------------------------
-
-// newX402Factory returns a ProtocolFactory bound to the given facilitator
-// cache. Each Server has its own cache (shared across that Server's routes).
-func newX402Factory(cache *facilitatorCache) ProtocolFactory {
-	return func(ctx context.Context, rule *rules.Rule, reqPath string, channels []*rules.PaymentChannel) (PaymentProtocol, error) {
-		options := make(x402http.PaymentOptions, 0, len(channels))
-		for _, ch := range channels {
-			price := ch.Price
-			if price == "" {
-				price = rule.Price
+		//Use explicit asset+amount map when asset is configured (v2 semantics).
+		//x402 ParsePrice accepts map[string]interface{} with "asset"+"amount" keys.
+		//Neither x402.AssetAmount nor types.PaymentRequirements structs are accepted
+		//by ParsePrice — it only type-asserts to map[string]interface{}.
+		var priceVal any
+		if asset := ch.ChannelConfig["asset"]; asset != "" {
+			priceVal = map[string]any{
+				"asset":  asset,
+				"amount": price,
 			}
-			options = append(options, x402http.PaymentOption{
-				Scheme:  config.NormalizeScheme(ch.Scheme),
-				PayTo:   ch.ChannelConfig["merchant"],
-				Price:   price,
-				Network: x402.Network(ch.ChannelConfig["network"]),
-			})
-		}
-		if len(options) == 0 {
-			return nil, nil
+		} else {
+			priceVal = price
 		}
 
-		// Always use the full proxy path (with project slug) as the x402 route key.
-		// The payment challenge must reference the same URL the client originally
-		// requested so that the retry after payment hits the proxy at the correct
-		// slug-bearing path.
-		routeKey := reqPath
-		log.Printf("[entry] x402 routeKey=%s options=%d", routeKey, len(options))
-
-		routes := x402http.RoutesConfig{
-			routeKey: x402http.RouteConfig{
-				Accepts:     options,
-				Description: rule.Description,
-				MimeType:    rule.MimeType,
-			},
+		// TODO - ONLY THIS VARIANT !!!!
+		priceVal = map[string]any{
+			"asset":  "USDC",
+			"amount": "780",
 		}
 
-		var serverOpts []x402.ResourceServerOption
-		for _, ch := range channels {
-			facURL := ch.ChannelConfig["facilitator_url"]
-			log.Printf("[entry] x402 channel scheme=%s network=%s facilitator_url=%q merchant=%q",
-				ch.Scheme, ch.ChannelConfig["network"], facURL, ch.ChannelConfig["merchant"])
-			if facURL == "" {
-				log.Printf("[entry] WARNING: x402 channel missing facilitator_url — payment verification will fail")
-				continue
-			}
-			serverOpts = append(serverOpts, x402.WithFacilitatorClient(cache.Get(facURL)))
-		}
-
-		srv := x402http.Newx402HTTPResourceServer(routes, serverOpts...)
-		for _, ch := range channels {
-			network := x402.Network(ch.ChannelConfig["network"])
-			switch config.NormalizeScheme(ch.Scheme) {
-			case config.SchemeExact:
-				srv.Register(network, evmexact.NewExactEvmScheme())
-			case config.SchemeUpto:
-				srv.Register(network, evmupto.NewUptoEvmScheme())
-			}
-		}
-
-		initCtx, cancel := context.WithTimeout(ctx, x402DefaultTimeout)
-		defer cancel()
-		if err := srv.Initialize(initCtx); err != nil {
-			return nil, fmt.Errorf("initialize x402 server: %w", err)
-		}
-		return &x402Protocol{srv: srv}, nil
+		options = append(options, x402http.PaymentOption{
+			Scheme:  config.NormalizeScheme(ch.Scheme),
+			PayTo:   ch.ChannelConfig["merchant"],
+			Price:   priceVal,
+			Network: x402.Network(ch.ChannelConfig["network"]),
+		})
 	}
+	if len(options) == 0 {
+		return nil, nil
+	}
+
+	log.Printf("[entry] x402 routeKey=%s options=%d", reqPath, len(options))
+
+	routes := x402http.RoutesConfig{
+		reqPath: x402http.RouteConfig{
+			Accepts:     options,
+			Description: rule.Description,
+			MimeType:    rule.MimeType,
+		},
+	}
+
+	var serverOpts []x402.ResourceServerOption
+	for _, ch := range channels {
+		facURL := ch.ChannelConfig["facilitator_url"]
+		log.Printf("[entry] x402 channel scheme=%s network=%s facilitator_url=%q merchant=%q",
+			ch.Scheme, ch.ChannelConfig["network"], facURL, ch.ChannelConfig["merchant"])
+		if facURL == "" {
+			log.Printf("[entry] WARNING: x402 channel missing facilitator_url — payment verification will fail")
+			continue
+		}
+		serverOpts = append(serverOpts, x402.WithFacilitatorClient(cache.get(facURL)))
+	}
+
+	srv := x402http.Newx402HTTPResourceServer(routes, serverOpts...)
+	for _, ch := range channels {
+		network := x402.Network(ch.ChannelConfig["network"])
+		switch config.NormalizeScheme(ch.Scheme) {
+		case config.SchemeExact:
+			srv.Register(network, evmexact.NewExactEvmScheme())
+		case config.SchemeUpto:
+			srv.Register(network, evmupto.NewUptoEvmScheme())
+		}
+	}
+
+	initCtx, cancel := context.WithTimeout(ctx, x402DefaultTimeout)
+	defer cancel()
+	if err := srv.Initialize(initCtx); err != nil {
+		return nil, fmt.Errorf("initialize x402 server: %w", err)
+	}
+	return &x402Protocol{srv: srv}, nil
 }
 
-// ---------- x402 runtime helpers --------------------------------------------
+// ---------- x402 runtime helpers ---------------------------------------------
 
-func writeX402Error(c *gin.Context, response *x402http.HTTPResponseInstructions, decorateHeaders ...func(http.Header)) {
+func writeX402Error(c *gin.Context, response *x402http.HTTPResponseInstructions) {
 	if response == nil {
 		c.AbortWithStatus(http.StatusPaymentRequired)
 		return
 	}
 	for key, value := range response.Headers {
 		c.Header(key, value)
-	}
-	for _, decorate := range decorateHeaders {
-		if decorate != nil {
-			decorate(c.Writer.Header())
-		}
 	}
 	c.Status(response.Status)
 	if response.IsHTML {
@@ -304,13 +303,9 @@ func handleX402Verified(
 	_, _ = c.Writer.Write(writer.body.Bytes())
 }
 
-// applyUpstreamSettlementHeaders translates the upstream's "actual amount used"
-// signal (X-X402-Settlement-Amount header) into the x402 SettlementOverrides
-// header that the x402 library understands. Only the x402 "upto" scheme needs
-// this dance; for any other scheme the helper just strips the headers.
-//
-// Called from the reverse-proxy ModifyResponse hook in buildUpstreamProxy and
-// from NewReverseProxy.
+// applyUpstreamSettlementHeaders translates the upstream's X-X402-Settlement-Amount
+// header into the x402 SettlementOverrides header for the "upto" scheme.
+// For all other schemes it simply strips both headers.
 func applyUpstreamSettlementHeaders(headers http.Header, scheme string) {
 	if headers == nil {
 		return

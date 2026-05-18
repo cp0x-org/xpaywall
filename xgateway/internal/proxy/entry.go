@@ -18,63 +18,38 @@ import (
 )
 
 // entry is the per-route resource bundle resolved on first request and cached.
-// It owns the upstream reverse proxy plus any payment protocols configured for
-// the route. Protocols are stored in the Server's registry order so that the
-// first entry acts as the default fallback.
+// Exactly one of x402/mpp may be nil when that protocol is not configured.
 type entry struct {
-	rule      rules.Rule
-	rp        *httputil.ReverseProxy
-	protocols []PaymentProtocol
-	scheme    string
+	rule   rules.Rule
+	rp     *httputil.ReverseProxy
+	x402   *x402Protocol
+	mpp    *mppProtocol
+	scheme string
 }
 
-// hasPayment reports whether any payment protocol is configured for this entry.
 func (e *entry) hasPayment() bool {
-	return len(e.protocols) > 0
+	return e.x402 != nil || e.mpp != nil
 }
 
-// runPayment dispatches the request to one of the entry's protocols. Selection:
-//   - if any protocol's HasClientAuth reports true, that protocol handles the
-//     request; the other protocols contribute Challenge decorators so the 402
-//     response (if any) still advertises them.
-//   - otherwise the first registered protocol handles the request, with every
-//     other protocol contributing Challenge decorators.
+// runPayment dispatches to the appropriate payment protocol:
+//   - MPP when the client carries an MPP Authorization header and MPP is configured.
+//   - x402 otherwise (default).
 //
-// Returns the protocol name used for logging; empty when no protocol is
-// configured (caller guards via hasPayment).
+// Returns the protocol name used, for logging.
 func (e *entry) runPayment(c *gin.Context) string {
-	if len(e.protocols) == 0 {
-		return ""
+	if e.mpp != nil && e.mpp.HasClientAuth(c) {
+		e.mpp.Handle(c)
+		return protoMPP
 	}
-
-	chosen := 0
-	for i, p := range e.protocols {
-		if p.HasClientAuth(c) {
-			chosen = i
-			break
-		}
+	if e.x402 != nil {
+		e.x402.Handle(c)
+		return protoX402
 	}
-
-	decorators := make([]func(http.Header), 0, len(e.protocols)-1)
-	for i, p := range e.protocols {
-		if i == chosen {
-			continue
-		}
-		other := p
-		decorators = append(decorators, func(h http.Header) {
-			other.Challenge(c.Request.Context(), h)
-		})
-	}
-
-	e.protocols[chosen].Handle(c, decorators...)
-	return e.protocols[chosen].Name()
+	return ""
 }
 
-// buildEntry constructs and initializes the per-route entry: upstream proxy
-// (if a target is configured) plus payment protocols built from the rule's
-// enabled channels grouped by protocol name. Protocols are instantiated in the
-// Server's registry order; a protocol factory that returns (nil, nil) is
-// skipped without aborting entry construction.
+// buildEntry constructs and initialises the per-route entry: upstream proxy plus
+// any payment protocols derived from the rule's enabled channels.
 func (s *state) buildEntry(ctx context.Context, rule *rules.Rule, reqPath string) (*entry, error) {
 	log.Printf("[entry] building entry for %s: free=%v channels=%d", reqPath, rule.Free, len(rule.PaymentChannels))
 	e := &entry{rule: *rule}
@@ -91,53 +66,46 @@ func (s *state) buildEntry(ctx context.Context, rule *rules.Rule, reqPath string
 		return e, nil
 	}
 
-	// Effective scheme is taken from the first enabled channel — matches the
-	// previous behavior of compilePaymentChannels.
+	// Effective scheme from first enabled channel.
 	for _, ch := range rule.PaymentChannels {
-		if !ch.Enabled {
-			continue
+		if ch.Enabled {
+			e.scheme = config.NormalizeScheme(ch.Scheme)
+			break
 		}
-		e.scheme = config.NormalizeScheme(ch.Scheme)
-		break
 	}
 
-	byProto := groupEnabledChannelsByProtocol(rule.PaymentChannels)
-	for _, reg := range s.protocols {
-		channels := byProto[reg.name]
-		if len(channels) == 0 {
-			continue
-		}
-		p, err := reg.factory(ctx, rule, reqPath, channels)
+	x402Channels := filterEnabledChannels(rule.PaymentChannels, protoX402)
+	if len(x402Channels) > 0 {
+		p, err := buildX402Protocol(ctx, rule, reqPath, x402Channels, s.facilCache)
 		if err != nil {
-			return nil, fmt.Errorf("build %s protocol: %w", reg.name, err)
+			return nil, fmt.Errorf("build x402: %w", err)
 		}
-		if p == nil {
-			continue
+		e.x402 = p
+	}
+
+	mppChannels := filterEnabledChannels(rule.PaymentChannels, protoMPP)
+	if len(mppChannels) > 0 {
+		p, err := buildMPPProtocol(ctx, rule, mppChannels)
+		if err != nil {
+			return nil, fmt.Errorf("build mpp: %w", err)
 		}
-		e.protocols = append(e.protocols, p)
+		e.mpp = p
 	}
 
 	return e, nil
 }
 
-// groupEnabledChannelsByProtocol bucketises the rule's enabled channels by
-// their Protocol field while preserving the original channel order within each
-// bucket.
-func groupEnabledChannelsByProtocol(channels []*rules.PaymentChannel) map[string][]*rules.PaymentChannel {
-	byProto := make(map[string][]*rules.PaymentChannel)
+func filterEnabledChannels(channels []*rules.PaymentChannel, proto string) []*rules.PaymentChannel {
+	var out []*rules.PaymentChannel
 	for _, ch := range channels {
-		if !ch.Enabled {
-			continue
+		if ch.Enabled && ch.Protocol == proto {
+			out = append(out, ch)
 		}
-		byProto[ch.Protocol] = append(byProto[ch.Protocol], ch)
 	}
-	return byProto
+	return out
 }
 
-// buildUpstreamProxy creates the reverse proxy for the rule's Target. It strips
-// the project-slug prefix before forwarding, injects the configured auth header
-// (when set), and rewrites Location headers on upstream redirects so that the
-// client keeps the slug prefix.
+// buildUpstreamProxy creates the reverse proxy for the rule's Target.
 func buildUpstreamProxy(rule *rules.Rule, reqPath string) (*httputil.ReverseProxy, error) {
 	upURL, err := url.Parse(rule.Target)
 	if err != nil {
@@ -146,11 +114,8 @@ func buildUpstreamProxy(rule *rules.Rule, reqPath string) (*httputil.ReverseProx
 	authName := rule.AuthHeaderName
 	authValue := rule.AuthHeaderValue
 
-	// cleanPath is the path the upstream expects (project slug stripped).
 	cleanPath := rule.InboundPath
 
-	// Compute the project-slug prefix so we can rewrite upstream redirect
-	// Location headers that strip it (e.g. /health → /project/health).
 	prefix := ""
 	if cleanPath != "" && strings.HasSuffix(reqPath, cleanPath) {
 		prefix = reqPath[:len(reqPath)-len(cleanPath)]
@@ -161,7 +126,6 @@ func buildUpstreamProxy(rule *rules.Rule, reqPath string) (*httputil.ReverseProx
 			r.URL.Scheme = upURL.Scheme
 			r.URL.Host = upURL.Host
 			r.Host = upURL.Host
-			// Strip project-slug prefix before forwarding to upstream.
 			if cleanPath != "" && cleanPath != r.URL.Path && !containsGlob(cleanPath) {
 				r.URL.Path = cleanPath
 			}
@@ -182,8 +146,6 @@ func buildUpstreamProxy(rule *rules.Rule, reqPath string) (*httputil.ReverseProx
 	}, nil
 }
 
-// classifyUpstreamResult maps a (status, err) pair from the reverse proxy into
-// the log entry's final-status, error-type, error-message triple.
 func classifyUpstreamResult(statusCode int32, err error) (proxyStatus, string, string) {
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
@@ -204,10 +166,7 @@ func classifyUpstreamResult(statusCode int32, err error) (proxyStatus, string, s
 }
 
 // resolvePaymentChannelInfo finds the first enabled channel matching usedProtocol
-// and returns its DB IDs and the effective price as amountUSD.
-// Channel-level price takes precedence over routePrice.
-// Zero UUIDs (e.g. from file provider) are treated as "unknown" and returned as nil
-// to avoid FK violations in the database.
+// and returns its DB IDs and effective price.
 func resolvePaymentChannelInfo(channels []*rules.PaymentChannel, usedProtocol, routePrice string) (*uuid.UUID, *uuid.UUID, *string) {
 	zeroUUID := uuid.UUID{}
 	for _, ch := range channels {
@@ -215,7 +174,6 @@ func resolvePaymentChannelInfo(channels []*rules.PaymentChannel, usedProtocol, r
 			continue
 		}
 
-		// Resolve the effective price: channel-specific overrides route-level.
 		price := ch.Price
 		if price == "" {
 			price = routePrice
@@ -225,7 +183,6 @@ func resolvePaymentChannelInfo(channels []*rules.PaymentChannel, usedProtocol, r
 			pricePtr = &price
 		}
 
-		// Only return channel/asset IDs when they are real DB UUIDs.
 		var channelID, assetID *uuid.UUID
 		if ch.ID != zeroUUID {
 			id := ch.ID

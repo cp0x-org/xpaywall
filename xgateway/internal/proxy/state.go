@@ -11,18 +11,13 @@ import (
 	"github.com/cp0x-org/xpaywall/xgateway/internal/rules"
 )
 
-// state holds the shared, per-Server resources used across the request
-// lifecycle: the rule provider, optional fallback handler, async logger
-// client, the registered payment protocols, and the route cache.
+// state holds shared per-Server resources used across the request lifecycle.
 type state struct {
-	provider  rules.Provider
-	fallback  http.Handler
-	logger    *logger.Client
-	startedAt time.Time
-
-	// protocols is the ordered list of payment protocols this Server knows
-	// about. Order is significant — it defines selection precedence.
-	protocols []protocolEntry
+	provider   rules.Provider
+	fallback   http.Handler
+	logger     *logger.Client
+	facilCache *facilitatorCache
+	startedAt  time.Time
 
 	mu         sync.RWMutex
 	routeCache map[string]*entry
@@ -35,8 +30,8 @@ func newState(provider rules.Provider, fallback http.Handler, lg *logger.Client)
 		provider:   provider,
 		fallback:   fallback,
 		logger:     lg,
+		facilCache: newFacilitatorCache(),
 		startedAt:  time.Now(),
-		protocols:  defaultProtocols(newFacilitatorCache()),
 		routeCache: make(map[string]*entry),
 	}
 }
@@ -60,8 +55,7 @@ type pendingLogEntry struct {
 	expiresAt time.Time
 }
 
-// logFingerprint returns a key that correlates the initial 402 request with its
-// payment retry. Uses method+path+clientIP — reliable for single-client flows.
+// logFingerprint returns a key correlating the initial 402 request with its retry.
 func logFingerprint(method, path, clientIP string) string {
 	return method + "|" + path + "|" + clientIP
 }
