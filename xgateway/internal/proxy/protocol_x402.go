@@ -41,7 +41,7 @@ func (t *facilitatorLoggingTransport) RoundTrip(req *http.Request) (*http.Respon
 		reqBody, _ = io.ReadAll(req.Body)
 		req.Body = io.NopCloser(bytes.NewReader(reqBody))
 	}
-	log.Printf("[facilitator] → %s %s body=%s", req.Method, req.URL, string(reqBody))
+	log.Printf("[facilitator] → %s %s body=%s", req.Method, req.URL, truncateIfNotJSON(reqBody))
 
 	resp, err := http.DefaultTransport.RoundTrip(req)
 	if err != nil {
@@ -51,8 +51,19 @@ func (t *facilitatorLoggingTransport) RoundTrip(req *http.Request) (*http.Respon
 
 	respBody, _ := io.ReadAll(resp.Body)
 	resp.Body = io.NopCloser(bytes.NewReader(respBody))
-	log.Printf("[facilitator] ← %d %s body=%s", resp.StatusCode, req.URL, string(respBody))
+	log.Printf("[facilitator] ← %d %s body=%s", resp.StatusCode, req.URL, truncateIfNotJSON(respBody))
 	return resp, nil
+}
+
+func truncateIfNotJSON(data []byte) string {
+	s := strings.TrimSpace(string(data))
+	if s != "" && (s[0] == '{' || s[0] == '[') {
+		return s
+	}
+	if len(s) > 120 {
+		return s[:120] + "...[truncated]"
+	}
+	return s
 }
 
 func facilitatorHTTPClient() *http.Client {
@@ -124,7 +135,7 @@ func (p *x402Protocol) Handle(c *gin.Context) {
 		c.Next()
 	case x402http.ResultPaymentError:
 		if result.Response != nil {
-			log.Printf("[x402] payment error: status=%d body=%v", result.Response.Status, result.Response.Body)
+			log.Printf("[x402] payment error: status=%d", result.Response.Status)
 		}
 		writeX402Error(c, result.Response)
 	case x402http.ResultPaymentVerified:
@@ -152,10 +163,10 @@ func buildX402Protocol(
 			price = rule.Price
 		}
 
-		//Use explicit asset+amount map when asset is configured (v2 semantics).
-		//x402 ParsePrice accepts map[string]interface{} with "asset"+"amount" keys.
-		//Neither x402.AssetAmount nor types.PaymentRequirements structs are accepted
-		//by ParsePrice — it only type-asserts to map[string]interface{}.
+		// Use explicit asset+amount map when asset is configured (v2 semantics).
+		// x402 ParsePrice accepts map[string]interface{} with "asset"+"amount" keys.
+		// Neither x402.AssetAmount nor types.PaymentRequirements structs are accepted
+		// by ParsePrice — it only type-asserts to map[string]interface{}.
 		var priceVal any
 		if asset := ch.ChannelConfig["asset"]; asset != "" {
 			priceVal = map[string]any{
@@ -164,12 +175,6 @@ func buildX402Protocol(
 			}
 		} else {
 			priceVal = price
-		}
-
-		// TODO - ONLY THIS VARIANT !!!!
-		priceVal = map[string]any{
-			"asset":  "USDC",
-			"amount": "780",
 		}
 
 		options = append(options, x402http.PaymentOption{
