@@ -56,11 +56,6 @@ type channelDTO struct {
 	AssetID       *uuid.UUID        `json:"asset_id,omitempty"`
 }
 
-// List is not used for HTTP provider — rules are resolved per-request.
-func (p *HttpProvider) List(_ context.Context) ([]Rule, error) {
-	return nil, nil
-}
-
 // GetByInboundPath resolves a full inbound path (/{slug}/{path}) via the control-api.
 func (p *HttpProvider) GetByInboundPath(ctx context.Context, inboundPath string) (*Rule, error) {
 	if !strings.HasPrefix(inboundPath, "/") {

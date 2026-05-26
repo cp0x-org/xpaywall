@@ -30,10 +30,6 @@ func NewFileProvider(cfg *config.Config) *FileProvider {
 	}
 }
 
-func (r *FileProvider) List(_ context.Context) ([]Rule, error) {
-	return cloneRules(r.rules), nil
-}
-
 func (r *FileProvider) GetByInboundPath(_ context.Context, inboundPath string) (*Rule, error) {
 	normalized := normalizePath(inboundPath)
 	for i, rule := range r.rules {
@@ -114,16 +110,4 @@ func normalizePath(p string) string {
 		p = strings.TrimRight(p, "/")
 	}
 	return p
-}
-
-func cloneRules(input []Rule) []Rule {
-	if len(input) == 0 {
-		return nil
-	}
-
-	copied := make([]Rule, len(input))
-	for i, rule := range input {
-		copied[i] = rule
-	}
-	return copied
 }

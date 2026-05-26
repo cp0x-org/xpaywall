@@ -7,7 +7,6 @@ import (
 )
 
 type Provider interface {
-	List(ctx context.Context) ([]Rule, error)
 	GetByInboundPath(ctx context.Context, inboundPath string) (*Rule, error)
 }
 
