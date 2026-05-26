@@ -22,6 +22,7 @@ type GatewayConfig struct {
 	ConfigPath     string `env:"CONFIG_FILE" envDefault:"config.yaml"`
 	Port           int    `env:"PORT" envDefault:"8080"`
 	Mode           string `env:"GIN_MODE" envDefault:"release"`
+	Debug          bool   `env:"DEBUG" envDefault:"false"`
 
 	// Required when CONFIG_PROVIDER=http
 	ControlAPIURL  string `env:"CONTROL_API_URL"`
