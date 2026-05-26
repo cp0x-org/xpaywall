@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 	"time"
 
@@ -15,28 +14,22 @@ import (
 // PaymentChannels
 
 type paymentChannelResponse struct {
-	ID        uuid.UUID       `json:"id"`
-	Protocol  string          `json:"protocol"`
-	Method    string          `json:"method"`
-	Scheme    string          `json:"scheme"`
-	Enabled   bool            `json:"enabled"`
-	Metadata  json.RawMessage `json:"metadata,omitempty" swaggertype:"object"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
+	ID        uuid.UUID `json:"id"`
+	Protocol  string    `json:"protocol"`
+	Method    string    `json:"method"`
+	Scheme    string    `json:"scheme"`
+	Enabled   bool      `json:"enabled"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func toPaymentChannelResponse(ch postgres.PaymentChannel) paymentChannelResponse {
-	var metadata json.RawMessage
-	if len(ch.Metadata) > 0 {
-		metadata = json.RawMessage(ch.Metadata)
-	}
 	return paymentChannelResponse{
 		ID:        ch.ID,
 		Protocol:  ch.Protocol,
 		Method:    ch.Method,
 		Scheme:    ch.Scheme,
 		Enabled:   ch.Enabled,
-		Metadata:  metadata,
 		CreatedAt: ch.CreatedAt.Time,
 		UpdatedAt: ch.UpdatedAt.Time,
 	}
@@ -88,11 +81,10 @@ func (h *Handler) GetPaymentChannel(c *gin.Context) {
 }
 
 type createPaymentChannelRequest struct {
-	Protocol string          `json:"protocol" binding:"required"`
-	Method   string          `json:"method" binding:"required"`
-	Scheme   string          `json:"scheme" binding:"required"`
-	Enabled  bool            `json:"enabled"`
-	Metadata json.RawMessage `json:"metadata" swaggertype:"object"`
+	Protocol string `json:"protocol" binding:"required"`
+	Method   string `json:"method" binding:"required"`
+	Scheme   string `json:"scheme" binding:"required"`
+	Enabled  bool   `json:"enabled"`
 }
 
 // CreatePaymentChannel creates a new payment channel.
@@ -119,7 +111,6 @@ func (h *Handler) CreatePaymentChannel(c *gin.Context) {
 		Method:   req.Method,
 		Scheme:   req.Scheme,
 		Enabled:  req.Enabled,
-		Metadata: []byte(req.Metadata),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -129,11 +120,10 @@ func (h *Handler) CreatePaymentChannel(c *gin.Context) {
 }
 
 type updatePaymentChannelRequest struct {
-	Protocol *string         `json:"protocol"`
-	Method   *string         `json:"method"`
-	Scheme   *string         `json:"scheme"`
-	Enabled  *bool           `json:"enabled"`
-	Metadata json.RawMessage `json:"metadata" swaggertype:"object"`
+	Protocol *string `json:"protocol"`
+	Method   *string `json:"method"`
+	Scheme   *string `json:"scheme"`
+	Enabled  *bool   `json:"enabled"`
 }
 
 // UpdatePaymentChannel updates a payment channel by ID.
@@ -167,7 +157,6 @@ func (h *Handler) UpdatePaymentChannel(c *gin.Context) {
 		Method:   ptrToPgText(req.Method),
 		Scheme:   ptrToPgText(req.Scheme),
 		Enabled:  boolPtrToPgBool(req.Enabled),
-		Metadata: []byte(req.Metadata),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -242,11 +231,10 @@ func (h *Handler) GetPaymentChannelAsset(c *gin.Context) {
 }
 
 type createPaymentChannelAssetRequest struct {
-	PaymentChannelID uuid.UUID       `json:"payment_channel_id" binding:"required"`
-	AssetSymbol      string          `json:"asset_symbol" binding:"required"`
-	AssetAddress     *string         `json:"asset_address"`
-	Decimals         *int32          `json:"decimals"`
-	Metadata         json.RawMessage `json:"metadata" swaggertype:"object"`
+	PaymentChannelID uuid.UUID `json:"payment_channel_id" binding:"required"`
+	AssetSymbol      string    `json:"asset_symbol" binding:"required"`
+	AssetAddress     *string   `json:"asset_address"`
+	Decimals         *int32    `json:"decimals"`
 }
 
 // CreatePaymentChannelAsset creates a new payment channel asset.
@@ -271,7 +259,6 @@ func (h *Handler) CreatePaymentChannelAsset(c *gin.Context) {
 		ID:               uuid.New(),
 		PaymentChannelID: req.PaymentChannelID,
 		AssetSymbol:      req.AssetSymbol,
-		Metadata:         []byte(req.Metadata),
 	}
 	if req.AssetAddress != nil {
 		params.AssetAddress = pgtype.Text{String: *req.AssetAddress, Valid: true}
@@ -289,10 +276,9 @@ func (h *Handler) CreatePaymentChannelAsset(c *gin.Context) {
 }
 
 type updatePaymentChannelAssetRequest struct {
-	AssetSymbol  *string         `json:"asset_symbol"`
-	AssetAddress *string         `json:"asset_address"`
-	Decimals     *int32          `json:"decimals"`
-	Metadata     json.RawMessage `json:"metadata" swaggertype:"object"`
+	AssetSymbol  *string `json:"asset_symbol"`
+	AssetAddress *string `json:"asset_address"`
+	Decimals     *int32  `json:"decimals"`
 }
 
 // UpdatePaymentChannelAsset updates a payment channel asset by ID.
@@ -325,7 +311,6 @@ func (h *Handler) UpdatePaymentChannelAsset(c *gin.Context) {
 		AssetSymbol:  ptrToPgText(req.AssetSymbol),
 		AssetAddress: ptrToPgText(req.AssetAddress),
 		Decimals:     int32PtrToPgInt4(req.Decimals),
-		Metadata:     []byte(req.Metadata),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

@@ -63,11 +63,9 @@ BEGIN
         'Authorization', 'Bearer YOUR_UPSTREAM_ACCESS_TOKEN', FALSE
     );
 
-    INSERT INTO payment_channels (id, protocol, method, scheme, enabled, metadata)
-    VALUES (
-        gen_random_uuid(), 'x402', 'eip155:84532', 'exact', TRUE,
-        '{"facilitator_url":"https://x402.dexter.cash","network":"eip155:84532","merchant":"0xEb6ae6fA22D307Eae06BE0862087FdFFdD25Bab4"}'::jsonb
-    ) RETURNING id INTO v_channel_id;
+    INSERT INTO payment_channels (id, protocol, method, scheme, enabled)
+    VALUES (gen_random_uuid(), 'x402', 'eip155:84532', 'exact', TRUE)
+    RETURNING id INTO v_channel_id;
 
     INSERT INTO project_payment_configs (
         id, project_id, payment_channel_id, name, payout_address, enabled

@@ -15,7 +15,6 @@ type PaymentChannel struct {
 	Method    string
 	Scheme    string
 	Enabled   bool
-	Metadata  []byte
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }
@@ -26,7 +25,6 @@ type PaymentChannelAsset struct {
 	AssetSymbol      string
 	AssetAddress     pgtype.Text
 	Decimals         pgtype.Int4
-	Metadata         []byte
 	CreatedAt        pgtype.Timestamp
 	UpdatedAt        pgtype.Timestamp
 }

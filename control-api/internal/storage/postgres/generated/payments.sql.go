@@ -13,9 +13,9 @@ import (
 )
 
 const createPaymentChannel = `-- name: CreatePaymentChannel :one
-INSERT INTO payment_channels (id, protocol, method, scheme, enabled, metadata)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, protocol, method, scheme, enabled, metadata, created_at, updated_at
+INSERT INTO payment_channels (id, protocol, method, scheme, enabled)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, protocol, method, scheme, enabled, created_at, updated_at
 `
 
 type CreatePaymentChannelParams struct {
@@ -24,7 +24,6 @@ type CreatePaymentChannelParams struct {
 	Method   string
 	Scheme   string
 	Enabled  bool
-	Metadata []byte
 }
 
 func (q *Queries) CreatePaymentChannel(ctx context.Context, arg CreatePaymentChannelParams) (PaymentChannel, error) {
@@ -34,7 +33,6 @@ func (q *Queries) CreatePaymentChannel(ctx context.Context, arg CreatePaymentCha
 		arg.Method,
 		arg.Scheme,
 		arg.Enabled,
-		arg.Metadata,
 	)
 	var i PaymentChannel
 	err := row.Scan(
@@ -43,7 +41,6 @@ func (q *Queries) CreatePaymentChannel(ctx context.Context, arg CreatePaymentCha
 		&i.Method,
 		&i.Scheme,
 		&i.Enabled,
-		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -51,9 +48,9 @@ func (q *Queries) CreatePaymentChannel(ctx context.Context, arg CreatePaymentCha
 }
 
 const createPaymentChannelAsset = `-- name: CreatePaymentChannelAsset :one
-INSERT INTO payment_channel_assets (id, payment_channel_id, asset_symbol, asset_address, decimals, metadata)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, payment_channel_id, asset_symbol, asset_address, decimals, metadata, created_at, updated_at
+INSERT INTO payment_channel_assets (id, payment_channel_id, asset_symbol, asset_address, decimals)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, payment_channel_id, asset_symbol, asset_address, decimals, created_at, updated_at
 `
 
 type CreatePaymentChannelAssetParams struct {
@@ -62,7 +59,6 @@ type CreatePaymentChannelAssetParams struct {
 	AssetSymbol      string
 	AssetAddress     pgtype.Text
 	Decimals         pgtype.Int4
-	Metadata         []byte
 }
 
 func (q *Queries) CreatePaymentChannelAsset(ctx context.Context, arg CreatePaymentChannelAssetParams) (PaymentChannelAsset, error) {
@@ -72,7 +68,6 @@ func (q *Queries) CreatePaymentChannelAsset(ctx context.Context, arg CreatePayme
 		arg.AssetSymbol,
 		arg.AssetAddress,
 		arg.Decimals,
-		arg.Metadata,
 	)
 	var i PaymentChannelAsset
 	err := row.Scan(
@@ -81,7 +76,6 @@ func (q *Queries) CreatePaymentChannelAsset(ctx context.Context, arg CreatePayme
 		&i.AssetSymbol,
 		&i.AssetAddress,
 		&i.Decimals,
-		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -107,7 +101,7 @@ func (q *Queries) DeletePaymentChannelAsset(ctx context.Context, id uuid.UUID) e
 }
 
 const getPaymentChannel = `-- name: GetPaymentChannel :one
-SELECT id, protocol, method, scheme, enabled, metadata, created_at, updated_at FROM payment_channels WHERE id = $1
+SELECT id, protocol, method, scheme, enabled, created_at, updated_at FROM payment_channels WHERE id = $1
 `
 
 func (q *Queries) GetPaymentChannel(ctx context.Context, id uuid.UUID) (PaymentChannel, error) {
@@ -119,7 +113,6 @@ func (q *Queries) GetPaymentChannel(ctx context.Context, id uuid.UUID) (PaymentC
 		&i.Method,
 		&i.Scheme,
 		&i.Enabled,
-		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -127,7 +120,7 @@ func (q *Queries) GetPaymentChannel(ctx context.Context, id uuid.UUID) (PaymentC
 }
 
 const getPaymentChannelAsset = `-- name: GetPaymentChannelAsset :one
-SELECT id, payment_channel_id, asset_symbol, asset_address, decimals, metadata, created_at, updated_at FROM payment_channel_assets WHERE id = $1
+SELECT id, payment_channel_id, asset_symbol, asset_address, decimals, created_at, updated_at FROM payment_channel_assets WHERE id = $1
 `
 
 func (q *Queries) GetPaymentChannelAsset(ctx context.Context, id uuid.UUID) (PaymentChannelAsset, error) {
@@ -139,7 +132,6 @@ func (q *Queries) GetPaymentChannelAsset(ctx context.Context, id uuid.UUID) (Pay
 		&i.AssetSymbol,
 		&i.AssetAddress,
 		&i.Decimals,
-		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -147,7 +139,7 @@ func (q *Queries) GetPaymentChannelAsset(ctx context.Context, id uuid.UUID) (Pay
 }
 
 const listPaymentChannelAssets = `-- name: ListPaymentChannelAssets :many
-SELECT id, payment_channel_id, asset_symbol, asset_address, decimals, metadata, created_at, updated_at FROM payment_channel_assets ORDER BY created_at DESC
+SELECT id, payment_channel_id, asset_symbol, asset_address, decimals, created_at, updated_at FROM payment_channel_assets ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPaymentChannelAssets(ctx context.Context) ([]PaymentChannelAsset, error) {
@@ -165,7 +157,6 @@ func (q *Queries) ListPaymentChannelAssets(ctx context.Context) ([]PaymentChanne
 			&i.AssetSymbol,
 			&i.AssetAddress,
 			&i.Decimals,
-			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -180,7 +171,7 @@ func (q *Queries) ListPaymentChannelAssets(ctx context.Context) ([]PaymentChanne
 }
 
 const listPaymentChannelAssetsByChannel = `-- name: ListPaymentChannelAssetsByChannel :many
-SELECT id, payment_channel_id, asset_symbol, asset_address, decimals, metadata, created_at, updated_at FROM payment_channel_assets WHERE payment_channel_id = $1 ORDER BY created_at DESC
+SELECT id, payment_channel_id, asset_symbol, asset_address, decimals, created_at, updated_at FROM payment_channel_assets WHERE payment_channel_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPaymentChannelAssetsByChannel(ctx context.Context, paymentChannelID uuid.UUID) ([]PaymentChannelAsset, error) {
@@ -198,7 +189,6 @@ func (q *Queries) ListPaymentChannelAssetsByChannel(ctx context.Context, payment
 			&i.AssetSymbol,
 			&i.AssetAddress,
 			&i.Decimals,
-			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -213,7 +203,7 @@ func (q *Queries) ListPaymentChannelAssetsByChannel(ctx context.Context, payment
 }
 
 const listPaymentChannels = `-- name: ListPaymentChannels :many
-SELECT id, protocol, method, scheme, enabled, metadata, created_at, updated_at FROM payment_channels ORDER BY created_at DESC
+SELECT id, protocol, method, scheme, enabled, created_at, updated_at FROM payment_channels ORDER BY created_at DESC
 `
 
 func (q *Queries) ListPaymentChannels(ctx context.Context) ([]PaymentChannel, error) {
@@ -231,7 +221,6 @@ func (q *Queries) ListPaymentChannels(ctx context.Context) ([]PaymentChannel, er
 			&i.Method,
 			&i.Scheme,
 			&i.Enabled,
-			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -251,10 +240,9 @@ SET protocol   = COALESCE($2, protocol),
     method     = COALESCE($3, method),
     scheme     = COALESCE($4, scheme),
     enabled    = COALESCE($5, enabled),
-    metadata   = COALESCE($6, metadata),
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, protocol, method, scheme, enabled, metadata, created_at, updated_at
+RETURNING id, protocol, method, scheme, enabled, created_at, updated_at
 `
 
 type UpdatePaymentChannelParams struct {
@@ -263,7 +251,6 @@ type UpdatePaymentChannelParams struct {
 	Method   pgtype.Text
 	Scheme   pgtype.Text
 	Enabled  pgtype.Bool
-	Metadata []byte
 }
 
 func (q *Queries) UpdatePaymentChannel(ctx context.Context, arg UpdatePaymentChannelParams) (PaymentChannel, error) {
@@ -273,7 +260,6 @@ func (q *Queries) UpdatePaymentChannel(ctx context.Context, arg UpdatePaymentCha
 		arg.Method,
 		arg.Scheme,
 		arg.Enabled,
-		arg.Metadata,
 	)
 	var i PaymentChannel
 	err := row.Scan(
@@ -282,7 +268,6 @@ func (q *Queries) UpdatePaymentChannel(ctx context.Context, arg UpdatePaymentCha
 		&i.Method,
 		&i.Scheme,
 		&i.Enabled,
-		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -294,10 +279,9 @@ UPDATE payment_channel_assets
 SET asset_symbol  = COALESCE($2, asset_symbol),
     asset_address = COALESCE($3, asset_address),
     decimals      = COALESCE($4, decimals),
-    metadata      = COALESCE($5, metadata),
     updated_at    = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, payment_channel_id, asset_symbol, asset_address, decimals, metadata, created_at, updated_at
+RETURNING id, payment_channel_id, asset_symbol, asset_address, decimals, created_at, updated_at
 `
 
 type UpdatePaymentChannelAssetParams struct {
@@ -305,7 +289,6 @@ type UpdatePaymentChannelAssetParams struct {
 	AssetSymbol  pgtype.Text
 	AssetAddress pgtype.Text
 	Decimals     pgtype.Int4
-	Metadata     []byte
 }
 
 func (q *Queries) UpdatePaymentChannelAsset(ctx context.Context, arg UpdatePaymentChannelAssetParams) (PaymentChannelAsset, error) {
@@ -314,7 +297,6 @@ func (q *Queries) UpdatePaymentChannelAsset(ctx context.Context, arg UpdatePayme
 		arg.AssetSymbol,
 		arg.AssetAddress,
 		arg.Decimals,
-		arg.Metadata,
 	)
 	var i PaymentChannelAsset
 	err := row.Scan(
@@ -323,7 +305,6 @@ func (q *Queries) UpdatePaymentChannelAsset(ctx context.Context, arg UpdatePayme
 		&i.AssetSymbol,
 		&i.AssetAddress,
 		&i.Decimals,
-		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

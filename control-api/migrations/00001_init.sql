@@ -25,7 +25,6 @@ CREATE TABLE payment_channels (
     method VARCHAR NOT NULL,
     scheme VARCHAR NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    metadata JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (protocol, method, scheme)
@@ -37,7 +36,6 @@ CREATE TABLE payment_channel_assets (
     asset_symbol VARCHAR NOT NULL,
     asset_address VARCHAR,
     decimals INTEGER,
-    metadata JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (payment_channel_id, asset_symbol)
