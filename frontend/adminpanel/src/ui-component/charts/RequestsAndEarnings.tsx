@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 // material-ui
 import Box from '@mui/material/Box';
@@ -50,6 +50,49 @@ function buildChartQuery(mode?: PeriodMode, from?: string, to?: string, projectI
   return base;
 }
 
+function fillGaps(points: StatPoint[], granularity: 'hour' | 'day'): StatPoint[] {
+  if (points.length < 2) return points;
+
+  const pointMap = new Map<string, StatPoint>();
+  for (const p of points) {
+    const d = new Date(p.time);
+    const key =
+      granularity === 'hour'
+        ? `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}-${d.getUTCHours()}`
+        : `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+    pointMap.set(key, p);
+  }
+
+  const current = new Date(points[0].time);
+  const last = new Date(points[points.length - 1].time);
+
+  if (granularity === 'hour') {
+    current.setUTCMinutes(0, 0, 0);
+    last.setUTCMinutes(0, 0, 0);
+  } else {
+    current.setUTCHours(0, 0, 0, 0);
+    last.setUTCHours(0, 0, 0, 0);
+  }
+
+  const result: StatPoint[] = [];
+  while (current <= last) {
+    const key =
+      granularity === 'hour'
+        ? `${current.getUTCFullYear()}-${current.getUTCMonth()}-${current.getUTCDate()}-${current.getUTCHours()}`
+        : `${current.getUTCFullYear()}-${current.getUTCMonth()}-${current.getUTCDate()}`;
+
+    result.push(pointMap.get(key) ?? { time: current.toISOString(), total_requests: 0, earnings_usd: 0 });
+
+    if (granularity === 'hour') {
+      current.setUTCHours(current.getUTCHours() + 1);
+    } else {
+      current.setUTCDate(current.getUTCDate() + 1);
+    }
+  }
+
+  return result;
+}
+
 // ==============================|| AREA CHART ||============================== //
 
 export default function RequestsAndEarnings({ periodMode, customFrom, customTo, projectId }: RequestsAndEarningsProps) {
@@ -69,8 +112,6 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
     { name: 'Earnings (USD)', data: [] as { x: number; y: number }[] }
   ]);
 
-  const [options, setOptions] = useState<ApexOptions>({});
-
   useEffect(() => {
     const query = buildChartQuery(periodMode, customFrom, customTo, projectId);
     if (!query) return;
@@ -78,18 +119,19 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
       .get<ChartStatsResponse>(`/api/v1/stats/daily${query}`)
       .then((res) => {
         const { granularity: g, points } = res.data;
+        const filled = fillGaps(points, g);
         setGranularity(g);
         setSeries([
-          { name: 'Requests',      data: points.map((p) => ({ x: new Date(p.time).getTime(), y: p.total_requests })) },
-          { name: 'Earnings (USD)', data: points.map((p) => ({ x: new Date(p.time).getTime(), y: parseFloat(p.earnings_usd.toFixed(4)) })) }
+          { name: 'Requests', data: filled.map((p) => ({ x: new Date(p.time).getTime(), y: p.total_requests })) },
+          { name: 'Earnings (USD)', data: filled.map((p) => ({ x: new Date(p.time).getTime(), y: parseFloat(p.earnings_usd.toFixed(4)) })) }
         ]);
       })
       .catch(() => {});
   }, [periodMode, customFrom, customTo, projectId]);
 
-  useEffect(() => {
+  const options = useMemo((): ApexOptions => {
     const isHourly = granularity === 'hour';
-    setOptions({
+    return {
       chart: {
         height: 350,
         type: 'area',
@@ -131,18 +173,12 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
       xaxis: {
         type: 'datetime',
         tickPlacement: 'on',
-        axisBorder: {
-          show: true,
-          color: gridColor
-        },
-        axisTicks: {
-          show: true,
-          color: gridColor
-        },
+        axisBorder: { show: true, color: gridColor },
+        axisTicks: { show: true, color: gridColor },
         labels: {
           show: true,
           rotate: 0,
-          hideOverlappingLabels: false,
+          hideOverlappingLabels: true,
           style: { colors: textPrimary },
           datetimeUTC: false,
           format: isHourly ? 'HH:mm' : 'dd MMM',
@@ -191,10 +227,7 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
         horizontalAlign: 'left',
         offsetX: 0,
         offsetY: 0,
-        labels: {
-          colors: [COLOR_REQUESTS, COLOR_EARNINGS],
-          useSeriesColors: false
-        },
+        labels: { colors: textPrimary },
         markers: {
           size: 8,
           shape: 'square',
@@ -206,7 +239,7 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
         fontSize: '13px',
         fontWeight: 600
       }
-    });
+    };
   }, [colorScheme, fontFamily, textPrimary, gridColor, isDark, granularity]);
 
   return (
