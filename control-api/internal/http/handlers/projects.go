@@ -126,17 +126,21 @@ func (h *Handler) GetFullProject(c *gin.Context) {
 		resp.AllowUnmatched = settings.AllowUnmatched
 	}
 
+	user, err := h.q.GetUser(c.Request.Context(), resp.OwnerUserID)
+	if err == nil {
+		resp.OwnerUsername = user.Username
+	}
+
 	c.JSON(http.StatusOK, resp)
 }
 
 type createProjectRequest struct {
-	OwnerUserID     uuid.UUID `json:"owner_user_id" binding:"required"`
-	Name            string    `json:"name" binding:"required"`
-	Slug            string    `json:"slug" binding:"required"`
-	BaseURL         string    `json:"base_url" binding:"required"`
-	AuthHeaderName  *string   `json:"auth_header_name"`
-	AuthHeaderValue *string   `json:"auth_header_value"`
-	AllowUnmatched  bool      `json:"allow_unmatched"`
+	Name            string  `json:"name" binding:"required"`
+	Slug            string  `json:"slug" binding:"required"`
+	BaseURL         string  `json:"base_url" binding:"required"`
+	AuthHeaderName  *string `json:"auth_header_name"`
+	AuthHeaderValue *string `json:"auth_header_value"`
+	AllowUnmatched  bool    `json:"allow_unmatched"`
 }
 
 // CreateProject creates a new project with route settings.
@@ -151,6 +155,17 @@ type createProjectRequest struct {
 // @Security    BearerAuth
 // @Router      /api/v1/projects [post]
 func (h *Handler) CreateProject(c *gin.Context) {
+	callerID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing user_id in token"})
+		return
+	}
+	ownerID, ok := callerID.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user_id type"})
+		return
+	}
+
 	var req createProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -159,7 +174,7 @@ func (h *Handler) CreateProject(c *gin.Context) {
 
 	project, err := h.q.CreateProject(c.Request.Context(), postgres.CreateProjectParams{
 		ID:          uuid.New(),
-		OwnerUserID: req.OwnerUserID,
+		OwnerUserID: ownerID,
 		Name:        req.Name,
 		Slug:        req.Slug,
 	})
