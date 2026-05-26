@@ -29,9 +29,12 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
-func SetupRouter(h *handlers.Handler, authHandler *authhandler.Handler, gatewayHandler *gateway.Handler, internalAPIKey, jwtSecret string) *gin.Engine {
+func SetupRouter(h *handlers.Handler, authHandler *authhandler.Handler, gatewayHandler *gateway.Handler, internalAPIKey, jwtSecret string, debug bool) *gin.Engine {
 	router := gin.Default()
 	router.Use(corsMiddleware())
+	if debug {
+		router.Use(middleware.DebugLog())
+	}
 
 	// Swagger UI — available at /swagger/index.html
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

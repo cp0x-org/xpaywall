@@ -14,6 +14,7 @@ type ControlAPIConfig struct {
 	DB_DSN             string `env:"CONTROL_DB_DSN,required,notEmpty"`
 	Port               int    `env:"PORT" envDefault:"9090"`
 	Mode               string `env:"MODE" envDefault:"release"`
+	Debug              bool   `env:"DEBUG" envDefault:"false"`
 	InternalAPIKey     string `env:"INTERNAL_API_KEY,required,notEmpty"`
 	JWTSecret          string `env:"JWT_SECRET,required,notEmpty"`
 	ProxyUrl           string `env:"PROXY_URL,required,notEmpty"`
