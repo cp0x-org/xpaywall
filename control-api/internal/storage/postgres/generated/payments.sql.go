@@ -12,34 +12,31 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createPaymentChannel = `-- name: CreatePaymentChannel :one
-INSERT INTO payment_channels (id, protocol, method, scheme, enabled)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, protocol, method, scheme, enabled, created_at, updated_at
+const createFacilitator = `-- name: CreateFacilitator :one
+INSERT INTO facilitators (id, name, url, enabled)
+VALUES ($1, $2, $3, $4)
+RETURNING id, name, url, enabled, created_at, updated_at
 `
 
-type CreatePaymentChannelParams struct {
-	ID       uuid.UUID
-	Protocol string
-	Method   string
-	Scheme   string
-	Enabled  bool
+type CreateFacilitatorParams struct {
+	ID      uuid.UUID
+	Name    string
+	Url     string
+	Enabled bool
 }
 
-func (q *Queries) CreatePaymentChannel(ctx context.Context, arg CreatePaymentChannelParams) (PaymentChannel, error) {
-	row := q.db.QueryRow(ctx, createPaymentChannel,
+func (q *Queries) CreateFacilitator(ctx context.Context, arg CreateFacilitatorParams) (Facilitator, error) {
+	row := q.db.QueryRow(ctx, createFacilitator,
 		arg.ID,
-		arg.Protocol,
-		arg.Method,
-		arg.Scheme,
+		arg.Name,
+		arg.Url,
 		arg.Enabled,
 	)
-	var i PaymentChannel
+	var i Facilitator
 	err := row.Scan(
 		&i.ID,
-		&i.Protocol,
-		&i.Method,
-		&i.Scheme,
+		&i.Name,
+		&i.Url,
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -47,34 +44,72 @@ func (q *Queries) CreatePaymentChannel(ctx context.Context, arg CreatePaymentCha
 	return i, err
 }
 
-const createPaymentChannelAsset = `-- name: CreatePaymentChannelAsset :one
-INSERT INTO payment_channel_assets (id, payment_channel_id, asset_symbol, asset_address, decimals)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, payment_channel_id, asset_symbol, asset_address, decimals, created_at, updated_at
+const createPaymentMethod = `-- name: CreatePaymentMethod :one
+INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, enabled)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at
 `
 
-type CreatePaymentChannelAssetParams struct {
-	ID               uuid.UUID
-	PaymentChannelID uuid.UUID
-	AssetSymbol      string
-	AssetAddress     pgtype.Text
-	Decimals         pgtype.Int4
+type CreatePaymentMethodParams struct {
+	ID           uuid.UUID
+	Code         string
+	Protocol     string
+	Name         string
+	Caip2ChainID pgtype.Text
+	Enabled      bool
 }
 
-func (q *Queries) CreatePaymentChannelAsset(ctx context.Context, arg CreatePaymentChannelAssetParams) (PaymentChannelAsset, error) {
-	row := q.db.QueryRow(ctx, createPaymentChannelAsset,
+func (q *Queries) CreatePaymentMethod(ctx context.Context, arg CreatePaymentMethodParams) (PaymentMethod, error) {
+	row := q.db.QueryRow(ctx, createPaymentMethod,
 		arg.ID,
-		arg.PaymentChannelID,
-		arg.AssetSymbol,
-		arg.AssetAddress,
+		arg.Code,
+		arg.Protocol,
+		arg.Name,
+		arg.Caip2ChainID,
+		arg.Enabled,
+	)
+	var i PaymentMethod
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Protocol,
+		&i.Name,
+		&i.Caip2ChainID,
+		&i.Enabled,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createPaymentMethodAsset = `-- name: CreatePaymentMethodAsset :one
+INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at
+`
+
+type CreatePaymentMethodAssetParams struct {
+	ID              uuid.UUID
+	PaymentMethodID uuid.UUID
+	Symbol          string
+	ContractAddress pgtype.Text
+	Decimals        int32
+}
+
+func (q *Queries) CreatePaymentMethodAsset(ctx context.Context, arg CreatePaymentMethodAssetParams) (PaymentMethodAsset, error) {
+	row := q.db.QueryRow(ctx, createPaymentMethodAsset,
+		arg.ID,
+		arg.PaymentMethodID,
+		arg.Symbol,
+		arg.ContractAddress,
 		arg.Decimals,
 	)
-	var i PaymentChannelAsset
+	var i PaymentMethodAsset
 	err := row.Scan(
 		&i.ID,
-		&i.PaymentChannelID,
-		&i.AssetSymbol,
-		&i.AssetAddress,
+		&i.PaymentMethodID,
+		&i.Symbol,
+		&i.ContractAddress,
 		&i.Decimals,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -82,36 +117,46 @@ func (q *Queries) CreatePaymentChannelAsset(ctx context.Context, arg CreatePayme
 	return i, err
 }
 
-const deletePaymentChannel = `-- name: DeletePaymentChannel :exec
-DELETE FROM payment_channels WHERE id = $1
+const createProjectPaymentMethod = `-- name: CreateProjectPaymentMethod :one
+INSERT INTO project_payment_methods (id, project_id, payment_method_id, asset_id, scheme, facilitator_id, payout_address, config, enabled)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id, project_id, payment_method_id, asset_id, scheme, facilitator_id, payout_address, config, enabled, created_at, updated_at
 `
 
-func (q *Queries) DeletePaymentChannel(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deletePaymentChannel, id)
-	return err
+type CreateProjectPaymentMethodParams struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	PaymentMethodID uuid.UUID
+	AssetID         uuid.UUID
+	Scheme          string
+	FacilitatorID   uuid.UUID
+	PayoutAddress   pgtype.Text
+	Config          []byte
+	Enabled         bool
 }
 
-const deletePaymentChannelAsset = `-- name: DeletePaymentChannelAsset :exec
-DELETE FROM payment_channel_assets WHERE id = $1
-`
-
-func (q *Queries) DeletePaymentChannelAsset(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deletePaymentChannelAsset, id)
-	return err
-}
-
-const getPaymentChannel = `-- name: GetPaymentChannel :one
-SELECT id, protocol, method, scheme, enabled, created_at, updated_at FROM payment_channels WHERE id = $1
-`
-
-func (q *Queries) GetPaymentChannel(ctx context.Context, id uuid.UUID) (PaymentChannel, error) {
-	row := q.db.QueryRow(ctx, getPaymentChannel, id)
-	var i PaymentChannel
+func (q *Queries) CreateProjectPaymentMethod(ctx context.Context, arg CreateProjectPaymentMethodParams) (ProjectPaymentMethod, error) {
+	row := q.db.QueryRow(ctx, createProjectPaymentMethod,
+		arg.ID,
+		arg.ProjectID,
+		arg.PaymentMethodID,
+		arg.AssetID,
+		arg.Scheme,
+		arg.FacilitatorID,
+		arg.PayoutAddress,
+		arg.Config,
+		arg.Enabled,
+	)
+	var i ProjectPaymentMethod
 	err := row.Scan(
 		&i.ID,
-		&i.Protocol,
-		&i.Method,
+		&i.ProjectID,
+		&i.PaymentMethodID,
+		&i.AssetID,
 		&i.Scheme,
+		&i.FacilitatorID,
+		&i.PayoutAddress,
+		&i.Config,
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -119,18 +164,92 @@ func (q *Queries) GetPaymentChannel(ctx context.Context, id uuid.UUID) (PaymentC
 	return i, err
 }
 
-const getPaymentChannelAsset = `-- name: GetPaymentChannelAsset :one
-SELECT id, payment_channel_id, asset_symbol, asset_address, decimals, created_at, updated_at FROM payment_channel_assets WHERE id = $1
+const deleteFacilitator = `-- name: DeleteFacilitator :exec
+DELETE FROM facilitators WHERE id = $1
 `
 
-func (q *Queries) GetPaymentChannelAsset(ctx context.Context, id uuid.UUID) (PaymentChannelAsset, error) {
-	row := q.db.QueryRow(ctx, getPaymentChannelAsset, id)
-	var i PaymentChannelAsset
+func (q *Queries) DeleteFacilitator(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteFacilitator, id)
+	return err
+}
+
+const deletePaymentMethod = `-- name: DeletePaymentMethod :exec
+DELETE FROM payment_methods WHERE id = $1
+`
+
+func (q *Queries) DeletePaymentMethod(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deletePaymentMethod, id)
+	return err
+}
+
+const deletePaymentMethodAsset = `-- name: DeletePaymentMethodAsset :exec
+DELETE FROM payment_method_assets WHERE id = $1
+`
+
+func (q *Queries) DeletePaymentMethodAsset(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deletePaymentMethodAsset, id)
+	return err
+}
+
+const deleteProjectPaymentMethod = `-- name: DeleteProjectPaymentMethod :exec
+DELETE FROM project_payment_methods WHERE id = $1
+`
+
+func (q *Queries) DeleteProjectPaymentMethod(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteProjectPaymentMethod, id)
+	return err
+}
+
+const getFacilitator = `-- name: GetFacilitator :one
+SELECT id, name, url, enabled, created_at, updated_at FROM facilitators WHERE id = $1
+`
+
+func (q *Queries) GetFacilitator(ctx context.Context, id uuid.UUID) (Facilitator, error) {
+	row := q.db.QueryRow(ctx, getFacilitator, id)
+	var i Facilitator
 	err := row.Scan(
 		&i.ID,
-		&i.PaymentChannelID,
-		&i.AssetSymbol,
-		&i.AssetAddress,
+		&i.Name,
+		&i.Url,
+		&i.Enabled,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPaymentMethod = `-- name: GetPaymentMethod :one
+SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at FROM payment_methods WHERE id = $1
+`
+
+func (q *Queries) GetPaymentMethod(ctx context.Context, id uuid.UUID) (PaymentMethod, error) {
+	row := q.db.QueryRow(ctx, getPaymentMethod, id)
+	var i PaymentMethod
+	err := row.Scan(
+		&i.ID,
+		&i.Code,
+		&i.Protocol,
+		&i.Name,
+		&i.Caip2ChainID,
+		&i.Enabled,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getPaymentMethodAsset = `-- name: GetPaymentMethodAsset :one
+SELECT id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at FROM payment_method_assets WHERE id = $1
+`
+
+func (q *Queries) GetPaymentMethodAsset(ctx context.Context, id uuid.UUID) (PaymentMethodAsset, error) {
+	row := q.db.QueryRow(ctx, getPaymentMethodAsset, id)
+	var i PaymentMethodAsset
+	err := row.Scan(
+		&i.ID,
+		&i.PaymentMethodID,
+		&i.Symbol,
+		&i.ContractAddress,
 		&i.Decimals,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -138,88 +257,46 @@ func (q *Queries) GetPaymentChannelAsset(ctx context.Context, id uuid.UUID) (Pay
 	return i, err
 }
 
-const listPaymentChannelAssets = `-- name: ListPaymentChannelAssets :many
-SELECT id, payment_channel_id, asset_symbol, asset_address, decimals, created_at, updated_at FROM payment_channel_assets ORDER BY created_at DESC
+const getProjectPaymentMethod = `-- name: GetProjectPaymentMethod :one
+SELECT id, project_id, payment_method_id, asset_id, scheme, facilitator_id, payout_address, config, enabled, created_at, updated_at FROM project_payment_methods WHERE id = $1
 `
 
-func (q *Queries) ListPaymentChannelAssets(ctx context.Context) ([]PaymentChannelAsset, error) {
-	rows, err := q.db.Query(ctx, listPaymentChannelAssets)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []PaymentChannelAsset
-	for rows.Next() {
-		var i PaymentChannelAsset
-		if err := rows.Scan(
-			&i.ID,
-			&i.PaymentChannelID,
-			&i.AssetSymbol,
-			&i.AssetAddress,
-			&i.Decimals,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetProjectPaymentMethod(ctx context.Context, id uuid.UUID) (ProjectPaymentMethod, error) {
+	row := q.db.QueryRow(ctx, getProjectPaymentMethod, id)
+	var i ProjectPaymentMethod
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.PaymentMethodID,
+		&i.AssetID,
+		&i.Scheme,
+		&i.FacilitatorID,
+		&i.PayoutAddress,
+		&i.Config,
+		&i.Enabled,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
-const listPaymentChannelAssetsByChannel = `-- name: ListPaymentChannelAssetsByChannel :many
-SELECT id, payment_channel_id, asset_symbol, asset_address, decimals, created_at, updated_at FROM payment_channel_assets WHERE payment_channel_id = $1 ORDER BY created_at DESC
+const listFacilitators = `-- name: ListFacilitators :many
+SELECT id, name, url, enabled, created_at, updated_at FROM facilitators ORDER BY name
 `
 
-func (q *Queries) ListPaymentChannelAssetsByChannel(ctx context.Context, paymentChannelID uuid.UUID) ([]PaymentChannelAsset, error) {
-	rows, err := q.db.Query(ctx, listPaymentChannelAssetsByChannel, paymentChannelID)
+func (q *Queries) ListFacilitators(ctx context.Context) ([]Facilitator, error) {
+	rows, err := q.db.Query(ctx, listFacilitators)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PaymentChannelAsset
+	var items []Facilitator
 	for rows.Next() {
-		var i PaymentChannelAsset
+		var i Facilitator
 		if err := rows.Scan(
 			&i.ID,
-			&i.PaymentChannelID,
-			&i.AssetSymbol,
-			&i.AssetAddress,
-			&i.Decimals,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listPaymentChannels = `-- name: ListPaymentChannels :many
-SELECT id, protocol, method, scheme, enabled, created_at, updated_at FROM payment_channels ORDER BY created_at DESC
-`
-
-func (q *Queries) ListPaymentChannels(ctx context.Context) ([]PaymentChannel, error) {
-	rows, err := q.db.Query(ctx, listPaymentChannels)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []PaymentChannel
-	for rows.Next() {
-		var i PaymentChannel
-		if err := rows.Scan(
-			&i.ID,
-			&i.Protocol,
-			&i.Method,
-			&i.Scheme,
+			&i.Name,
+			&i.Url,
 			&i.Enabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -234,39 +311,168 @@ func (q *Queries) ListPaymentChannels(ctx context.Context) ([]PaymentChannel, er
 	return items, nil
 }
 
-const updatePaymentChannel = `-- name: UpdatePaymentChannel :one
-UPDATE payment_channels
-SET protocol   = COALESCE($2, protocol),
-    method     = COALESCE($3, method),
-    scheme     = COALESCE($4, scheme),
-    enabled    = COALESCE($5, enabled),
-    updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
-RETURNING id, protocol, method, scheme, enabled, created_at, updated_at
+const listPaymentMethodAssets = `-- name: ListPaymentMethodAssets :many
+SELECT id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at FROM payment_method_assets ORDER BY created_at DESC
 `
 
-type UpdatePaymentChannelParams struct {
-	ID       uuid.UUID
-	Protocol pgtype.Text
-	Method   pgtype.Text
-	Scheme   pgtype.Text
-	Enabled  pgtype.Bool
+func (q *Queries) ListPaymentMethodAssets(ctx context.Context) ([]PaymentMethodAsset, error) {
+	rows, err := q.db.Query(ctx, listPaymentMethodAssets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentMethodAsset
+	for rows.Next() {
+		var i PaymentMethodAsset
+		if err := rows.Scan(
+			&i.ID,
+			&i.PaymentMethodID,
+			&i.Symbol,
+			&i.ContractAddress,
+			&i.Decimals,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (q *Queries) UpdatePaymentChannel(ctx context.Context, arg UpdatePaymentChannelParams) (PaymentChannel, error) {
-	row := q.db.QueryRow(ctx, updatePaymentChannel,
+const listPaymentMethodAssetsByMethod = `-- name: ListPaymentMethodAssetsByMethod :many
+SELECT id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at FROM payment_method_assets WHERE payment_method_id = $1 ORDER BY created_at DESC
+`
+
+func (q *Queries) ListPaymentMethodAssetsByMethod(ctx context.Context, paymentMethodID uuid.UUID) ([]PaymentMethodAsset, error) {
+	rows, err := q.db.Query(ctx, listPaymentMethodAssetsByMethod, paymentMethodID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentMethodAsset
+	for rows.Next() {
+		var i PaymentMethodAsset
+		if err := rows.Scan(
+			&i.ID,
+			&i.PaymentMethodID,
+			&i.Symbol,
+			&i.ContractAddress,
+			&i.Decimals,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPaymentMethods = `-- name: ListPaymentMethods :many
+SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at FROM payment_methods ORDER BY protocol, name
+`
+
+func (q *Queries) ListPaymentMethods(ctx context.Context) ([]PaymentMethod, error) {
+	rows, err := q.db.Query(ctx, listPaymentMethods)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentMethod
+	for rows.Next() {
+		var i PaymentMethod
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Protocol,
+			&i.Name,
+			&i.Caip2ChainID,
+			&i.Enabled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjectPaymentMethods = `-- name: ListProjectPaymentMethods :many
+SELECT id, project_id, payment_method_id, asset_id, scheme, facilitator_id, payout_address, config, enabled, created_at, updated_at FROM project_payment_methods WHERE project_id = $1 ORDER BY created_at DESC
+`
+
+func (q *Queries) ListProjectPaymentMethods(ctx context.Context, projectID uuid.UUID) ([]ProjectPaymentMethod, error) {
+	rows, err := q.db.Query(ctx, listProjectPaymentMethods, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProjectPaymentMethod
+	for rows.Next() {
+		var i ProjectPaymentMethod
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.PaymentMethodID,
+			&i.AssetID,
+			&i.Scheme,
+			&i.FacilitatorID,
+			&i.PayoutAddress,
+			&i.Config,
+			&i.Enabled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateFacilitator = `-- name: UpdateFacilitator :one
+UPDATE facilitators
+SET name       = COALESCE($2, name),
+    url        = COALESCE($3, url),
+    enabled    = COALESCE($4, enabled),
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING id, name, url, enabled, created_at, updated_at
+`
+
+type UpdateFacilitatorParams struct {
+	ID      uuid.UUID
+	Name    pgtype.Text
+	Url     pgtype.Text
+	Enabled pgtype.Bool
+}
+
+func (q *Queries) UpdateFacilitator(ctx context.Context, arg UpdateFacilitatorParams) (Facilitator, error) {
+	row := q.db.QueryRow(ctx, updateFacilitator,
 		arg.ID,
-		arg.Protocol,
-		arg.Method,
-		arg.Scheme,
+		arg.Name,
+		arg.Url,
 		arg.Enabled,
 	)
-	var i PaymentChannel
+	var i Facilitator
 	err := row.Scan(
 		&i.ID,
-		&i.Protocol,
-		&i.Method,
-		&i.Scheme,
+		&i.Name,
+		&i.Url,
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -274,37 +480,128 @@ func (q *Queries) UpdatePaymentChannel(ctx context.Context, arg UpdatePaymentCha
 	return i, err
 }
 
-const updatePaymentChannelAsset = `-- name: UpdatePaymentChannelAsset :one
-UPDATE payment_channel_assets
-SET asset_symbol  = COALESCE($2, asset_symbol),
-    asset_address = COALESCE($3, asset_address),
-    decimals      = COALESCE($4, decimals),
-    updated_at    = CURRENT_TIMESTAMP
+const updatePaymentMethod = `-- name: UpdatePaymentMethod :one
+UPDATE payment_methods
+SET code           = COALESCE($2, code),
+    protocol       = COALESCE($3, protocol),
+    name           = COALESCE($4, name),
+    caip2_chain_id = COALESCE($5, caip2_chain_id),
+    enabled        = COALESCE($6, enabled),
+    updated_at     = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, payment_channel_id, asset_symbol, asset_address, decimals, created_at, updated_at
+RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at
 `
 
-type UpdatePaymentChannelAssetParams struct {
+type UpdatePaymentMethodParams struct {
 	ID           uuid.UUID
-	AssetSymbol  pgtype.Text
-	AssetAddress pgtype.Text
-	Decimals     pgtype.Int4
+	Code         pgtype.Text
+	Protocol     pgtype.Text
+	Name         pgtype.Text
+	Caip2ChainID pgtype.Text
+	Enabled      pgtype.Bool
 }
 
-func (q *Queries) UpdatePaymentChannelAsset(ctx context.Context, arg UpdatePaymentChannelAssetParams) (PaymentChannelAsset, error) {
-	row := q.db.QueryRow(ctx, updatePaymentChannelAsset,
+func (q *Queries) UpdatePaymentMethod(ctx context.Context, arg UpdatePaymentMethodParams) (PaymentMethod, error) {
+	row := q.db.QueryRow(ctx, updatePaymentMethod,
 		arg.ID,
-		arg.AssetSymbol,
-		arg.AssetAddress,
-		arg.Decimals,
+		arg.Code,
+		arg.Protocol,
+		arg.Name,
+		arg.Caip2ChainID,
+		arg.Enabled,
 	)
-	var i PaymentChannelAsset
+	var i PaymentMethod
 	err := row.Scan(
 		&i.ID,
-		&i.PaymentChannelID,
-		&i.AssetSymbol,
-		&i.AssetAddress,
+		&i.Code,
+		&i.Protocol,
+		&i.Name,
+		&i.Caip2ChainID,
+		&i.Enabled,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updatePaymentMethodAsset = `-- name: UpdatePaymentMethodAsset :one
+UPDATE payment_method_assets
+SET symbol           = COALESCE($2, symbol),
+    contract_address = COALESCE($3, contract_address),
+    decimals         = COALESCE($4, decimals),
+    updated_at       = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at
+`
+
+type UpdatePaymentMethodAssetParams struct {
+	ID              uuid.UUID
+	Symbol          pgtype.Text
+	ContractAddress pgtype.Text
+	Decimals        pgtype.Int4
+}
+
+func (q *Queries) UpdatePaymentMethodAsset(ctx context.Context, arg UpdatePaymentMethodAssetParams) (PaymentMethodAsset, error) {
+	row := q.db.QueryRow(ctx, updatePaymentMethodAsset,
+		arg.ID,
+		arg.Symbol,
+		arg.ContractAddress,
+		arg.Decimals,
+	)
+	var i PaymentMethodAsset
+	err := row.Scan(
+		&i.ID,
+		&i.PaymentMethodID,
+		&i.Symbol,
+		&i.ContractAddress,
 		&i.Decimals,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updateProjectPaymentMethod = `-- name: UpdateProjectPaymentMethod :one
+UPDATE project_payment_methods
+SET scheme         = COALESCE($2, scheme),
+    facilitator_id = COALESCE($3, facilitator_id),
+    payout_address = COALESCE($4, payout_address),
+    config         = COALESCE($5, config),
+    enabled        = COALESCE($6, enabled),
+    updated_at     = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING id, project_id, payment_method_id, asset_id, scheme, facilitator_id, payout_address, config, enabled, created_at, updated_at
+`
+
+type UpdateProjectPaymentMethodParams struct {
+	ID            uuid.UUID
+	Scheme        pgtype.Text
+	FacilitatorID pgtype.UUID
+	PayoutAddress pgtype.Text
+	Config        []byte
+	Enabled       pgtype.Bool
+}
+
+func (q *Queries) UpdateProjectPaymentMethod(ctx context.Context, arg UpdateProjectPaymentMethodParams) (ProjectPaymentMethod, error) {
+	row := q.db.QueryRow(ctx, updateProjectPaymentMethod,
+		arg.ID,
+		arg.Scheme,
+		arg.FacilitatorID,
+		arg.PayoutAddress,
+		arg.Config,
+		arg.Enabled,
+	)
+	var i ProjectPaymentMethod
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.PaymentMethodID,
+		&i.AssetID,
+		&i.Scheme,
+		&i.FacilitatorID,
+		&i.PayoutAddress,
+		&i.Config,
+		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

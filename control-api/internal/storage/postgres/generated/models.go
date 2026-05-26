@@ -9,24 +9,34 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type PaymentChannel struct {
+type Facilitator struct {
 	ID        uuid.UUID
-	Protocol  string
-	Method    string
-	Scheme    string
+	Name      string
+	Url       string
 	Enabled   bool
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }
 
-type PaymentChannelAsset struct {
-	ID               uuid.UUID
-	PaymentChannelID uuid.UUID
-	AssetSymbol      string
-	AssetAddress     pgtype.Text
-	Decimals         pgtype.Int4
-	CreatedAt        pgtype.Timestamp
-	UpdatedAt        pgtype.Timestamp
+type PaymentMethod struct {
+	ID           uuid.UUID
+	Code         string
+	Protocol     string
+	Name         string
+	Caip2ChainID pgtype.Text
+	Enabled      bool
+	CreatedAt    pgtype.Timestamp
+	UpdatedAt    pgtype.Timestamp
+}
+
+type PaymentMethodAsset struct {
+	ID              uuid.UUID
+	PaymentMethodID uuid.UUID
+	Symbol          string
+	ContractAddress pgtype.Text
+	Decimals        int32
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
 }
 
 type Project struct {
@@ -52,16 +62,18 @@ type ProjectDailyStat struct {
 	UpdatedAt             pgtype.Timestamp
 }
 
-type ProjectPaymentConfig struct {
-	ID                    uuid.UUID
-	ProjectID             uuid.UUID
-	PaymentChannelID      uuid.UUID
-	PaymentChannelAssetID pgtype.UUID
-	Name                  string
-	PayoutAddress         pgtype.Text
-	Enabled               bool
-	CreatedAt             pgtype.Timestamp
-	UpdatedAt             pgtype.Timestamp
+type ProjectPaymentMethod struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	PaymentMethodID uuid.UUID
+	AssetID         uuid.UUID
+	Scheme          string
+	FacilitatorID   uuid.UUID
+	PayoutAddress   pgtype.Text
+	Config          []byte
+	Enabled         bool
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
 }
 
 type ProjectRoutesSetting struct {

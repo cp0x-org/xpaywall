@@ -22,19 +22,26 @@ ORDER BY
     length(oroute.path_pattern) DESC
 LIMIT 1;
 
--- name: GetPaymentChannelsByProjectSlug :many
+-- name: GetPaymentMethodsByProjectSlug :many
 SELECT
-    pc.protocol,
-    pc.method,
-    pc.scheme,
-    pc.metadata,
-    ppc.enabled,
-    ppc.payout_address,
-    pc.id AS channel_id,
-    ppc.payment_channel_asset_id
-FROM project_payment_configs ppc
-JOIN payment_channels pc ON pc.id = ppc.payment_channel_id
-JOIN projects p ON p.id = ppc.project_id
+    pm.protocol,
+    pm.code,
+    pm.caip2_chain_id,
+    pma.symbol,
+    pma.contract_address,
+    pma.decimals,
+    ppm.scheme,
+    ppm.payout_address,
+    ppm.config,
+    ppm.enabled,
+    f.url AS facilitator_url,
+    pm.id AS payment_method_id,
+    pma.id AS asset_id
+FROM project_payment_methods ppm
+JOIN payment_methods pm ON pm.id = ppm.payment_method_id
+JOIN payment_method_assets pma ON pma.id = ppm.asset_id
+JOIN facilitators f ON f.id = ppm.facilitator_id
+JOIN projects p ON p.id = ppm.project_id
 WHERE p.slug = $1
-  AND ppc.enabled = $2
-  AND pc.enabled = $3;
+  AND ppm.enabled = $2
+  AND pm.enabled = $3;

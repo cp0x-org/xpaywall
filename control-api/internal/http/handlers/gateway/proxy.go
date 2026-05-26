@@ -1,7 +1,6 @@
 package gateway
 
 import (
-	"encoding/json"
 	"fmt"
 	nethttp "net/http"
 	"strings"
@@ -37,14 +36,16 @@ type resolveRouteResponse struct {
 }
 
 type channelDTO struct {
-	Protocol      string            `json:"protocol"`
-	Method        string            `json:"method,omitempty"`
-	Scheme        string            `json:"scheme"`
-	Price         string            `json:"price,omitempty"`
-	Enabled       bool              `json:"enabled"`
-	ChannelConfig map[string]string `json:"channel_config"`
-	ChannelID     uuid.UUID         `json:"channel_id"`
-	AssetID       *uuid.UUID        `json:"asset_id,omitempty"`
+	Protocol        string    `json:"protocol"`
+	Code            string    `json:"code"`
+	Scheme          string    `json:"scheme"`
+	CaIP2ChainID    string    `json:"caip2_chain_id,omitempty"`
+	FacilitatorURL  string    `json:"facilitator_url"`
+	PayoutAddress   string    `json:"payout_address,omitempty"`
+	AssetSymbol     string    `json:"asset_symbol"`
+	Enabled         bool      `json:"enabled"`
+	PaymentMethodID uuid.UUID `json:"payment_method_id"`
+	AssetID         uuid.UUID `json:"asset_id"`
 }
 
 type errorResponse struct {
@@ -86,7 +87,6 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 		return
 	}
 
-	// Prefer the stored price_usd; fall back to computing from price_amount (cents).
 	priceUSD := route.PriceUsd
 	if priceUSD == "" && route.PriceAmount > 0 {
 		priceUSD = fmt.Sprintf("%.6f", float64(route.PriceAmount)/100.0)
@@ -108,35 +108,32 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 	}
 
 	if !route.Free {
-		dbChannels, err := h.q.GetPaymentChannelsByProjectSlug(c.Request.Context(), postgres.GetPaymentChannelsByProjectSlugParams{
+		dbMethods, err := h.q.GetPaymentMethodsByProjectSlug(c.Request.Context(), postgres.GetPaymentMethodsByProjectSlugParams{
 			Slug:      projectSlug,
 			Enabled:   true,
 			Enabled_2: true,
 		})
 		if err != nil {
-			c.JSON(nethttp.StatusInternalServerError, gin.H{"error": "failed to load payment channels"})
+			c.JSON(nethttp.StatusInternalServerError, gin.H{"error": "failed to load payment methods"})
 			return
 		}
 
-		for _, ch := range dbChannels {
-			cfg := make(map[string]string)
-			if len(ch.Metadata) > 0 {
-				_ = json.Unmarshal(ch.Metadata, &cfg)
-			}
-			if ch.PayoutAddress.Valid && ch.PayoutAddress.String != "" {
-				cfg["merchant"] = ch.PayoutAddress.String
-			}
+		for _, m := range dbMethods {
 			dto := channelDTO{
-				Protocol:      ch.Protocol,
-				Method:        ch.Method,
-				Scheme:        ch.Scheme,
-				Enabled:       ch.Enabled,
-				ChannelConfig: cfg,
-				ChannelID:     ch.ChannelID,
+				Protocol:        m.Protocol,
+				Code:            m.Code,
+				Scheme:          m.Scheme,
+				FacilitatorURL:  m.FacilitatorUrl,
+				AssetSymbol:     m.Symbol,
+				Enabled:         m.Enabled,
+				PaymentMethodID: m.PaymentMethodID,
+				AssetID:         m.AssetID,
 			}
-			if ch.PaymentChannelAssetID.Valid {
-				assetID := uuid.UUID(ch.PaymentChannelAssetID.Bytes)
-				dto.AssetID = &assetID
+			if m.Caip2ChainID.Valid {
+				dto.CaIP2ChainID = m.Caip2ChainID.String
+			}
+			if m.PayoutAddress.Valid {
+				dto.PayoutAddress = m.PayoutAddress.String
 			}
 			resp.PaymentChannels = append(resp.PaymentChannels, dto)
 		}

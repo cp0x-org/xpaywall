@@ -14,13 +14,14 @@ func RegisterAdminRoutes(router gin.IRouter, h *handlers.Handler) {
 	registerStatsRoutes(api, h)
 	registerUserRoutes(api, h)
 	registerProjectRoutes(api, h)
-	registerPaymentChannelRoutes(api, h)
-	registerPaymentChannelAssetRoutes(api, h)
+	registerPaymentMethodRoutes(api, h)
+	registerPaymentMethodAssetRoutes(api, h)
+	registerFacilitatorRoutes(api, h)
 
 	registerOutboundRouteRoutes(api, h)
 
 	registerProjectSettingsRoutes(api, h)
-	registerProjectPaymentConfigRoutes(api, h)
+	registerProjectPaymentMethodRoutes(api, h)
 }
 
 func registerSystemRoutes(api *gin.RouterGroup, h *handlers.Handler) {
@@ -71,31 +72,40 @@ func registerOutboundRouteRoutes(api *gin.RouterGroup, h *handlers.Handler) {
 	outboundRoutes.DELETE("/:id", h.DeleteOutboundRoute)
 }
 
-func registerPaymentChannelRoutes(api *gin.RouterGroup, h *handlers.Handler) {
-	paymentChannels := api.Group("/payment-channels")
-	paymentChannels.GET("", h.ListPaymentChannels)
-	paymentChannels.GET("/:id", h.GetPaymentChannel)
-	paymentChannels.POST("", h.CreatePaymentChannel)
-	paymentChannels.PUT("/:id", h.UpdatePaymentChannel)
-	paymentChannels.DELETE("/:id", h.DeletePaymentChannel)
+func registerPaymentMethodRoutes(api *gin.RouterGroup, h *handlers.Handler) {
+	paymentMethods := api.Group("/payment-methods")
+	paymentMethods.GET("", h.ListPaymentMethods)
+	paymentMethods.GET("/:id", h.GetPaymentMethod)
+	paymentMethods.POST("", h.CreatePaymentMethod)
+	paymentMethods.PUT("/:id", h.UpdatePaymentMethod)
+	paymentMethods.DELETE("/:id", h.DeletePaymentMethod)
 }
 
-func registerPaymentChannelAssetRoutes(api *gin.RouterGroup, h *handlers.Handler) {
-	paymentChannelAssets := api.Group("/payment-channel-assets")
-	paymentChannelAssets.GET("", h.ListPaymentChannelAssets)
-	paymentChannelAssets.GET("/:id", h.GetPaymentChannelAsset)
-	paymentChannelAssets.POST("", h.CreatePaymentChannelAsset)
-	paymentChannelAssets.PUT("/:id", h.UpdatePaymentChannelAsset)
-	paymentChannelAssets.DELETE("/:id", h.DeletePaymentChannelAsset)
+func registerPaymentMethodAssetRoutes(api *gin.RouterGroup, h *handlers.Handler) {
+	paymentMethodAssets := api.Group("/payment-method-assets")
+	paymentMethodAssets.GET("", h.ListPaymentMethodAssets)
+	paymentMethodAssets.GET("/:id", h.GetPaymentMethodAsset)
+	paymentMethodAssets.POST("", h.CreatePaymentMethodAsset)
+	paymentMethodAssets.PUT("/:id", h.UpdatePaymentMethodAsset)
+	paymentMethodAssets.DELETE("/:id", h.DeletePaymentMethodAsset)
 }
 
-func registerProjectPaymentConfigRoutes(api *gin.RouterGroup, h *handlers.Handler) {
-	projectPaymentConfigs := api.Group("/project-payment-configs")
-	projectPaymentConfigs.GET("", h.ListProjectPaymentConfigs)
-	projectPaymentConfigs.GET("/:id", h.GetProjectPaymentConfig)
-	projectPaymentConfigs.POST("", h.CreateProjectPaymentConfig)
-	projectPaymentConfigs.PUT("/:id", h.UpdateProjectPaymentConfig)
-	projectPaymentConfigs.DELETE("/:id", h.DeleteProjectPaymentConfig)
+func registerFacilitatorRoutes(api *gin.RouterGroup, h *handlers.Handler) {
+	facilitators := api.Group("/facilitators")
+	facilitators.GET("", h.ListFacilitators)
+	facilitators.GET("/:id", h.GetFacilitator)
+	facilitators.POST("", h.CreateFacilitator)
+	facilitators.PUT("/:id", h.UpdateFacilitator)
+	facilitators.DELETE("/:id", h.DeleteFacilitator)
+}
+
+func registerProjectPaymentMethodRoutes(api *gin.RouterGroup, h *handlers.Handler) {
+	projectPaymentMethods := api.Group("/project-payment-methods")
+	projectPaymentMethods.GET("", h.ListProjectPaymentMethods)
+	projectPaymentMethods.GET("/:id", h.GetProjectPaymentMethod)
+	projectPaymentMethods.POST("", h.CreateProjectPaymentMethod)
+	projectPaymentMethods.PUT("/:id", h.UpdateProjectPaymentMethod)
+	projectPaymentMethods.DELETE("/:id", h.DeleteProjectPaymentMethod)
 }
 
 func registerLogsRoutes(api *gin.RouterGroup, h *handlers.Handler) {

@@ -158,10 +158,10 @@ SELECT
     COALESCE(rl.final_status_code,
         CASE WHEN rl.payment_required = TRUE AND rl.payment_completed = FALSE THEN 402 ELSE 200 END
     )::INTEGER                AS status_code,
-    pc.protocol               AS payment_channel,
+    pm.protocol               AS payment_channel,
     rl.amount_usd
 FROM request_logs rl
-LEFT JOIN payment_channels pc ON pc.id = rl.payment_channel_id
+LEFT JOIN payment_methods pm ON pm.id = rl.payment_channel_id
 ORDER BY rl.created_at DESC
 LIMIT 5
 `
@@ -213,10 +213,10 @@ SELECT
     COALESCE(rl.final_status_code,
         CASE WHEN rl.payment_required = TRUE AND rl.payment_completed = FALSE THEN 402 ELSE 200 END
     )::INTEGER                AS status_code,
-    pc.protocol               AS payment_channel,
+    pm.protocol               AS payment_channel,
     rl.amount_usd
 FROM request_logs rl
-LEFT JOIN payment_channels pc ON pc.id = rl.payment_channel_id
+LEFT JOIN payment_methods pm ON pm.id = rl.payment_channel_id
 WHERE rl.project_id = $1
 ORDER BY rl.created_at DESC
 LIMIT 5

@@ -167,18 +167,18 @@ SELECT
     p.id, p.owner_user_id, p.name, p.slug, p.enabled, p.created_at, p.updated_at,
     prs.base_url,
     COALESCE(
-        ARRAY_AGG(DISTINCT pc.protocol) FILTER (WHERE pc.protocol IS NOT NULL),
+        ARRAY_AGG(DISTINCT pm.protocol) FILTER (WHERE pm.protocol IS NOT NULL),
         ARRAY[]::VARCHAR[]
     ) AS payment_methods
 FROM projects p
          LEFT JOIN project_routes_settings prs
                    ON prs.project_id = p.id
-         LEFT JOIN project_payment_configs ppc
-                   ON ppc.project_id = p.id
-                       AND ppc.enabled = TRUE
-         LEFT JOIN payment_channels pc
-                   ON pc.id = ppc.payment_channel_id
-                       AND pc.enabled = TRUE
+         LEFT JOIN project_payment_methods ppm
+                   ON ppm.project_id = p.id
+                       AND ppm.enabled = TRUE
+         LEFT JOIN payment_methods pm
+                   ON pm.id = ppm.payment_method_id
+                       AND pm.enabled = TRUE
 GROUP BY
     p.id,
     prs.base_url
