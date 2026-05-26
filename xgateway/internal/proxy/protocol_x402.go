@@ -3,6 +3,7 @@ package proxy
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -176,6 +177,16 @@ func buildX402Protocol(
 		} else {
 			priceVal = price
 		}
+		// TODO - ONLY THIS VARIANT !!!!
+		priceVal = map[string]any{
+			"asset":  "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC
+			"amount": "780",
+		}
+
+		//priceVal = map[string]any{
+		//	"asset":  "0x808456652fdb597867f38412077a9182bf77359f", // EURC
+		//	"amount": "89000",
+		//}
 
 		options = append(options, x402http.PaymentOption{
 			Scheme:  config.NormalizeScheme(ch.Scheme),
@@ -288,7 +299,15 @@ func handleX402Verified(
 	)
 
 	if !settleResult.Success {
-		log.Printf("[x402] settlement FAILED: headers=%v response=%v", settleResult.Headers, settleResult.Response)
+		decodedHeaders := make(map[string]string, len(settleResult.Headers))
+		for k, v := range settleResult.Headers {
+			if decoded, err := base64.StdEncoding.DecodeString(v); err == nil {
+				decodedHeaders[k] = string(decoded)
+			} else {
+				decodedHeaders[k] = v
+			}
+		}
+		log.Printf("[x402] settlement FAILED: headers=%v response=%v", decodedHeaders, settleResult.Response)
 		for key, value := range settleResult.Headers {
 			c.Header(key, value)
 		}

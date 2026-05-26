@@ -23,12 +23,11 @@ type entry struct {
 	rule   rules.Rule
 	rp     *httputil.ReverseProxy
 	x402   *x402Protocol
-	mpp    *mppProtocol
 	scheme string
 }
 
 func (e *entry) hasPayment() bool {
-	return e.x402 != nil || e.mpp != nil
+	return e.x402 != nil
 }
 
 // runPayment dispatches to the appropriate payment protocol:
@@ -37,10 +36,6 @@ func (e *entry) hasPayment() bool {
 //
 // Returns the protocol name used, for logging.
 func (e *entry) runPayment(c *gin.Context) string {
-	if e.mpp != nil && e.mpp.HasClientAuth(c) {
-		e.mpp.Handle(c)
-		return protoMPP
-	}
 	if e.x402 != nil {
 		e.x402.Handle(c)
 		return protoX402
@@ -75,21 +70,13 @@ func (s *state) buildEntry(ctx context.Context, rule *rules.Rule, reqPath string
 	}
 
 	x402Channels := filterEnabledChannels(rule.PaymentChannels, protoX402)
+
 	if len(x402Channels) > 0 {
 		p, err := buildX402Protocol(ctx, rule, reqPath, x402Channels, s.facilCache)
 		if err != nil {
 			return nil, fmt.Errorf("build x402: %w", err)
 		}
 		e.x402 = p
-	}
-
-	mppChannels := filterEnabledChannels(rule.PaymentChannels, protoMPP)
-	if len(mppChannels) > 0 {
-		p, err := buildMPPProtocol(ctx, rule, mppChannels)
-		if err != nil {
-			return nil, fmt.Errorf("build mpp: %w", err)
-		}
-		e.mpp = p
 	}
 
 	return e, nil
