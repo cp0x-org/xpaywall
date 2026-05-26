@@ -18,6 +18,7 @@ type state struct {
 	logger     *logger.Client
 	facilCache *facilitatorCache
 	startedAt  time.Time
+	debug      bool
 
 	mu         sync.RWMutex
 	routeCache map[string]*entry
@@ -25,13 +26,14 @@ type state struct {
 	pendingLogs sync.Map // logFingerprint → pendingLogEntry
 }
 
-func newState(provider rules.Provider, fallback http.Handler, lg *logger.Client) *state {
+func newState(provider rules.Provider, fallback http.Handler, lg *logger.Client, debug bool) *state {
 	return &state{
 		provider:   provider,
 		fallback:   fallback,
 		logger:     lg,
 		facilCache: newFacilitatorCache(),
 		startedAt:  time.Now(),
+		debug:      debug,
 		routeCache: make(map[string]*entry),
 	}
 }

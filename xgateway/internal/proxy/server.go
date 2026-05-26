@@ -20,6 +20,7 @@ type Server struct {
 type serverOptions struct {
 	fallback http.Handler
 	logger   *logger.Client
+	debug    bool
 }
 
 // Option configures a Server.
@@ -36,6 +37,11 @@ func WithLogger(lg *logger.Client) Option {
 	return func(o *serverOptions) { o.logger = lg }
 }
 
+// WithDebug disables route caching so every request re-resolves the rule.
+func WithDebug(debug bool) Option {
+	return func(o *serverOptions) { o.debug = debug }
+}
+
 // New creates a proxy server backed by the given provider.
 // Rules are resolved per-request and cached after the first lookup.
 func New(provider rules.Provider, opts ...Option) (*Server, error) {
@@ -49,7 +55,7 @@ func New(provider rules.Provider, opts ...Option) (*Server, error) {
 	if o.logger == nil {
 		o.logger = logger.New("", "") // no-op client
 	}
-	st := newState(provider, o.fallback, o.logger)
+	st := newState(provider, o.fallback, o.logger, o.debug)
 	return &Server{handler: st.buildRouter()}, nil
 }
 

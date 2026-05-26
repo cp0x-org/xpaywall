@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -59,6 +60,15 @@ func (s *state) loggingMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if s.debug {
+			log.Printf("[debug] → %s %s from=%s", c.Request.Method, c.Request.URL.RequestURI(), c.ClientIP())
+			for name, values := range c.Request.Header {
+				for _, v := range values {
+					log.Printf("[debug]   %s: %s", name, v)
+				}
+			}
+		}
+
 		lc := newLogContext()
 		fp := logFingerprint(c.Request.Method, c.Request.URL.Path, c.ClientIP())
 
@@ -102,25 +112,39 @@ func (s *state) resolve() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		reqPath := c.Request.URL.Path
 
-		e, ok := s.getRoute(reqPath)
-		if !ok {
-			rule, err := s.provider.GetByInboundPath(c.Request.Context(), reqPath)
-			if err != nil {
-				c.JSON(http.StatusBadGateway, gin.H{"error": "resolve failed: " + err.Error()})
-				c.Abort()
+		var e *entry
+		if !s.debug {
+			if cached, ok := s.getRoute(reqPath); ok {
+				applyEntry(c, cached, reqPath)
 				return
 			}
-			if rule == nil {
-				s.serveNoRule(c, reqPath)
-				return
-			}
+		} else {
+			log.Printf("[debug] cache bypassed for %s %s", c.Request.Method, reqPath)
+		}
 
-			e, err = s.buildEntry(c.Request.Context(), rule, reqPath)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "payment setup failed: " + err.Error()})
-				c.Abort()
-				return
-			}
+		rule, err := s.provider.GetByInboundPath(c.Request.Context(), reqPath)
+		if err != nil {
+			c.JSON(http.StatusBadGateway, gin.H{"error": "resolve failed: " + err.Error()})
+			c.Abort()
+			return
+		}
+		if rule == nil {
+			s.serveNoRule(c, reqPath)
+			return
+		}
+
+		if s.debug {
+			log.Printf("[debug] resolved rule: path=%s target=%s price=%s channels=%d free=%v",
+				rule.InboundPath, rule.Target, rule.Price, len(rule.PaymentChannels), rule.Free)
+		}
+
+		e, err = s.buildEntry(c.Request.Context(), rule, reqPath)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "payment setup failed: " + err.Error()})
+			c.Abort()
+			return
+		}
+		if !s.debug {
 			s.putRoute(reqPath, e)
 		}
 
