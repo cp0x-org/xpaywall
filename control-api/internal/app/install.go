@@ -34,9 +34,11 @@ func installCommand() *cli.Command {
 const demoSQL = `
 DO $$
 DECLARE
-    v_admin_id   UUID;
-    v_project_id UUID;
-    v_channel_id UUID;
+    v_admin_id       UUID;
+    v_project_id     UUID;
+    v_method_id      UUID;
+    v_asset_id       UUID;
+    v_facilitator_id UUID;
 BEGIN
     INSERT INTO users (id, username, password_hash)
     VALUES (gen_random_uuid(), 'admin', crypt('admin', gen_salt('bf', 10)))
@@ -53,7 +55,7 @@ BEGIN
     RETURNING id INTO v_project_id;
 
     IF v_project_id IS NULL THEN
-        RETURN;
+        SELECT id INTO v_project_id FROM projects WHERE slug = 'default';
     END IF;
 
     INSERT INTO project_routes_settings (
@@ -61,17 +63,31 @@ BEGIN
     ) VALUES (
         gen_random_uuid(), v_project_id, 'http://localhost:4021',
         'Authorization', 'Bearer YOUR_UPSTREAM_ACCESS_TOKEN', FALSE
-    );
+    ) ON CONFLICT (project_id) DO NOTHING;
 
-    INSERT INTO payment_channels (id, protocol, method, scheme, enabled)
-    VALUES (gen_random_uuid(), 'x402', 'eip155:84532', 'exact', TRUE)
-    RETURNING id INTO v_channel_id;
+    INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, enabled)
+    VALUES (gen_random_uuid(), 'x402_base_sepolia', 'x402', 'Base Sepolia', 'eip155:84532', TRUE)
+    ON CONFLICT (code) DO UPDATE SET enabled = TRUE
+    RETURNING id INTO v_method_id;
 
-    INSERT INTO project_payment_configs (
-        id, project_id, payment_channel_id, name, payout_address, enabled
+    INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals)
+    VALUES (gen_random_uuid(), v_method_id, 'USDC', '0x036CbD53842c5426634e7929541eC2318f3dCF7e', 6)
+    ON CONFLICT (payment_method_id, symbol) DO UPDATE SET decimals = EXCLUDED.decimals
+    RETURNING id INTO v_asset_id;
+
+    SELECT id INTO v_facilitator_id FROM facilitators WHERE name = 'x402 Coinbase' LIMIT 1;
+
+    IF v_facilitator_id IS NULL THEN
+        INSERT INTO facilitators (id, name, url, enabled)
+        VALUES (gen_random_uuid(), 'x402 Coinbase', 'https://x402.org/facilitator', TRUE)
+        RETURNING id INTO v_facilitator_id;
+    END IF;
+
+    INSERT INTO project_payment_methods (
+        id, project_id, payment_method_id, asset_id, scheme, facilitator_id, payout_address, enabled
     ) VALUES (
-        gen_random_uuid(), v_project_id, v_channel_id,
-        'x402-base-exact', '0xEb6ae6fA22D307Eae06BE0862087FdFFdD25Bab4', TRUE
+        gen_random_uuid(), v_project_id, v_method_id, v_asset_id,
+        'exact', v_facilitator_id, '0xEb6ae6fA22D307Eae06BE0862087FdFFdD25Bab4', TRUE
     );
 
     INSERT INTO routes (
