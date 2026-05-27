@@ -192,24 +192,42 @@ func (h *Handler) DeletePaymentMethod(c *gin.Context) {
 // ─── Payment Method Assets ────────────────────────────────────────────────────
 
 type paymentMethodAssetResponse struct {
-	ID              uuid.UUID `json:"id"`
-	PaymentMethodID uuid.UUID `json:"payment_method_id"`
-	Symbol          string    `json:"symbol"`
-	ContractAddress *string   `json:"contract_address,omitempty"`
-	Decimals        int32     `json:"decimals"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID                 uuid.UUID `json:"id"`
+	PaymentMethodID    uuid.UUID `json:"payment_method_id"`
+	PaymentMethodName  string    `json:"payment_method_name"`
+	PaymentMethodChain *string   `json:"payment_method_chain,omitempty"`
+	Symbol             string    `json:"symbol"`
+	ContractAddress    *string   `json:"contract_address,omitempty"`
+	Decimals           int32     `json:"decimals"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
 }
 
-func toPaymentMethodAssetResponse(a postgres.PaymentMethodAsset) paymentMethodAssetResponse {
+func toPaymentMethodAssetResponse(a postgres.ListPaymentMethodAssetsRow) paymentMethodAssetResponse {
 	return paymentMethodAssetResponse{
-		ID:              a.ID,
-		PaymentMethodID: a.PaymentMethodID,
-		Symbol:          a.Symbol,
-		ContractAddress: pgTextPtr(a.ContractAddress),
-		Decimals:        a.Decimals,
-		CreatedAt:       a.CreatedAt.Time,
-		UpdatedAt:       a.UpdatedAt.Time,
+		ID:                 a.ID,
+		PaymentMethodID:    a.PaymentMethodID,
+		PaymentMethodName:  a.PaymentMethodName,
+		PaymentMethodChain: pgTextPtr(a.PaymentMethodChain),
+		Symbol:             a.Symbol,
+		ContractAddress:    pgTextPtr(a.ContractAddress),
+		Decimals:           a.Decimals,
+		CreatedAt:          a.CreatedAt.Time,
+		UpdatedAt:          a.UpdatedAt.Time,
+	}
+}
+
+func toPaymentMethodAssetResponseFromGet(a postgres.GetPaymentMethodAssetRow) paymentMethodAssetResponse {
+	return paymentMethodAssetResponse{
+		ID:                 a.ID,
+		PaymentMethodID:    a.PaymentMethodID,
+		PaymentMethodName:  a.PaymentMethodName,
+		PaymentMethodChain: pgTextPtr(a.PaymentMethodChain),
+		Symbol:             a.Symbol,
+		ContractAddress:    pgTextPtr(a.ContractAddress),
+		Decimals:           a.Decimals,
+		CreatedAt:          a.CreatedAt.Time,
+		UpdatedAt:          a.UpdatedAt.Time,
 	}
 }
 
@@ -255,7 +273,7 @@ func (h *Handler) GetPaymentMethodAsset(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "payment method asset not found"})
 		return
 	}
-	c.JSON(http.StatusOK, toPaymentMethodAssetResponse(a))
+	c.JSON(http.StatusOK, toPaymentMethodAssetResponseFromGet(a))
 }
 
 type createPaymentMethodAssetRequest struct {
@@ -282,7 +300,7 @@ func (h *Handler) CreatePaymentMethodAsset(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	a, err := h.q.CreatePaymentMethodAsset(c.Request.Context(), postgres.CreatePaymentMethodAssetParams{
+	created, err := h.q.CreatePaymentMethodAsset(c.Request.Context(), postgres.CreatePaymentMethodAssetParams{
 		ID:              uuid.New(),
 		PaymentMethodID: req.PaymentMethodID,
 		Symbol:          req.Symbol,
@@ -293,7 +311,12 @@ func (h *Handler) CreatePaymentMethodAsset(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, toPaymentMethodAssetResponse(a))
+	a, err := h.q.GetPaymentMethodAsset(c.Request.Context(), created.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusCreated, toPaymentMethodAssetResponseFromGet(a))
 }
 
 type updatePaymentMethodAssetRequest struct {
@@ -325,7 +348,7 @@ func (h *Handler) UpdatePaymentMethodAsset(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	a, err := h.q.UpdatePaymentMethodAsset(c.Request.Context(), postgres.UpdatePaymentMethodAssetParams{
+	_, err = h.q.UpdatePaymentMethodAsset(c.Request.Context(), postgres.UpdatePaymentMethodAssetParams{
 		ID:              id,
 		Symbol:          ptrToPgText(req.Symbol),
 		ContractAddress: ptrToPgText(req.ContractAddress),
@@ -335,7 +358,12 @@ func (h *Handler) UpdatePaymentMethodAsset(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, toPaymentMethodAssetResponse(a))
+	a, err := h.q.GetPaymentMethodAsset(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, toPaymentMethodAssetResponseFromGet(a))
 }
 
 // DeletePaymentMethodAsset deletes a payment method asset by ID.

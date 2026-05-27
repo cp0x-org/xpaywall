@@ -46,14 +46,20 @@ type resolveRouteResponse struct {
 }
 
 type channelDTO struct {
-	Protocol      string            `json:"protocol"`
-	Method        string            `json:"method"`
-	Scheme        string            `json:"scheme"`
-	Price         string            `json:"price"`
-	Enabled       bool              `json:"enabled"`
-	ChannelConfig map[string]string `json:"channel_config"`
-	ChannelID     uuid.UUID         `json:"channel_id"`
-	AssetID       *uuid.UUID        `json:"asset_id,omitempty"`
+	Protocol        string            `json:"protocol"`
+	Method          string            `json:"method"`
+	Code            string            `json:"code"`
+	Scheme          string            `json:"scheme"`
+	Price           string            `json:"price"`
+	Enabled         bool              `json:"enabled"`
+	ChannelConfig   map[string]string `json:"channel_config"`
+	ChannelID       uuid.UUID         `json:"channel_id"`
+	PaymentMethodID uuid.UUID         `json:"payment_method_id"`
+	AssetID         *uuid.UUID        `json:"asset_id,omitempty"`
+	// flat fields sent by control-api (new schema)
+	FacilitatorURL string `json:"facilitator_url"`
+	CaIP2ChainID   string `json:"caip2_chain_id"`
+	PayoutAddress  string `json:"payout_address"`
 }
 
 // GetByInboundPath resolves a full inbound path (/{slug}/{path}) via the control-api.
@@ -98,15 +104,35 @@ func fromResolveResponse(dto resolveRouteResponse) *Rule {
 		if !ch.Enabled {
 			continue
 		}
+
+		cfg := ch.ChannelConfig
+		if cfg == nil {
+			cfg = map[string]string{
+				"facilitator_url": ch.FacilitatorURL,
+				"network":         ch.CaIP2ChainID,
+				"merchant":        ch.PayoutAddress,
+			}
+		}
+
+		method := ch.Method
+		if method == "" {
+			method = ch.Code
+		}
+
+		id := ch.ChannelID
+		if id == (uuid.UUID{}) {
+			id = ch.PaymentMethodID
+		}
+
 		channels = append(channels, &PaymentChannel{
-			ID:            ch.ChannelID,
+			ID:            id,
 			AssetID:       ch.AssetID,
 			Protocol:      ch.Protocol,
-			Method:        ch.Method,
+			Method:        method,
 			Scheme:        ch.Scheme,
 			Price:         ch.Price,
 			Enabled:       ch.Enabled,
-			ChannelConfig: ch.ChannelConfig,
+			ChannelConfig: cfg,
 		})
 	}
 

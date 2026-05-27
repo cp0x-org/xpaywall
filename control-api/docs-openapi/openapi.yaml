@@ -1,0 +1,2118 @@
+openapi: 3.0.3
+info:
+  title: xpaywall Control API
+  version: 1.0.0
+  description: |
+    Control plane REST API for the xpaywall payment gateway.
+
+    **Security schemes:**
+    - `BearerAuth` — JWT token from `/auth/login`, used by the admin panel
+    - `ApiKeyAuth` — `X-Api-Key` header, used by xgateway for internal/proxy endpoints
+
+    **Endpoint naming:**
+    - `_` prefix — actively used (frontend adminpanel or xgateway)
+    - `[FUTURE]` prefix — defined in the API but not yet consumed by any client
+
+servers:
+  - url: http://localhost:9091
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Login and current-user endpoints
+  - name: System
+    description: System configuration
+  - name: Users
+    description: Admin user management
+  - name: Projects
+    description: Project CRUD and settings
+  - name: Outbound Routes
+    description: Per-project proxy routing rules
+  - name: Payment Methods
+    description: Payment protocol/chain definitions
+  - name: Payment Method Assets
+    description: On-chain token assets linked to payment methods
+  - name: Facilitators
+    description: x402 facilitator service registry
+  - name: Project Payment Methods
+    description: Links projects to payment methods with payout config
+  - name: Request Logs
+    description: Inbound request audit log (read by panel, written by xgateway)
+  - name: Stats
+    description: Dashboard statistics and charts
+  - name: Gateway
+    description: Endpoints called by xgateway (API key protected)
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+
+  schemas:
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+      example:
+        error: "unauthorized"
+
+    # ── Auth ──────────────────────────────────────────────────────────────────
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          example: admin
+        password:
+          type: string
+          example: supersecret
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserResponse'
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+
+    # ── Users ─────────────────────────────────────────────────────────────────
+
+    CreateUserRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          minLength: 8
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+          nullable: true
+
+    # ── Projects ──────────────────────────────────────────────────────────────
+
+    ProjectResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_user_id:
+          type: string
+          format: uuid
+        owner_username:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FullProjectResponse:
+      allOf:
+        - $ref: '#/components/schemas/ProjectResponse'
+        - type: object
+          properties:
+            route_settings_id:
+              type: string
+              format: uuid
+              nullable: true
+            base_url:
+              type: string
+            auth_header_name:
+              type: string
+              nullable: true
+            auth_header_value:
+              type: string
+              nullable: true
+            allow_unmatched:
+              type: boolean
+
+    ProjectWithConfigResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        owner_user_id:
+          type: string
+          format: uuid
+        owner_username:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        enabled:
+          type: boolean
+        base_url:
+          type: string
+          nullable: true
+        payment_methods:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateProjectRequest:
+      type: object
+      required: [name, slug, base_url]
+      properties:
+        name:
+          type: string
+          example: My API
+        slug:
+          type: string
+          example: my-api
+        base_url:
+          type: string
+          example: http://upstream:4021
+        auth_header_name:
+          type: string
+          nullable: true
+        auth_header_value:
+          type: string
+          nullable: true
+        allow_unmatched:
+          type: boolean
+          default: false
+
+    UpdateProjectRequest:
+      type: object
+      required: [base_url]
+      properties:
+        name:
+          type: string
+          nullable: true
+        slug:
+          type: string
+          nullable: true
+        base_url:
+          type: string
+        auth_header_name:
+          type: string
+          nullable: true
+        auth_header_value:
+          type: string
+          nullable: true
+        allow_unmatched:
+          type: boolean
+
+    # ── Outbound Routes ───────────────────────────────────────────────────────
+
+    OutboundRouteResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        project_name:
+          type: string
+        project_slug:
+          type: string
+        name:
+          type: string
+        path_pattern:
+          type: string
+        price_amount:
+          type: integer
+          format: int32
+          description: Price in smallest currency unit
+        price_usd:
+          type: string
+          description: Human-readable USD price, e.g. "0.01"
+        description:
+          type: string
+        free:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateOutboundRouteRequest:
+      type: object
+      required: [project_id, name, path_pattern]
+      properties:
+        project_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Search endpoint
+        path_pattern:
+          type: string
+          example: /api/search
+        price_amount:
+          type: integer
+          format: int32
+        price_usd:
+          type: string
+          example: "0.01"
+        description:
+          type: string
+        free:
+          type: boolean
+          default: false
+
+    UpdateOutboundRouteRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        path_pattern:
+          type: string
+          nullable: true
+        price_amount:
+          type: integer
+          format: int32
+          nullable: true
+        price_usd:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        free:
+          type: boolean
+          nullable: true
+
+    # ── Payment Methods ───────────────────────────────────────────────────────
+
+    PaymentMethodResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: x402-base
+        protocol:
+          type: string
+          example: x402
+        name:
+          type: string
+          example: x402 on Base
+        caip2_chain_id:
+          type: string
+          nullable: true
+          example: eip155:8453
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreatePaymentMethodRequest:
+      type: object
+      required: [code, protocol, name]
+      properties:
+        code:
+          type: string
+          example: x402-base
+        protocol:
+          type: string
+          example: x402
+        name:
+          type: string
+          example: x402 on Base
+        caip2_chain_id:
+          type: string
+          nullable: true
+          example: eip155:8453
+        enabled:
+          type: boolean
+          default: true
+
+    UpdatePaymentMethodRequest:
+      type: object
+      properties:
+        code:
+          type: string
+          nullable: true
+        protocol:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        caip2_chain_id:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+          nullable: true
+
+    # ── Payment Method Assets ─────────────────────────────────────────────────
+
+    PaymentMethodAssetResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        payment_method_id:
+          type: string
+          format: uuid
+        payment_method_name:
+          type: string
+        payment_method_chain:
+          type: string
+          nullable: true
+        symbol:
+          type: string
+          example: USDC
+        contract_address:
+          type: string
+          nullable: true
+          example: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"
+        decimals:
+          type: integer
+          format: int32
+          example: 6
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreatePaymentMethodAssetRequest:
+      type: object
+      required: [payment_method_id, symbol, decimals]
+      properties:
+        payment_method_id:
+          type: string
+          format: uuid
+        symbol:
+          type: string
+          example: USDC
+        contract_address:
+          type: string
+          nullable: true
+        decimals:
+          type: integer
+          format: int32
+          example: 6
+
+    UpdatePaymentMethodAssetRequest:
+      type: object
+      properties:
+        symbol:
+          type: string
+          nullable: true
+        contract_address:
+          type: string
+          nullable: true
+        decimals:
+          type: integer
+          format: int32
+          nullable: true
+
+    # ── Facilitators ──────────────────────────────────────────────────────────
+
+    FacilitatorResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        url:
+          type: string
+          example: https://facilitator.example.com
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateFacilitatorRequest:
+      type: object
+      required: [name, url]
+      properties:
+        name:
+          type: string
+          example: Main Facilitator
+        url:
+          type: string
+          example: https://facilitator.example.com
+        enabled:
+          type: boolean
+          default: true
+
+    UpdateFacilitatorRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+        url:
+          type: string
+          nullable: true
+        enabled:
+          type: boolean
+          nullable: true
+
+    # ── Project Payment Methods ───────────────────────────────────────────────
+
+    ProjectPaymentMethodResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        payment_method_id:
+          type: string
+          format: uuid
+        asset_id:
+          type: string
+          format: uuid
+        scheme:
+          type: string
+          example: exact
+        facilitator_id:
+          type: string
+          format: uuid
+        payout_address:
+          type: string
+          nullable: true
+          example: "0xYourWalletAddress"
+        config:
+          type: string
+          format: byte
+          nullable: true
+        enabled:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateProjectPaymentMethodRequest:
+      type: object
+      required: [project_id, payment_method_id, asset_id, scheme, facilitator_id]
+      properties:
+        project_id:
+          type: string
+          format: uuid
+        payment_method_id:
+          type: string
+          format: uuid
+        asset_id:
+          type: string
+          format: uuid
+        scheme:
+          type: string
+          example: exact
+        facilitator_id:
+          type: string
+          format: uuid
+        payout_address:
+          type: string
+          nullable: true
+        config:
+          type: string
+          format: byte
+          nullable: true
+        enabled:
+          type: boolean
+          default: true
+
+    UpdateProjectPaymentMethodRequest:
+      type: object
+      properties:
+        scheme:
+          type: string
+          nullable: true
+        facilitator_id:
+          type: string
+          format: uuid
+          nullable: true
+        payout_address:
+          type: string
+          nullable: true
+        config:
+          type: string
+          format: byte
+          nullable: true
+        enabled:
+          type: boolean
+          nullable: true
+
+    # ── Request Logs ──────────────────────────────────────────────────────────
+
+    RequestLogResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        project_id:
+          type: string
+          format: uuid
+        outbound_route_id:
+          type: string
+          format: uuid
+          nullable: true
+        request_id:
+          type: string
+        method:
+          type: string
+          example: GET
+        path:
+          type: string
+          example: /api/search
+        client_ip:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+          nullable: true
+        status:
+          type: string
+          example: completed
+        payment_required:
+          type: boolean
+        payment_requested_at:
+          type: string
+          format: date-time
+          nullable: true
+        payment_completed:
+          type: boolean
+        payment_completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        payment_channel_id:
+          type: string
+          format: uuid
+          nullable: true
+        payment_channel_asset_id:
+          type: string
+          format: uuid
+          nullable: true
+        amount_paid:
+          type: integer
+          format: int64
+          nullable: true
+        amount_usd:
+          type: string
+          nullable: true
+        upstream_url:
+          type: string
+          nullable: true
+        upstream_status_code:
+          type: integer
+          format: int32
+          nullable: true
+        upstream_response_time_ms:
+          type: integer
+          format: int32
+          nullable: true
+        final_status_code:
+          type: integer
+          format: int32
+          nullable: true
+        error_type:
+          type: string
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateRequestLogRequest:
+      type: object
+      required: [project_id, request_id, method, path, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+          nullable: true
+          description: Optional client-assigned ID
+        project_id:
+          type: string
+          format: uuid
+        outbound_route_id:
+          type: string
+          format: uuid
+          nullable: true
+        request_id:
+          type: string
+        method:
+          type: string
+          example: GET
+        path:
+          type: string
+          example: /api/search
+        client_ip:
+          type: string
+          nullable: true
+        user_agent:
+          type: string
+          nullable: true
+        status:
+          type: string
+          example: pending
+        payment_required:
+          type: boolean
+        payment_requested_at:
+          type: string
+          format: date-time
+          nullable: true
+        payment_completed:
+          type: boolean
+        payment_completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        payment_channel_id:
+          type: string
+          format: uuid
+          nullable: true
+        payment_channel_asset_id:
+          type: string
+          format: uuid
+          nullable: true
+        amount_paid:
+          type: integer
+          format: int64
+          nullable: true
+        amount_usd:
+          type: string
+          nullable: true
+        upstream_url:
+          type: string
+          nullable: true
+        upstream_status_code:
+          type: integer
+          format: int32
+          nullable: true
+        upstream_response_time_ms:
+          type: integer
+          format: int32
+          nullable: true
+        final_status_code:
+          type: integer
+          format: int32
+          nullable: true
+        error_type:
+          type: string
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+
+    UpdateRequestLogRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: completed
+        outbound_route_id:
+          type: string
+          format: uuid
+          nullable: true
+        payment_required:
+          type: boolean
+        payment_requested_at:
+          type: string
+          format: date-time
+          nullable: true
+        payment_completed:
+          type: boolean
+        payment_completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        payment_channel_id:
+          type: string
+          format: uuid
+          nullable: true
+        payment_channel_asset_id:
+          type: string
+          format: uuid
+          nullable: true
+        amount_paid:
+          type: integer
+          format: int64
+          nullable: true
+        amount_usd:
+          type: string
+          nullable: true
+        upstream_url:
+          type: string
+          nullable: true
+        upstream_status_code:
+          type: integer
+          format: int32
+          nullable: true
+        upstream_response_time_ms:
+          type: integer
+          format: int32
+          nullable: true
+        final_status_code:
+          type: integer
+          format: int32
+          nullable: true
+        error_type:
+          type: string
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
+
+    RequestEventResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        request_log_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        metadata:
+          type: object
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    CreateRequestEventRequest:
+      type: object
+      required: [request_log_id, event_type]
+      properties:
+        request_log_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+        metadata:
+          type: object
+          nullable: true
+
+    # ── Stats ─────────────────────────────────────────────────────────────────
+
+    DashboardStatsResponse:
+      type: object
+      properties:
+        period:
+          $ref: '#/components/schemas/PeriodStats'
+        previous_period:
+          $ref: '#/components/schemas/PeriodStats'
+
+    PeriodStats:
+      type: object
+      properties:
+        range:
+          type: object
+          properties:
+            from:
+              type: string
+            to:
+              type: string
+        total_projects:
+          type: integer
+          format: int64
+        total_routes:
+          type: integer
+          format: int64
+        total_requests:
+          type: integer
+          format: int64
+        total_earnings_usd:
+          type: number
+          format: double
+        success_rate:
+          type: number
+          format: double
+
+    ChartStatsResponse:
+      type: object
+      properties:
+        granularity:
+          type: string
+          example: day
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/DailyStatPoint'
+
+    DailyStatPoint:
+      type: object
+      properties:
+        time:
+          type: string
+          example: "2024-01-15"
+        total_requests:
+          type: integer
+          format: int64
+        earnings_usd:
+          type: number
+          format: double
+
+    TopRouteItem:
+      type: object
+      properties:
+        path_pattern:
+          type: string
+        price_usd:
+          type: string
+        total_requests:
+          type: integer
+          format: int64
+        revenue_usd:
+          type: number
+          format: double
+
+    RecentRequestItem:
+      type: object
+      properties:
+        id:
+          type: string
+        path:
+          type: string
+        method:
+          type: string
+        created_at:
+          type: string
+        status_code:
+          type: integer
+          format: int32
+        payment_channel:
+          type: string
+          nullable: true
+        amount_usd:
+          type: string
+          nullable: true
+
+    # ── Gateway ───────────────────────────────────────────────────────────────
+
+    ResolveRouteResponse:
+      type: object
+      properties:
+        project_id:
+          type: string
+          format: uuid
+        outbound_route_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        inbound_path:
+          type: string
+        target:
+          type: string
+          example: http://upstream:4021/api/search
+        auth_header_name:
+          type: string
+        auth_header_value:
+          type: string
+        allow_unmatched:
+          type: boolean
+        price:
+          type: string
+          example: "0.01"
+        free:
+          type: boolean
+        mime_type:
+          type: string
+        description:
+          type: string
+        payment_channels:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChannelDTO'
+
+    ChannelDTO:
+      type: object
+      properties:
+        protocol:
+          type: string
+          example: x402
+        code:
+          type: string
+          example: x402-base
+        scheme:
+          type: string
+          example: exact
+        caip2_chain_id:
+          type: string
+          example: eip155:8453
+        facilitator_url:
+          type: string
+        payout_address:
+          type: string
+        asset_symbol:
+          type: string
+          example: USDC
+        enabled:
+          type: boolean
+        payment_method_id:
+          type: string
+          format: uuid
+        asset_id:
+          type: string
+          format: uuid
+
+# ═════════════════════════════════════════════════════════════════════════════
+# PATHS
+# ═════════════════════════════════════════════════════════════════════════════
+
+paths:
+
+  # ── Auth ────────────────────────────────────────────────────────────────────
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: "_ Login"
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: JWT token and user info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: "_ Get Current User"
+      operationId: getMe
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Current authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ── System ───────────────────────────────────────────────────────────────────
+
+  /api/v1/system/proxy-url:
+    get:
+      tags: [System]
+      summary: "_ Get Proxy URL"
+      operationId: getProxyUrl
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Public URL of the xgateway proxy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  proxy_url:
+                    type: string
+                    example: http://localhost:8081
+
+  # ── Users ────────────────────────────────────────────────────────────────────
+
+  /api/v1/users:
+    get:
+      tags: [Users]
+      summary: "[FUTURE] List Users"
+      operationId: listUsers
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of all users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/UserResponse'
+    post:
+      tags: [Users]
+      summary: "[FUTURE] Create User"
+      operationId: createUser
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /api/v1/users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Users]
+      summary: "[FUTURE] Get User"
+      operationId: getUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User by ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: Not found
+    put:
+      tags: [Users]
+      summary: "[FUTURE] Update User"
+      operationId: updateUser
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    delete:
+      tags: [Users]
+      summary: "[FUTURE] Delete User"
+      operationId: deleteUser
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Projects ─────────────────────────────────────────────────────────────────
+
+  /api/v1/projects:
+    get:
+      tags: [Projects]
+      summary: "_ List Projects"
+      operationId: listProjects
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of projects (summary fields only)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectResponse'
+    post:
+      tags: [Projects]
+      summary: "_ Create Project"
+      operationId: createProject
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: Created project with route settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FullProjectResponse'
+
+  /api/v1/projects/with-config:
+    get:
+      tags: [Projects]
+      summary: "_ List Projects With Config"
+      operationId: listProjectsWithConfig
+      security:
+        - BearerAuth: []
+      description: Returns projects enriched with enabled status, base URL, and associated payment method codes.
+      responses:
+        '200':
+          description: Projects with payment config
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectWithConfigResponse'
+
+  /api/v1/projects/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      summary: "[FUTURE] Get Project"
+      operationId: getProject
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Project summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '404':
+          description: Not found
+    put:
+      tags: [Projects]
+      summary: "_ Update Project"
+      operationId: updateProject
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Updated project with route settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FullProjectResponse'
+    delete:
+      tags: [Projects]
+      summary: "[FUTURE] Delete Project"
+      operationId: deleteProject
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  /api/v1/projects/{id}/full:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      summary: "_ Get Project Full"
+      operationId: getFullProject
+      security:
+        - BearerAuth: []
+      description: Returns project with route settings (base_url, auth headers, allow_unmatched).
+      responses:
+        '200':
+          description: Project with all settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FullProjectResponse'
+        '404':
+          description: Not found
+
+  /api/v1/project-settings/{projectId}:
+    parameters:
+      - name: projectId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Projects]
+      summary: "[FUTURE] Get Project Settings"
+      operationId: getProjectSettings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Project settings (stub)
+    put:
+      tags: [Projects]
+      summary: "[FUTURE] Update Project Settings"
+      operationId: updateProjectSettings
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Updated settings (stub)
+
+  # ── Outbound Routes ───────────────────────────────────────────────────────────
+
+  /api/v1/outbound-routes:
+    get:
+      tags: [Outbound Routes]
+      summary: "_ List Outbound Routes"
+      operationId: listOutboundRoutes
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: project_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Filter by project
+      responses:
+        '200':
+          description: List of outbound routes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OutboundRouteResponse'
+    post:
+      tags: [Outbound Routes]
+      summary: "_ Create Outbound Route"
+      operationId: createOutboundRoute
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOutboundRouteRequest'
+      responses:
+        '201':
+          description: Created route
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboundRouteResponse'
+
+  /api/v1/outbound-routes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Outbound Routes]
+      summary: "[FUTURE] Get Outbound Route"
+      operationId: getOutboundRoute
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Route by ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboundRouteResponse'
+        '404':
+          description: Not found
+    put:
+      tags: [Outbound Routes]
+      summary: "_ Update Outbound Route"
+      operationId: updateOutboundRoute
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateOutboundRouteRequest'
+      responses:
+        '200':
+          description: Updated route
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OutboundRouteResponse'
+    delete:
+      tags: [Outbound Routes]
+      summary: "_ Delete Outbound Route"
+      operationId: deleteOutboundRoute
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Payment Methods ───────────────────────────────────────────────────────────
+
+  /api/v1/payment-methods:
+    get:
+      tags: [Payment Methods]
+      summary: "_ List Payment Methods"
+      operationId: listPaymentMethods
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: All payment methods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethodResponse'
+    post:
+      tags: [Payment Methods]
+      summary: "_ Create Payment Method"
+      operationId: createPaymentMethod
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentMethodRequest'
+      responses:
+        '201':
+          description: Created payment method
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethodResponse'
+
+  /api/v1/payment-methods/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Payment Methods]
+      summary: "_ Get Payment Method"
+      operationId: getPaymentMethod
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Payment method by ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethodResponse'
+        '404':
+          description: Not found
+    put:
+      tags: [Payment Methods]
+      summary: "_ Update Payment Method"
+      operationId: updatePaymentMethod
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePaymentMethodRequest'
+      responses:
+        '200':
+          description: Updated payment method
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethodResponse'
+    delete:
+      tags: [Payment Methods]
+      summary: "_ Delete Payment Method"
+      operationId: deletePaymentMethod
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Payment Method Assets ─────────────────────────────────────────────────────
+
+  /api/v1/payment-method-assets:
+    get:
+      tags: [Payment Method Assets]
+      summary: "_ List Payment Method Assets"
+      operationId: listPaymentMethodAssets
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: All payment method assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethodAssetResponse'
+    post:
+      tags: [Payment Method Assets]
+      summary: "_ Create Payment Method Asset"
+      operationId: createPaymentMethodAsset
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentMethodAssetRequest'
+      responses:
+        '201':
+          description: Created asset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethodAssetResponse'
+
+  /api/v1/payment-method-assets/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Payment Method Assets]
+      summary: "_ Get Payment Method Asset"
+      operationId: getPaymentMethodAsset
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Asset by ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethodAssetResponse'
+        '404':
+          description: Not found
+    put:
+      tags: [Payment Method Assets]
+      summary: "_ Update Payment Method Asset"
+      operationId: updatePaymentMethodAsset
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePaymentMethodAssetRequest'
+      responses:
+        '200':
+          description: Updated asset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentMethodAssetResponse'
+    delete:
+      tags: [Payment Method Assets]
+      summary: "_ Delete Payment Method Asset"
+      operationId: deletePaymentMethodAsset
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Facilitators ──────────────────────────────────────────────────────────────
+
+  /api/v1/facilitators:
+    get:
+      tags: [Facilitators]
+      summary: "_ List Facilitators"
+      operationId: listFacilitators
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: All facilitators
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FacilitatorResponse'
+    post:
+      tags: [Facilitators]
+      summary: "_ Create Facilitator"
+      operationId: createFacilitator
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFacilitatorRequest'
+      responses:
+        '201':
+          description: Created facilitator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilitatorResponse'
+
+  /api/v1/facilitators/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Facilitators]
+      summary: "_ Get Facilitator"
+      operationId: getFacilitator
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Facilitator by ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilitatorResponse'
+        '404':
+          description: Not found
+    put:
+      tags: [Facilitators]
+      summary: "_ Update Facilitator"
+      operationId: updateFacilitator
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateFacilitatorRequest'
+      responses:
+        '200':
+          description: Updated facilitator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FacilitatorResponse'
+    delete:
+      tags: [Facilitators]
+      summary: "_ Delete Facilitator"
+      operationId: deleteFacilitator
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Project Payment Methods ────────────────────────────────────────────────────
+
+  /api/v1/project-payment-methods:
+    get:
+      tags: [Project Payment Methods]
+      summary: "[FUTURE] List Project Payment Methods"
+      operationId: listProjectPaymentMethods
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: project_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Payment method configs for a project
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectPaymentMethodResponse'
+    post:
+      tags: [Project Payment Methods]
+      summary: "[FUTURE] Create Project Payment Method"
+      operationId: createProjectPaymentMethod
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectPaymentMethodRequest'
+      responses:
+        '201':
+          description: Created project payment method
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectPaymentMethodResponse'
+
+  /api/v1/project-payment-methods/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Project Payment Methods]
+      summary: "[FUTURE] Get Project Payment Method"
+      operationId: getProjectPaymentMethod
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Project payment method by ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectPaymentMethodResponse'
+        '404':
+          description: Not found
+    put:
+      tags: [Project Payment Methods]
+      summary: "[FUTURE] Update Project Payment Method"
+      operationId: updateProjectPaymentMethod
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectPaymentMethodRequest'
+      responses:
+        '200':
+          description: Updated project payment method
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectPaymentMethodResponse'
+    delete:
+      tags: [Project Payment Methods]
+      summary: "[FUTURE] Delete Project Payment Method"
+      operationId: deleteProjectPaymentMethod
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+
+  # ── Request Logs ──────────────────────────────────────────────────────────────
+
+  /api/v1/request-logs:
+    get:
+      tags: [Request Logs]
+      summary: "_ List Request Logs"
+      operationId: listRequestLogs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 200
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Paginated request logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RequestLogResponse'
+    post:
+      tags: [Request Logs]
+      summary: "_ Create Request Log (Internal)"
+      operationId: createRequestLog
+      description: Called by xgateway when a new inbound request arrives. Requires `X-Api-Key` header.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRequestLogRequest'
+      responses:
+        '201':
+          description: Created log entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestLogResponse'
+
+  /api/v1/request-logs/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Request Logs]
+      summary: "[FUTURE] Get Request Log"
+      operationId: getRequestLog
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Request log by ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestLogResponse'
+        '404':
+          description: Not found
+    put:
+      tags: [Request Logs]
+      summary: "_ Update Request Log (Internal)"
+      operationId: updateRequestLog
+      description: Called by xgateway to update payment/upstream status after request completes. Requires `X-Api-Key` header.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRequestLogRequest'
+      responses:
+        '200':
+          description: Updated log entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestLogResponse'
+
+  /api/v1/request-logs/{id}/events:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Request Logs]
+      summary: "[FUTURE] List Request Events"
+      operationId: listRequestEvents
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Events for a request log
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RequestEventResponse'
+
+  /api/v1/request-events:
+    post:
+      tags: [Request Logs]
+      summary: "[FUTURE] Create Request Event (Internal)"
+      operationId: createRequestEvent
+      description: Append a lifecycle event to a request log. Requires `X-Api-Key` header.
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRequestEventRequest'
+      responses:
+        '201':
+          description: Created event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestEventResponse'
+
+  # ── Stats ─────────────────────────────────────────────────────────────────────
+
+  /api/v1/stats/dashboard:
+    get:
+      tags: [Stats]
+      summary: "_ Get Dashboard Stats"
+      operationId: getDashboardStats
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, year]
+            default: week
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Start date (overrides period)
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+          description: End date (overrides period)
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Dashboard KPIs for current and previous period
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStatsResponse'
+
+  /api/v1/stats/daily:
+    get:
+      tags: [Stats]
+      summary: "[FUTURE] Get Daily Chart Stats"
+      operationId: getDailyStats
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [week, month, year]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: days
+          in: query
+          schema:
+            type: integer
+            example: 30
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Time-series chart data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChartStatsResponse'
+
+  /api/v1/stats/top-routes:
+    get:
+      tags: [Stats]
+      summary: "_ Get Top Routes"
+      operationId: getTopRoutes
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Top routes by request volume and revenue
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TopRouteItem'
+
+  /api/v1/stats/recent-requests:
+    get:
+      tags: [Stats]
+      summary: "_ Get Recent Requests"
+      operationId: getRecentRequests
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: project_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Recent request feed for the dashboard
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RecentRequestItem'
+
+  # ── Gateway ───────────────────────────────────────────────────────────────────
+
+  /proxy/resolve/{path}:
+    get:
+      tags: [Gateway]
+      summary: "_ Resolve Route (xgateway)"
+      operationId: resolveRoute
+      description: |
+        Called by xgateway per incoming request to resolve the matching outbound
+        route and payment channels. Path format: `{projectSlug}/{inboundPath}`.
+        Requires `X-Api-Key` header.
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Wildcard path in format: {projectSlug}/{inboundPath}"
+          example: my-api/api/search
+      responses:
+        '200':
+          description: Resolved route with payment channel config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolveRouteResponse'
+        '404':
+          description: No matching route found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Missing or invalid API key

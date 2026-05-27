@@ -12,7 +12,7 @@ import TextField from '@mui/material/TextField';
 
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
-import PaymentChannelsTable from './PaymentChannelsTable';
+import PaymentAssetsTable from './PaymentAssetsTable';
 import axiosServices from 'utils/axios';
 
 // assets
@@ -20,32 +20,41 @@ import AddIcon from '@mui/icons-material/AddTwoTone';
 import SearchIcon from '@mui/icons-material/Search';
 
 // types
-import { PaymentChannel } from './types';
+import { PaymentMethodAsset } from './types';
 
-export default function PaymentChannelsPage() {
-  const [channels, setChannels] = useState<PaymentChannel[]>([]);
+export default function PaymentAssetsPage() {
+  const [assets, setAssets] = useState<PaymentMethodAsset[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState<string>('');
 
   useEffect(() => {
     axiosServices
-      .get<PaymentChannel[]>('/api/v1/payment-channels')
-      .then((res) => setChannels(res.data ?? []))
-      .catch((err) => setError(err?.error || err?.message || 'Failed to load payment channels'))
+      .get<PaymentMethodAsset[]>('/api/v1/payment-method-assets')
+      .then((res) => setAssets(res.data ?? []))
+      .catch((err) => setError(err?.error || err?.message || 'Failed to load payment assets'))
       .finally(() => setLoading(false));
   }, []);
 
+  const handleDelete = (id: string) => {
+    if (!window.confirm('Delete this payment asset?')) return;
+    axiosServices
+      .delete(`/api/v1/payment-method-assets/${id}`)
+      .then(() => setAssets((prev) => prev.filter((a) => a.id !== id)))
+      .catch((err) => setError(err?.error || err?.message || 'Failed to delete'));
+  };
+
   const rows = useMemo(() => {
-    if (!search.trim()) return channels;
+    if (!search.trim()) return assets;
     const query = search.toLowerCase();
-    return channels.filter(
-      (c) =>
-        c.protocol.toLowerCase().includes(query) ||
-        c.method.toLowerCase().includes(query) ||
-        c.scheme.toLowerCase().includes(query)
+    return assets.filter(
+      (a) =>
+        a.symbol.toLowerCase().includes(query) ||
+        a.payment_method_name.toLowerCase().includes(query) ||
+        (a.payment_method_chain ?? '').toLowerCase().includes(query) ||
+        (a.contract_address ?? '').toLowerCase().includes(query)
     );
-  }, [search, channels]);
+  }, [search, assets]);
 
   return (
     <MainCard content={false}>
@@ -54,7 +63,7 @@ export default function PaymentChannelsPage() {
           <TextField
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search Payment Channel"
+            placeholder="Search Payment Assets"
             size="small"
             sx={{ width: { xs: 1, sm: 'auto' } }}
             slotProps={{
@@ -67,9 +76,8 @@ export default function PaymentChannelsPage() {
               }
             }}
           />
-
-          <Button component={Link} to="/payment-channels/create" variant="contained" startIcon={<AddIcon fontSize="small" />}>
-            Create Payment Channel
+          <Button component={Link} to="/payment-assets/create" variant="contained" startIcon={<AddIcon fontSize="small" />}>
+            Create Payment Asset
           </Button>
         </Stack>
       </CardContent>
@@ -85,7 +93,7 @@ export default function PaymentChannelsPage() {
           <CircularProgress />
         </CardContent>
       ) : (
-        <PaymentChannelsTable rows={rows} />
+        <PaymentAssetsTable rows={rows} onDelete={handleDelete} />
       )}
     </MainCard>
   );

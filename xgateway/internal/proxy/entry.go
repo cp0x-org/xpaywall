@@ -103,9 +103,16 @@ func buildUpstreamProxy(rule *rules.Rule, reqPath string) (*httputil.ReverseProx
 
 	cleanPath := rule.InboundPath
 
+	// Compute the project-slug prefix (e.g. "/default") by stripping the
+	// inbound path from the request path. Trim trailing slashes before
+	// comparing so that "/default/free-multipoint/" still yields "/default".
 	prefix := ""
-	if cleanPath != "" && strings.HasSuffix(reqPath, cleanPath) {
-		prefix = reqPath[:len(reqPath)-len(cleanPath)]
+	if cleanPath != "" && !containsGlob(cleanPath) {
+		trimmedReq := strings.TrimRight(reqPath, "/")
+		trimmedClean := strings.TrimRight(cleanPath, "/")
+		if trimmedClean != "" && strings.HasSuffix(trimmedReq, trimmedClean) {
+			prefix = trimmedReq[:len(trimmedReq)-len(trimmedClean)]
+		}
 	}
 
 	return &httputil.ReverseProxy{
@@ -113,7 +120,16 @@ func buildUpstreamProxy(rule *rules.Rule, reqPath string) (*httputil.ReverseProx
 			r.URL.Scheme = upURL.Scheme
 			r.URL.Host = upURL.Host
 			r.Host = upURL.Host
-			if cleanPath != "" && cleanPath != r.URL.Path && !containsGlob(cleanPath) {
+			if !containsGlob(cleanPath) && prefix != "" {
+				// Strip the project prefix and forward the rest as-is,
+				// preserving any trailing slash so upstream routers (e.g. Gin)
+				// don't issue a redirect for paths like /free-multipoint/.
+				stripped := strings.TrimPrefix(r.URL.Path, prefix)
+				if stripped == "" || stripped[0] != '/' {
+					stripped = "/" + stripped
+				}
+				r.URL.Path = stripped
+			} else if cleanPath != "" && cleanPath != r.URL.Path && !containsGlob(cleanPath) {
 				r.URL.Path = cleanPath
 			}
 			if authName != "" && authValue != "" {

@@ -78,6 +78,15 @@ func (q *Queries) DeleteOutboundRoute(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const deleteRouteDailyStats = `-- name: DeleteRouteDailyStats :exec
+DELETE FROM route_daily_stats WHERE outbound_route_id = $1
+`
+
+func (q *Queries) DeleteRouteDailyStats(ctx context.Context, outboundRouteID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRouteDailyStats, outboundRouteID)
+	return err
+}
+
 const getOutboundRoute = `-- name: GetOutboundRoute :one
 SELECT id, project_id, name, path_pattern, price_amount, price_usd, description, free, created_at, updated_at
 FROM routes
@@ -242,6 +251,15 @@ func (q *Queries) ListOutboundRoutesByProject(ctx context.Context, projectID uui
 		return nil, err
 	}
 	return items, nil
+}
+
+const nullifyRouteInRequestLogs = `-- name: NullifyRouteInRequestLogs :exec
+UPDATE request_logs SET outbound_route_id = NULL WHERE outbound_route_id = $1
+`
+
+func (q *Queries) NullifyRouteInRequestLogs(ctx context.Context, outboundRouteID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, nullifyRouteInRequestLogs, outboundRouteID)
+	return err
 }
 
 const updateOutboundRoute = `-- name: UpdateOutboundRoute :one

@@ -49,5 +49,11 @@ SET name         = COALESCE(sqlc.narg(name), name),
 WHERE id = $1
 RETURNING id, project_id, name, path_pattern, price_amount, price_usd, description, free, created_at, updated_at;
 
+-- name: NullifyRouteInRequestLogs :exec
+UPDATE request_logs SET outbound_route_id = NULL WHERE outbound_route_id = $1;
+
+-- name: DeleteRouteDailyStats :exec
+DELETE FROM route_daily_stats WHERE outbound_route_id = $1;
+
 -- name: DeleteOutboundRoute :exec
 DELETE FROM routes WHERE id = $1;

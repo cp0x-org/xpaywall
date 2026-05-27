@@ -2,13 +2,7 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 
 // material-ui
-import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -22,41 +16,16 @@ import Typography from '@mui/material/Typography';
 
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
-import RoutesTableHeader from './RoutesTableHeader';
+import PaymentChannelsTableHeader from './PaymentChannelsTableHeader';
 
 // assets
 import DeleteTwoToneIcon from '@mui/icons-material/DeleteTwoTone';
 import EditTwoToneIcon from '@mui/icons-material/EditTwoTone';
 import VisibilityTwoToneIcon from '@mui/icons-material/VisibilityTwoTone';
-import OpenInNewTwoToneIcon from '@mui/icons-material/OpenInNewTwoTone';
 
 // types
 import { ArrangementOrder, KeyedObject } from 'types';
-import { RouteRow } from './types';
-
-function buildUrl(base: string, path: string): string {
-  if (!base) return '';
-  return base.replace(/\/$/, '') + (path.startsWith('/') ? path : `/${path}`);
-}
-
-function UrlLinkCell({ url }: { url: string }) {
-  if (!url) return <span>—</span>;
-  return (
-    <Tooltip title={url}>
-      <IconButton
-        size="small"
-        component="a"
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        color="primary"
-        aria-label={url}
-      >
-        <OpenInNewTwoToneIcon sx={{ fontSize: '1.1rem' }} />
-      </IconButton>
-    </Tooltip>
-  );
-}
+import { PaymentMethod } from './types';
 
 function descendingComparator(a: KeyedObject, b: KeyedObject, orderBy: string) {
   if (b[orderBy] < a[orderBy]) return -1;
@@ -70,8 +39,8 @@ function getComparator(order: ArrangementOrder, orderBy: string) {
     : (a: KeyedObject, b: KeyedObject) => -descendingComparator(a, b, orderBy);
 }
 
-function stableSort(array: RouteRow[], comparator: (a: RouteRow, b: RouteRow) => number) {
-  const stabilized = array.map((el: RouteRow, index: number) => [el, index] as const);
+function stableSort(array: PaymentMethod[], comparator: (a: PaymentMethod, b: PaymentMethod) => number) {
+  const stabilized = array.map((el: PaymentMethod, index: number) => [el, index] as const);
   stabilized.sort((a, b) => {
     const order = comparator(a[0], b[0]);
     if (order !== 0) return order;
@@ -80,23 +49,11 @@ function stableSort(array: RouteRow[], comparator: (a: RouteRow, b: RouteRow) =>
   return stabilized.map((el) => el[0]);
 }
 
-export default function RoutesTable({
-  rows,
-  proxyUrl,
-  projectBaseUrls,
-  onDelete
-}: {
-  rows: RouteRow[];
-  proxyUrl: string;
-  projectBaseUrls: Record<string, string>;
-  onDelete: (id: string) => Promise<void>;
-}) {
+export default function PaymentChannelsTable({ rows, onDelete }: { rows: PaymentMethod[]; onDelete: (id: string) => void }) {
   const [order, setOrder] = React.useState<ArrangementOrder>('asc');
-  const [orderBy, setOrderBy] = React.useState<string>('name');
+  const [orderBy, setOrderBy] = React.useState<string>('code');
   const [page, setPage] = React.useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = React.useState<number>(10);
-  const [deletingRow, setDeletingRow] = React.useState<RouteRow | null>(null);
-  const [deleteLoading, setDeleteLoading] = React.useState(false);
 
   const handleRequestSort = (_event: React.SyntheticEvent<Element, Event>, property: string) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -120,8 +77,8 @@ export default function RoutesTable({
   return (
     <MainCard content={false}>
       <TableContainer>
-        <Table sx={{ minWidth: 880 }} aria-labelledby="tableTitle">
-          <RoutesTableHeader
+        <Table sx={{ minWidth: 760 }} aria-labelledby="tableTitle">
+          <PaymentChannelsTableHeader
             order={order}
             orderBy={orderBy}
             onRequestSort={handleRequestSort}
@@ -132,36 +89,44 @@ export default function RoutesTable({
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((row) => (
                 <TableRow hover tabIndex={-1} key={row.id}>
+                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.code}</TableCell>
                   <TableCell>
-                    <Typography variant="subtitle1">{row.name}</Typography>
+                    <Typography variant="subtitle1">{row.protocol}</Typography>
                   </TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.path_pattern}</TableCell>
+                  <TableCell>{row.name}</TableCell>
+                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.caip2_chain_id ?? '—'}</TableCell>
                   <TableCell>
-                    <Chip label={row.free ? 'Free' : 'Paid'} size="small" color={row.free ? 'success' : 'default'} />
-                  </TableCell>
-                  <TableCell>{row.free ? '—' : row.price_usd || `$${(row.price_amount / 100).toFixed(2)}`}</TableCell>
-                  <TableCell>{row.project_name || row.project_id.slice(0, 8)}</TableCell>
-                  <TableCell align="center">
-                    <UrlLinkCell url={buildUrl(proxyUrl, `${row.project_slug}${row.path_pattern}`)} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <UrlLinkCell url={buildUrl(projectBaseUrls[row.project_id] ?? '', row.path_pattern)} />
+                    <Chip label={row.enabled ? 'Enabled' : 'Disabled'} size="small" color={row.enabled ? 'success' : 'default'} />
                   </TableCell>
                   <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
                   <TableCell align="center" sx={{ pr: 3 }}>
                     <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                       <Tooltip title="View">
-                        <IconButton color="primary" component={Link} to="/routes/view" state={{ id: row.id }} size="small" aria-label="View">
+                        <IconButton
+                          color="primary"
+                          component={Link}
+                          to="/payment-methods/view"
+                          state={{ id: row.id }}
+                          size="small"
+                          aria-label="View"
+                        >
                           <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Edit">
-                        <IconButton color="secondary" component={Link} to="/routes/edit" state={{ id: row.id }} size="small" aria-label="Edit">
+                        <IconButton
+                          color="secondary"
+                          component={Link}
+                          to="/payment-methods/edit"
+                          state={{ id: row.id }}
+                          size="small"
+                          aria-label="Edit"
+                        >
                           <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
-                        <IconButton color="error" size="small" aria-label="Delete" onClick={() => setDeletingRow(row)}>
+                        <IconButton color="error" size="small" aria-label="Delete" onClick={() => onDelete(row.id)}>
                           <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
@@ -171,7 +136,7 @@ export default function RoutesTable({
               ))}
             {emptyRows > 0 && (
               <TableRow sx={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={9} />
+                <TableCell colSpan={7} />
               </TableRow>
             )}
           </TableBody>
@@ -187,37 +152,6 @@ export default function RoutesTable({
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
-
-      <Dialog open={!!deletingRow} onClose={() => !deleteLoading && setDeletingRow(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Delete Route</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Are you sure you want to delete <strong>{deletingRow?.name}</strong>? This action cannot be undone.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeletingRow(null)} disabled={deleteLoading}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            color="error"
-            disabled={deleteLoading}
-            onClick={async () => {
-              if (!deletingRow) return;
-              setDeleteLoading(true);
-              try {
-                await onDelete(deletingRow.id);
-                setDeletingRow(null);
-              } finally {
-                setDeleteLoading(false);
-              }
-            }}
-          >
-            Delete
-          </Button>
-        </DialogActions>
-      </Dialog>
     </MainCard>
   );
 }

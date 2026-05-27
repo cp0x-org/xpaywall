@@ -9,6 +9,8 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -28,6 +30,7 @@ import axios from 'utils/axios';
 
 import {FullProject, ProxyUrl} from './types';
 import {TableBody} from "../../ui-component/mui";
+import ProjectPaymentMethods from './ProjectPaymentMethods';
 
 function toSlug(value: string) {
   return value
@@ -70,6 +73,7 @@ export default function ProjectFormPage() {
 
   const [proxyUrl, setProxyUrl] = React.useState("")
   const [originTarget, setOriginTarget] = React.useState("")
+  const [tab, setTab] = React.useState(0)
 
   React.useEffect(() => {
     axios
@@ -132,6 +136,16 @@ export default function ProjectFormPage() {
 
   return (
     <MainCard title={title}>
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+        <Tab label="General" />
+        <Tab label="Payment Methods" disabled={isCreate} />
+      </Tabs>
+
+      {tab === 1 && projectId && (
+        <ProjectPaymentMethods projectId={projectId} isView={isView} />
+      )}
+
+      {tab === 0 && <>
       <Grid container spacing={3} sx={{ mb: 2 }}>
         <Grid size={{ xs: 12, sm: (isEdit || isView) ? 4 : 6 }}>
           <Grid container spacing={1} sx={{ alignItems: 'center' }}>
@@ -368,6 +382,7 @@ export default function ProjectFormPage() {
           </form>
         )}
       </Formik>
+      </>}
     </MainCard>
   );
 }

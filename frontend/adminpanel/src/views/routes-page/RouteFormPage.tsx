@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 // material-ui
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
+import CircularProgress from '@mui/material/CircularProgress';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
@@ -13,6 +14,7 @@ import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
+import Typography from '@mui/material/Typography';
 
 // third party
 import * as Yup from 'yup';
@@ -22,40 +24,94 @@ import { Formik } from 'formik';
 import MainCard from 'ui-component/cards/MainCard';
 import axios from 'utils/axios';
 
+import { RouteRow } from './types';
+
 interface Project {
   id: string;
   name: string;
   slug: string;
 }
 
+const emptyValues = {
+  project_id: '',
+  name: '',
+  path_pattern: '',
+  free: false,
+  price_amount: 0,
+  price_usd: '',
+  description: '',
+  submit: null
+};
+
 export default function RouteFormPage() {
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const navigate = useNavigate();
 
+  const isCreate = pathname.includes('/create');
+  const isEdit = pathname.includes('/edit');
+  const isView = pathname.includes('/view');
+
+  const routeId: string | undefined = (state as any)?.id;
+
   const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(isEdit || isView);
+  const [loadError, setLoadError] = useState('');
+  const [initialValues, setInitialValues] = useState(emptyValues);
 
   let title = 'Route';
-  if (pathname.includes('/create')) title = 'Create Route';
-  if (pathname.includes('/edit')) title = 'Update Route';
-  if (pathname.includes('/view')) title = 'View Route';
+  if (isCreate) title = 'Create Route';
+  if (isEdit) title = 'Update Route';
+  if (isView) title = 'View Route';
 
   useEffect(() => {
     axios.get('/api/v1/projects').then((res) => setProjects(res.data ?? []));
   }, []);
 
+  useEffect(() => {
+    if ((isEdit || isView) && routeId) {
+      axios
+        .get<RouteRow>(`/api/v1/outbound-routes/${routeId}`)
+        .then((res) => {
+          const d = res.data;
+          setInitialValues({
+            project_id: d.project_id,
+            name: d.name,
+            path_pattern: d.path_pattern,
+            free: d.free,
+            price_amount: d.price_amount,
+            price_usd: d.price_usd ?? '',
+            description: d.description ?? '',
+            submit: null
+          });
+        })
+        .catch(() => setLoadError('Failed to load route data'))
+        .finally(() => setLoading(false));
+    }
+  }, [isEdit, isView, routeId]);
+
+  if (loading) {
+    return (
+      <MainCard title={title}>
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+          <CircularProgress />
+        </Box>
+      </MainCard>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <MainCard title={title}>
+        <Typography color="error">{loadError}</Typography>
+      </MainCard>
+    );
+  }
+
   return (
     <MainCard title={title}>
       <Formik
-        initialValues={{
-          project_id: '',
-          name: '',
-          path_pattern: '',
-          free: false,
-          price_amount: 0,
-          price_usd: '',
-          description: '',
-          submit: null
-        }}
+        enableReinitialize
+        initialValues={initialValues}
         validationSchema={Yup.object().shape({
           project_id: Yup.string().required('Project is required'),
           name: Yup.string().required('Name is required'),
@@ -67,7 +123,7 @@ export default function RouteFormPage() {
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
           try {
-            await axios.post('/api/v1/outbound-routes', {
+            const payload = {
               project_id: values.project_id,
               name: values.name,
               path_pattern: values.path_pattern,
@@ -75,11 +131,16 @@ export default function RouteFormPage() {
               price_amount: values.free ? 0 : Number(values.price_amount),
               price_usd: values.free ? '' : values.price_usd,
               description: values.description
-            });
+            };
+            if (isEdit && routeId) {
+              await axios.put(`/api/v1/outbound-routes/${routeId}`, payload);
+            } else {
+              await axios.post('/api/v1/outbound-routes', payload);
+            }
             navigate('/routes');
           } catch (err: any) {
             setStatus({ success: false });
-            setErrors({ submit: err?.error || err?.message || 'Failed to create route' });
+            setErrors({ submit: err?.error || err?.message || 'Failed to save route' });
             setSubmitting(false);
           }
         }}
@@ -87,7 +148,7 @@ export default function RouteFormPage() {
         {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, setFieldValue, touched, values }) => (
           <form onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ maxWidth: 560 }}>
-              <FormControl fullWidth error={Boolean(touched.project_id && errors.project_id)}>
+              <FormControl fullWidth error={Boolean(touched.project_id && errors.project_id)} disabled={isView}>
                 <InputLabel id="project-label">Project</InputLabel>
                 <Select
                   labelId="project-label"
@@ -116,6 +177,7 @@ export default function RouteFormPage() {
                 onChange={handleChange}
                 error={Boolean(touched.name && errors.name)}
                 helperText={touched.name && errors.name}
+                disabled={isView}
               />
 
               <TextField
@@ -127,6 +189,7 @@ export default function RouteFormPage() {
                 onChange={handleChange}
                 error={Boolean(touched.path_pattern && errors.path_pattern)}
                 helperText={(touched.path_pattern && errors.path_pattern) || 'e.g. /api/v1/* or /users/:id'}
+                disabled={isView}
               />
 
               <TextField
@@ -138,6 +201,7 @@ export default function RouteFormPage() {
                 value={values.description}
                 onBlur={handleBlur}
                 onChange={handleChange}
+                disabled={isView}
               />
 
               <FormControlLabel
@@ -146,6 +210,7 @@ export default function RouteFormPage() {
                     name="free"
                     checked={values.free}
                     onChange={(e) => setFieldValue('free', e.target.checked)}
+                    disabled={isView}
                   />
                 }
                 label="Free (no payment required)"
@@ -164,6 +229,7 @@ export default function RouteFormPage() {
                     error={Boolean(touched.price_amount && errors.price_amount)}
                     helperText={touched.price_amount && errors.price_amount}
                     slotProps={{ htmlInput: { min: 0 } }}
+                    disabled={isView}
                   />
 
                   <TextField
@@ -174,6 +240,7 @@ export default function RouteFormPage() {
                     onBlur={handleBlur}
                     onChange={handleChange}
                     helperText='e.g. "0.01"'
+                    disabled={isView}
                   />
                 </>
               )}
@@ -186,11 +253,13 @@ export default function RouteFormPage() {
 
               <Stack direction="row" spacing={2} justifyContent="flex-end">
                 <Button variant="outlined" onClick={() => navigate('/routes')} disabled={isSubmitting}>
-                  Cancel
+                  {isView ? 'Back' : 'Cancel'}
                 </Button>
-                <Button type="submit" variant="contained" disabled={isSubmitting}>
-                  Create Route
-                </Button>
+                {!isView && (
+                  <Button type="submit" variant="contained" disabled={isSubmitting}>
+                    {isEdit ? 'Save Changes' : 'Create Route'}
+                  </Button>
+                )}
               </Stack>
             </Stack>
           </form>

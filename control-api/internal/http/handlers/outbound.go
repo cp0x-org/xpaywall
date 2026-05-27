@@ -280,7 +280,16 @@ func (h *Handler) DeleteOutboundRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	if err := h.q.DeleteOutboundRoute(c.Request.Context(), id); err != nil {
+	ctx := c.Request.Context()
+	if err := h.q.NullifyRouteInRequestLogs(ctx, pgtype.UUID{Bytes: [16]byte(id), Valid: true}); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.q.DeleteRouteDailyStats(ctx, id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.q.DeleteOutboundRoute(ctx, id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

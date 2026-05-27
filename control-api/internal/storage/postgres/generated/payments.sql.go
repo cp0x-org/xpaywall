@@ -239,12 +239,30 @@ func (q *Queries) GetPaymentMethod(ctx context.Context, id uuid.UUID) (PaymentMe
 }
 
 const getPaymentMethodAsset = `-- name: GetPaymentMethodAsset :one
-SELECT id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at FROM payment_method_assets WHERE id = $1
+SELECT
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals, pma.created_at, pma.updated_at,
+    pm.name AS payment_method_name,
+    pm.caip2_chain_id AS payment_method_chain
+FROM payment_method_assets pma
+JOIN payment_methods pm ON pm.id = pma.payment_method_id
+WHERE pma.id = $1
 `
 
-func (q *Queries) GetPaymentMethodAsset(ctx context.Context, id uuid.UUID) (PaymentMethodAsset, error) {
+type GetPaymentMethodAssetRow struct {
+	ID                 uuid.UUID
+	PaymentMethodID    uuid.UUID
+	Symbol             string
+	ContractAddress    pgtype.Text
+	Decimals           int32
+	CreatedAt          pgtype.Timestamp
+	UpdatedAt          pgtype.Timestamp
+	PaymentMethodName  string
+	PaymentMethodChain pgtype.Text
+}
+
+func (q *Queries) GetPaymentMethodAsset(ctx context.Context, id uuid.UUID) (GetPaymentMethodAssetRow, error) {
 	row := q.db.QueryRow(ctx, getPaymentMethodAsset, id)
-	var i PaymentMethodAsset
+	var i GetPaymentMethodAssetRow
 	err := row.Scan(
 		&i.ID,
 		&i.PaymentMethodID,
@@ -253,6 +271,8 @@ func (q *Queries) GetPaymentMethodAsset(ctx context.Context, id uuid.UUID) (Paym
 		&i.Decimals,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PaymentMethodName,
+		&i.PaymentMethodChain,
 	)
 	return i, err
 }
@@ -312,18 +332,36 @@ func (q *Queries) ListFacilitators(ctx context.Context) ([]Facilitator, error) {
 }
 
 const listPaymentMethodAssets = `-- name: ListPaymentMethodAssets :many
-SELECT id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at FROM payment_method_assets ORDER BY created_at DESC
+SELECT
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals, pma.created_at, pma.updated_at,
+    pm.name AS payment_method_name,
+    pm.caip2_chain_id AS payment_method_chain
+FROM payment_method_assets pma
+JOIN payment_methods pm ON pm.id = pma.payment_method_id
+ORDER BY pma.created_at DESC
 `
 
-func (q *Queries) ListPaymentMethodAssets(ctx context.Context) ([]PaymentMethodAsset, error) {
+type ListPaymentMethodAssetsRow struct {
+	ID                 uuid.UUID
+	PaymentMethodID    uuid.UUID
+	Symbol             string
+	ContractAddress    pgtype.Text
+	Decimals           int32
+	CreatedAt          pgtype.Timestamp
+	UpdatedAt          pgtype.Timestamp
+	PaymentMethodName  string
+	PaymentMethodChain pgtype.Text
+}
+
+func (q *Queries) ListPaymentMethodAssets(ctx context.Context) ([]ListPaymentMethodAssetsRow, error) {
 	rows, err := q.db.Query(ctx, listPaymentMethodAssets)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PaymentMethodAsset
+	var items []ListPaymentMethodAssetsRow
 	for rows.Next() {
-		var i PaymentMethodAsset
+		var i ListPaymentMethodAssetsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PaymentMethodID,
@@ -332,6 +370,8 @@ func (q *Queries) ListPaymentMethodAssets(ctx context.Context) ([]PaymentMethodA
 			&i.Decimals,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PaymentMethodName,
+			&i.PaymentMethodChain,
 		); err != nil {
 			return nil, err
 		}
@@ -344,18 +384,37 @@ func (q *Queries) ListPaymentMethodAssets(ctx context.Context) ([]PaymentMethodA
 }
 
 const listPaymentMethodAssetsByMethod = `-- name: ListPaymentMethodAssetsByMethod :many
-SELECT id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at FROM payment_method_assets WHERE payment_method_id = $1 ORDER BY created_at DESC
+SELECT
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals, pma.created_at, pma.updated_at,
+    pm.name AS payment_method_name,
+    pm.caip2_chain_id AS payment_method_chain
+FROM payment_method_assets pma
+JOIN payment_methods pm ON pm.id = pma.payment_method_id
+WHERE pma.payment_method_id = $1
+ORDER BY pma.created_at DESC
 `
 
-func (q *Queries) ListPaymentMethodAssetsByMethod(ctx context.Context, paymentMethodID uuid.UUID) ([]PaymentMethodAsset, error) {
+type ListPaymentMethodAssetsByMethodRow struct {
+	ID                 uuid.UUID
+	PaymentMethodID    uuid.UUID
+	Symbol             string
+	ContractAddress    pgtype.Text
+	Decimals           int32
+	CreatedAt          pgtype.Timestamp
+	UpdatedAt          pgtype.Timestamp
+	PaymentMethodName  string
+	PaymentMethodChain pgtype.Text
+}
+
+func (q *Queries) ListPaymentMethodAssetsByMethod(ctx context.Context, paymentMethodID uuid.UUID) ([]ListPaymentMethodAssetsByMethodRow, error) {
 	rows, err := q.db.Query(ctx, listPaymentMethodAssetsByMethod, paymentMethodID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PaymentMethodAsset
+	var items []ListPaymentMethodAssetsByMethodRow
 	for rows.Next() {
-		var i PaymentMethodAsset
+		var i ListPaymentMethodAssetsByMethodRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.PaymentMethodID,
@@ -364,6 +423,8 @@ func (q *Queries) ListPaymentMethodAssetsByMethod(ctx context.Context, paymentMe
 			&i.Decimals,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.PaymentMethodName,
+			&i.PaymentMethodChain,
 		); err != nil {
 			return nil, err
 		}

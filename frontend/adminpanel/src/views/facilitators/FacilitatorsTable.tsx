@@ -16,7 +16,7 @@ import Typography from '@mui/material/Typography';
 
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
-import PaymentChannelsTableHeader from './PaymentChannelsTableHeader';
+import FacilitatorsTableHeader from './FacilitatorsTableHeader';
 
 // assets
 import DeleteTwoToneIcon from '@mui/icons-material/DeleteTwoTone';
@@ -25,7 +25,7 @@ import VisibilityTwoToneIcon from '@mui/icons-material/VisibilityTwoTone';
 
 // types
 import { ArrangementOrder, KeyedObject } from 'types';
-import { PaymentChannel } from './types';
+import { Facilitator } from './types';
 
 function descendingComparator(a: KeyedObject, b: KeyedObject, orderBy: string) {
   if (b[orderBy] < a[orderBy]) return -1;
@@ -39,8 +39,8 @@ function getComparator(order: ArrangementOrder, orderBy: string) {
     : (a: KeyedObject, b: KeyedObject) => -descendingComparator(a, b, orderBy);
 }
 
-function stableSort(array: PaymentChannel[], comparator: (a: PaymentChannel, b: PaymentChannel) => number) {
-  const stabilized = array.map((el: PaymentChannel, index: number) => [el, index] as const);
+function stableSort(array: Facilitator[], comparator: (a: Facilitator, b: Facilitator) => number) {
+  const stabilized = array.map((el, index) => [el, index] as const);
   stabilized.sort((a, b) => {
     const order = comparator(a[0], b[0]);
     if (order !== 0) return order;
@@ -49,9 +49,9 @@ function stableSort(array: PaymentChannel[], comparator: (a: PaymentChannel, b: 
   return stabilized.map((el) => el[0]);
 }
 
-export default function PaymentChannelsTable({ rows }: { rows: PaymentChannel[] }) {
+export default function FacilitatorsTable({ rows, onDelete }: { rows: Facilitator[]; onDelete: (id: string) => void }) {
   const [order, setOrder] = React.useState<ArrangementOrder>('asc');
-  const [orderBy, setOrderBy] = React.useState<string>('protocol');
+  const [orderBy, setOrderBy] = React.useState<string>('name');
   const [page, setPage] = React.useState<number>(0);
   const [rowsPerPage, setRowsPerPage] = React.useState<number>(10);
 
@@ -66,9 +66,7 @@ export default function PaymentChannelsTable({ rows }: { rows: PaymentChannel[] 
   };
 
   const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement> | undefined) => {
-    if (event?.target.value) {
-      setRowsPerPage(parseInt(event.target.value, 10));
-    }
+    if (event?.target.value) setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
@@ -77,23 +75,17 @@ export default function PaymentChannelsTable({ rows }: { rows: PaymentChannel[] 
   return (
     <MainCard content={false}>
       <TableContainer>
-        <Table sx={{ minWidth: 760 }} aria-labelledby="tableTitle">
-          <PaymentChannelsTableHeader
-            order={order}
-            orderBy={orderBy}
-            onRequestSort={handleRequestSort}
-            rowCount={rows.length}
-          />
+        <Table sx={{ minWidth: 700 }} aria-labelledby="tableTitle">
+          <FacilitatorsTableHeader order={order} orderBy={orderBy} onRequestSort={handleRequestSort} rowCount={rows.length} />
           <TableBody>
             {stableSort(rows, getComparator(order, orderBy))
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((row) => (
                 <TableRow hover tabIndex={-1} key={row.id}>
                   <TableCell>
-                    <Typography variant="subtitle1">{row.protocol}</Typography>
+                    <Typography variant="subtitle1">{row.name}</Typography>
                   </TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.method}</TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.scheme}</TableCell>
+                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.url}</TableCell>
                   <TableCell>
                     <Chip label={row.enabled ? 'Enabled' : 'Disabled'} size="small" color={row.enabled ? 'success' : 'default'} />
                   </TableCell>
@@ -101,31 +93,17 @@ export default function PaymentChannelsTable({ rows }: { rows: PaymentChannel[] 
                   <TableCell align="center" sx={{ pr: 3 }}>
                     <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                       <Tooltip title="View">
-                        <IconButton
-                          color="primary"
-                          component={Link}
-                          to="/payment-channels/view"
-                          state={{ id: row.id }}
-                          size="small"
-                          aria-label="View"
-                        >
+                        <IconButton color="primary" component={Link} to="/facilitators/view" state={{ id: row.id }} size="small" aria-label="View">
                           <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Edit">
-                        <IconButton
-                          color="secondary"
-                          component={Link}
-                          to="/payment-channels/edit"
-                          state={{ id: row.id }}
-                          size="small"
-                          aria-label="Edit"
-                        >
+                        <IconButton color="secondary" component={Link} to="/facilitators/edit" state={{ id: row.id }} size="small" aria-label="Edit">
                           <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Delete">
-                        <IconButton color="error" size="small" aria-label="Delete">
+                        <IconButton color="error" size="small" aria-label="Delete" onClick={() => onDelete(row.id)}>
                           <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
@@ -135,13 +113,12 @@ export default function PaymentChannelsTable({ rows }: { rows: PaymentChannel[] 
               ))}
             {emptyRows > 0 && (
               <TableRow sx={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={6} />
+                <TableCell colSpan={5} />
               </TableRow>
             )}
           </TableBody>
         </Table>
       </TableContainer>
-
       <TablePagination
         rowsPerPageOptions={[5, 10, 25]}
         component="div"

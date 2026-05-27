@@ -12,9 +12,10 @@ import TableSortLabel from '@mui/material/TableSortLabel';
 import { ArrangementOrder, HeadCell } from 'types';
 
 const headCells: HeadCell[] = [
+  { id: 'code', numeric: false, label: 'Code' },
   { id: 'protocol', numeric: false, label: 'Protocol' },
-  { id: 'method', numeric: false, label: 'Method' },
-  { id: 'scheme', numeric: false, label: 'Scheme' },
+  { id: 'name', numeric: false, label: 'Name' },
+  { id: 'caip2_chain_id', numeric: false, label: 'Chain' },
   { id: 'enabled', numeric: false, label: 'Enabled' },
   { id: 'created_at', numeric: false, label: 'Created At' }
 ];

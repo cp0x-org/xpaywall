@@ -18,6 +18,7 @@ import {
   IconBrandChrome,
   IconRoute2,
   IconCapProjecting, IconFolderBolt, IconMoneybagEdit, IconMoneybagHeart, IconMoneybagPlus,
+  IconCoins, IconServer,
   IconList
 } from '@tabler/icons-react';
 
@@ -62,9 +63,32 @@ const mainPage: NavItemType = {
     },
     {
       id: 'payment-channels-item',
-      title: 'Payment Channels',
-      type: 'item',
-      url: '/payment-channels',
+      title: 'Payments',
+      type: 'collapse',
+      children: [
+        {
+          id: 'payment-method-item',
+          title: 'Payment Methods',
+          type: 'item',
+          url: '/payment-methods',
+          icon: IconMoneybagPlus,
+        },
+        {
+          id: 'payment-assets-item',
+          title: 'Payment Assets',
+          type: 'item',
+          url: '/payment-assets',
+          icon: IconCoins,
+        },
+        {
+          id: 'facilitators',
+          title: 'Facilitators (x402)',
+          type: 'item',
+          url: '/facilitators',
+          icon: IconServer,
+        },
+      ],
+      // url: '/payment-channels',
       icon: IconMoneybagPlus,
     },
     {

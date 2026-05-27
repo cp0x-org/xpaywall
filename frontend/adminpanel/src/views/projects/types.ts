@@ -24,3 +24,16 @@ export interface FullProject extends Project {
 export interface ProxyUrl {
   proxy_url?: string;
 }
+
+export interface ProjectPaymentMethod {
+  id: string;
+  project_id: string;
+  payment_method_id: string;
+  asset_id: string;
+  scheme: string;
+  facilitator_id: string;
+  payout_address?: string | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}

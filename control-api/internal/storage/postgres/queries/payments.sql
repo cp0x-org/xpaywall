@@ -24,13 +24,32 @@ RETURNING *;
 DELETE FROM payment_methods WHERE id = $1;
 
 -- name: ListPaymentMethodAssets :many
-SELECT * FROM payment_method_assets ORDER BY created_at DESC;
+SELECT
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals, pma.created_at, pma.updated_at,
+    pm.name AS payment_method_name,
+    pm.caip2_chain_id AS payment_method_chain
+FROM payment_method_assets pma
+JOIN payment_methods pm ON pm.id = pma.payment_method_id
+ORDER BY pma.created_at DESC;
 
 -- name: ListPaymentMethodAssetsByMethod :many
-SELECT * FROM payment_method_assets WHERE payment_method_id = $1 ORDER BY created_at DESC;
+SELECT
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals, pma.created_at, pma.updated_at,
+    pm.name AS payment_method_name,
+    pm.caip2_chain_id AS payment_method_chain
+FROM payment_method_assets pma
+JOIN payment_methods pm ON pm.id = pma.payment_method_id
+WHERE pma.payment_method_id = $1
+ORDER BY pma.created_at DESC;
 
 -- name: GetPaymentMethodAsset :one
-SELECT * FROM payment_method_assets WHERE id = $1;
+SELECT
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals, pma.created_at, pma.updated_at,
+    pm.name AS payment_method_name,
+    pm.caip2_chain_id AS payment_method_chain
+FROM payment_method_assets pma
+JOIN payment_methods pm ON pm.id = pma.payment_method_id
+WHERE pma.id = $1;
 
 -- name: CreatePaymentMethodAsset :one
 INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals)

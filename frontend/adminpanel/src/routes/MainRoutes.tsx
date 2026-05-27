@@ -9,7 +9,12 @@ import AuthGuard from 'utils/route-guard/AuthGuard';
 const DashboardPage = Loadable(lazy(() => import('views/dashboard')));
 const ProjectsPage = Loadable(lazy(() => import('views/projects')));
 const ProjectFormPage = Loadable(lazy(() => import('views/projects/ProjectForm')));
-const PaymentChannelsPage = Loadable(lazy(() => import('views/payment-channels')));
+const PaymentChannelsPage = Loadable(lazy(() => import('views/payment-methods')));
+const PaymentMethodForm = Loadable(lazy(() => import('views/payment-methods/PaymentMethodForm')));
+const PaymentAssetsPage = Loadable(lazy(() => import('views/payment-assets')));
+const PaymentAssetForm = Loadable(lazy(() => import('views/payment-assets/PaymentAssetForm')));
+const FacilitatorsPage = Loadable(lazy(() => import('views/facilitators')));
+const FacilitatorForm = Loadable(lazy(() => import('views/facilitators/FacilitatorForm')));
 const RoutesPage = Loadable(lazy(() => import('views/routes-page')));
 const RouteFormPage = Loadable(lazy(() => import('views/routes-page/RouteFormPage')));
 const StatsPage = Loadable(lazy(() => import('views/stats')));
@@ -47,20 +52,52 @@ const MainRoutes = {
       element: <ProjectFormPage />
     },
     {
-      path: '/payment-channels',
+      path: '/payment-methods',
       element: <PaymentChannelsPage />
     },
     {
-      path: '/payment-channels/create',
-      element: <EntityFormPage />
+      path: '/payment-methods/create',
+      element: <PaymentMethodForm />
     },
     {
-      path: '/payment-channels/edit',
-      element: <EntityFormPage />
+      path: '/payment-methods/edit',
+      element: <PaymentMethodForm />
     },
     {
-      path: '/payment-channels/view',
-      element: <EntityFormPage />
+      path: '/payment-methods/view',
+      element: <PaymentMethodForm />
+    },
+    {
+      path: '/payment-assets',
+      element: <PaymentAssetsPage />
+    },
+    {
+      path: '/payment-assets/create',
+      element: <PaymentAssetForm />
+    },
+    {
+      path: '/payment-assets/edit',
+      element: <PaymentAssetForm />
+    },
+    {
+      path: '/payment-assets/view',
+      element: <PaymentAssetForm />
+    },
+    {
+      path: '/facilitators',
+      element: <FacilitatorsPage />
+    },
+    {
+      path: '/facilitators/create',
+      element: <FacilitatorForm />
+    },
+    {
+      path: '/facilitators/edit',
+      element: <FacilitatorForm />
+    },
+    {
+      path: '/facilitators/view',
+      element: <FacilitatorForm />
     },
     {
       path: '/routes',
