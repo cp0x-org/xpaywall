@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -44,7 +45,6 @@ type outboundRouteResponse struct {
 	ProjectSlug string    `json:"project_slug"`
 	Name        string    `json:"name"`
 	PathPattern string    `json:"path_pattern"`
-	PriceAmount int32     `json:"price_amount"`
 	PriceUSD    string    `json:"price_usd"`
 	Description string    `json:"description"`
 	Free        bool      `json:"free"`
@@ -55,7 +55,7 @@ type outboundRouteResponse struct {
 func routeListRowToResponse(r postgres.ListOutboundRoutesRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID, ProjectSlug: r.ProjectSlug,
-		Name: r.Name, PathPattern: r.PathPattern, PriceAmount: r.PriceAmount,
+		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
@@ -64,7 +64,7 @@ func routeListRowToResponse(r postgres.ListOutboundRoutesRow) outboundRouteRespo
 func routeListByProjectRowToResponse(r postgres.ListOutboundRoutesByProjectRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID, ProjectSlug: r.ProjectSlug,
-		Name: r.Name, PathPattern: r.PathPattern, PriceAmount: r.PriceAmount,
+		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
@@ -73,7 +73,7 @@ func routeListByProjectRowToResponse(r postgres.ListOutboundRoutesByProjectRow) 
 func routeGetRowToResponse(r postgres.GetOutboundRouteRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID,
-		Name: r.Name, PathPattern: r.PathPattern, PriceAmount: r.PriceAmount,
+		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
@@ -82,7 +82,7 @@ func routeGetRowToResponse(r postgres.GetOutboundRouteRow) outboundRouteResponse
 func routeCreateRowToResponse(r postgres.CreateOutboundRouteRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID,
-		Name: r.Name, PathPattern: r.PathPattern, PriceAmount: r.PriceAmount,
+		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
@@ -91,7 +91,7 @@ func routeCreateRowToResponse(r postgres.CreateOutboundRouteRow) outboundRouteRe
 func routeUpdateRowToResponse(r postgres.UpdateOutboundRouteRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID,
-		Name: r.Name, PathPattern: r.PathPattern, PriceAmount: r.PriceAmount,
+		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
@@ -177,7 +177,6 @@ type createOutboundRouteRequest struct {
 	ProjectID   uuid.UUID `json:"project_id" binding:"required"`
 	Name        string    `json:"name" binding:"required"`
 	PathPattern string    `json:"path_pattern" binding:"required"`
-	PriceAmount int32     `json:"price_amount"`
 	PriceUSD    string    `json:"price_usd"`
 	Description string    `json:"description"`
 	Free        bool      `json:"free"`
@@ -194,6 +193,11 @@ type createOutboundRouteRequest struct {
 // @Failure     500 {object} errorResponse
 // @Security    BearerAuth
 // @Router      /api/v1/outbound-routes [post]
+// normalizePathPattern ensures the pattern has exactly one leading slash.
+func normalizePathPattern(p string) string {
+	return "/" + strings.TrimLeft(p, "/")
+}
+
 func (h *Handler) CreateOutboundRoute(c *gin.Context) {
 	var req createOutboundRouteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -204,8 +208,7 @@ func (h *Handler) CreateOutboundRoute(c *gin.Context) {
 		ID:          uuid.New(),
 		ProjectID:   req.ProjectID,
 		Name:        req.Name,
-		PathPattern: req.PathPattern,
-		PriceAmount: req.PriceAmount,
+		PathPattern: normalizePathPattern(req.PathPattern),
 		PriceUsd:    req.PriceUSD,
 		Description: req.Description,
 		Free:        req.Free,
@@ -218,12 +221,12 @@ func (h *Handler) CreateOutboundRoute(c *gin.Context) {
 }
 
 type updateOutboundRouteRequest struct {
-	Name        *string `json:"name"`
-	PathPattern *string `json:"path_pattern"`
-	PriceAmount *int32  `json:"price_amount"`
-	PriceUSD    *string `json:"price_usd"`
-	Description *string `json:"description"`
-	Free        *bool   `json:"free"`
+	ProjectID   *uuid.UUID `json:"project_id"`
+	Name        *string    `json:"name"`
+	PathPattern *string    `json:"path_pattern"`
+	PriceUSD    *string    `json:"price_usd"`
+	Description *string    `json:"description"`
+	Free        *bool      `json:"free"`
 }
 
 // UpdateOutboundRoute updates an outbound route by ID.
@@ -249,11 +252,15 @@ func (h *Handler) UpdateOutboundRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if req.PathPattern != nil {
+		normalized := normalizePathPattern(*req.PathPattern)
+		req.PathPattern = &normalized
+	}
 	row, err := h.q.UpdateOutboundRoute(c.Request.Context(), postgres.UpdateOutboundRouteParams{
 		ID:          id,
+		ProjectID:   uuidPtrToPgUUID(req.ProjectID),
 		Name:        ptrToPgText(req.Name),
 		PathPattern: ptrToPgText(req.PathPattern),
-		PriceAmount: int32PtrToPgInt4(req.PriceAmount),
 		PriceUsd:    req.PriceUSD,
 		Description: req.Description,
 		Free:        boolPtrToPgBool(req.Free),

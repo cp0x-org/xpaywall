@@ -616,6 +616,63 @@ func (h *Handler) ListProjectPaymentMethods(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+type projectPaymentMethodFullResponse struct {
+	ID                uuid.UUID `json:"id"`
+	ProjectID         uuid.UUID `json:"project_id"`
+	ProjectName       string    `json:"project_name"`
+	PaymentMethodID   uuid.UUID `json:"payment_method_id"`
+	PaymentMethodName string    `json:"payment_method_name"`
+	AssetID           uuid.UUID `json:"asset_id"`
+	AssetSymbol       string    `json:"asset_symbol"`
+	Scheme            string    `json:"scheme"`
+	FacilitatorID     uuid.UUID `json:"facilitator_id"`
+	FacilitatorName   string    `json:"facilitator_name"`
+	PayoutAddress     *string   `json:"payout_address,omitempty"`
+	Enabled           bool      `json:"enabled"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+func toProjectPaymentMethodFullResponse(r postgres.ListAllProjectPaymentMethodsRow) projectPaymentMethodFullResponse {
+	return projectPaymentMethodFullResponse{
+		ID:                r.ID,
+		ProjectID:         r.ProjectID,
+		ProjectName:       r.ProjectName,
+		PaymentMethodID:   r.PaymentMethodID,
+		PaymentMethodName: r.PaymentMethodName,
+		AssetID:           r.AssetID,
+		AssetSymbol:       r.AssetSymbol,
+		Scheme:            r.Scheme,
+		FacilitatorID:     r.FacilitatorID,
+		FacilitatorName:   r.FacilitatorName,
+		PayoutAddress:     pgTextPtr(r.PayoutAddress),
+		Enabled:           r.Enabled,
+		CreatedAt:         r.CreatedAt.Time,
+		UpdatedAt:         r.UpdatedAt.Time,
+	}
+}
+
+// ListAllProjectPaymentMethods lists all project payment methods across all projects with joined names.
+// @Summary     List all project payment methods
+// @Tags        project-payment-methods
+// @Produce     json
+// @Success     200 {array} projectPaymentMethodFullResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/project-payment-methods/all [get]
+func (h *Handler) ListAllProjectPaymentMethods(c *gin.Context) {
+	rows, err := h.q.ListAllProjectPaymentMethods(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	result := make([]projectPaymentMethodFullResponse, len(rows))
+	for i, r := range rows {
+		result[i] = toProjectPaymentMethodFullResponse(r)
+	}
+	c.JSON(http.StatusOK, result)
+}
+
 // GetProjectPaymentMethod returns a project payment method by ID.
 // @Summary     Get project payment method
 // @Tags        project-payment-methods

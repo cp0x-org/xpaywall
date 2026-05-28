@@ -71,11 +71,13 @@ func resolveChannels(cfg *config.Config, rule config.Rule) []*PaymentChannel {
 			channels = append(channels, &PaymentChannel{
 				Protocol: "x402",
 				Scheme:   m.X402.Scheme,
+				Decimals: m.X402.Decimals,
 				Enabled:  true,
 				ChannelConfig: map[string]string{
 					"facilitator_url": m.X402.FacilitatorURL,
 					"network":         m.X402.Network,
 					"merchant":        m.X402.Merchant,
+					"asset":           m.X402.Asset,
 				},
 			})
 			//case m.IsMPP():

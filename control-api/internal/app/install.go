@@ -91,14 +91,14 @@ BEGIN
     );
 
     INSERT INTO routes (
-        id, project_id, name, path_pattern, price_amount, price_usd, description, free
+        id, project_id, name, path_pattern, price_usd, description, free
     ) VALUES
-        (gen_random_uuid(), v_project_id, 'health',             '/health',            0, '$0.001', 'Health check endpoint',                              FALSE),
-        (gen_random_uuid(), v_project_id, 'metered-api',        '/api/metered/*',     0, '$0.10',  'Metered API billed by actual usage',                  FALSE),
-        (gen_random_uuid(), v_project_id, 'weather',            '/weather',           0, '$0.10',  'Get weather data',                                    FALSE),
-        (gen_random_uuid(), v_project_id, 'free-endpoint',      '/free-endpoint',     0, '',       'Free endpoint, no payment required',                  TRUE),
-        (gen_random_uuid(), v_project_id, 'free-multipoint',    '/free-multipoint',   0, '',       'Free multipoint root, no payment required',           TRUE),
-        (gen_random_uuid(), v_project_id, 'free-multipoint-sub','/free-multipoint/*', 0, '',       'Free multipoint with subpath, no payment required',   TRUE);
+        (gen_random_uuid(), v_project_id, 'health',             '/health',            '0.001', 'Health check endpoint',                              FALSE),
+        (gen_random_uuid(), v_project_id, 'metered-api',        '/api/metered/*',     '0.10',  'Metered API billed by actual usage',                  FALSE),
+        (gen_random_uuid(), v_project_id, 'weather',            '/weather',           '0.10',  'Get weather data',                                    FALSE),
+        (gen_random_uuid(), v_project_id, 'free-endpoint',      '/free-endpoint',     '',      'Free endpoint, no payment required',                  TRUE),
+        (gen_random_uuid(), v_project_id, 'free-multipoint',    '/free-multipoint',   '',      'Free multipoint root, no payment required',           TRUE),
+        (gen_random_uuid(), v_project_id, 'free-multipoint-sub','/free-multipoint/*', '',      'Free multipoint with subpath, no payment required',   TRUE);
 END;
 $$;
 `

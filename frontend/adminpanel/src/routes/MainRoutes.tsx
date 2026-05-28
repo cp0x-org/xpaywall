@@ -18,6 +18,7 @@ const FacilitatorForm = Loadable(lazy(() => import('views/facilitators/Facilitat
 const RoutesPage = Loadable(lazy(() => import('views/routes-page')));
 const RouteFormPage = Loadable(lazy(() => import('views/routes-page/RouteFormPage')));
 const StatsPage = Loadable(lazy(() => import('views/stats')));
+const ProjectPaymentMethodsPage = Loadable(lazy(() => import('views/project-payment-methods')));
 const RequestsPage = Loadable(lazy(() => import('views/requests')));
 const EntityFormPage = Loadable(lazy(() => import('views/entity-pages/EntityFormPage')));
 
@@ -114,6 +115,10 @@ const MainRoutes = {
     {
       path: '/routes/view',
       element: <RouteFormPage />
+    },
+    {
+      path: '/project-payment-methods',
+      element: <ProjectPaymentMethodsPage />
     },
     {
       path: '/requests',

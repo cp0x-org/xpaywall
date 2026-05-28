@@ -57,9 +57,12 @@ type channelDTO struct {
 	PaymentMethodID uuid.UUID         `json:"payment_method_id"`
 	AssetID         *uuid.UUID        `json:"asset_id,omitempty"`
 	// flat fields sent by control-api (new schema)
-	FacilitatorURL string `json:"facilitator_url"`
-	CaIP2ChainID   string `json:"caip2_chain_id"`
-	PayoutAddress  string `json:"payout_address"`
+	FacilitatorURL  string `json:"facilitator_url"`
+	CaIP2ChainID    string `json:"caip2_chain_id"`
+	PayoutAddress   string `json:"payout_address"`
+	ContractAddress string `json:"contract_address"`
+	Amount          string `json:"amount"`
+	Decimals        int32  `json:"decimals"`
 }
 
 // GetByInboundPath resolves a full inbound path (/{slug}/{path}) via the control-api.
@@ -111,6 +114,7 @@ func fromResolveResponse(dto resolveRouteResponse) *Rule {
 				"facilitator_url": ch.FacilitatorURL,
 				"network":         ch.CaIP2ChainID,
 				"merchant":        ch.PayoutAddress,
+				"asset":           ch.ContractAddress,
 			}
 		}
 
@@ -124,13 +128,18 @@ func fromResolveResponse(dto resolveRouteResponse) *Rule {
 			id = ch.PaymentMethodID
 		}
 
+		price := ch.Amount
+		if price == "" {
+			price = ch.Price
+		}
 		channels = append(channels, &PaymentChannel{
 			ID:            id,
 			AssetID:       ch.AssetID,
 			Protocol:      ch.Protocol,
 			Method:        method,
 			Scheme:        ch.Scheme,
-			Price:         ch.Price,
+			Price:         price,
+			Decimals:      ch.Decimals,
 			Enabled:       ch.Enabled,
 			ChannelConfig: cfg,
 		})

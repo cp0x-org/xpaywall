@@ -164,29 +164,11 @@ func buildX402Protocol(
 			price = rule.Price
 		}
 
-		// Use explicit asset+amount map when asset is configured (v2 semantics).
-		// x402 ParsePrice accepts map[string]interface{} with "asset"+"amount" keys.
-		// Neither x402.AssetAmount nor types.PaymentRequirements structs are accepted
-		// by ParsePrice — it only type-asserts to map[string]interface{}.
-		var priceVal any
-		if asset := ch.ChannelConfig["asset"]; asset != "" {
-			priceVal = map[string]any{
-				"asset":  asset,
-				"amount": price,
-			}
-		} else {
-			priceVal = price
+		priceVal := map[string]any{
+			"asset":  ch.ChannelConfig["asset"],
+			"amount": price,
 		}
-		// TODO - ONLY THIS VARIANT !!!!
-		priceVal = map[string]any{
-			"asset":  "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // USDC
-			"amount": "780",
-		}
-
-		//priceVal = map[string]any{
-		//	"asset":  "0x808456652fdb597867f38412077a9182bf77359f", // EURC
-		//	"amount": "89000",
-		//}
+		fmt.Printf("priceVal: %+v\n", priceVal)
 
 		options = append(options, x402http.PaymentOption{
 			Scheme:  config.NormalizeScheme(ch.Scheme),

@@ -1,8 +1,9 @@
 package gateway
 
 import (
-	"fmt"
+	"math"
 	nethttp "net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -43,6 +44,9 @@ type channelDTO struct {
 	FacilitatorURL  string    `json:"facilitator_url"`
 	PayoutAddress   string    `json:"payout_address,omitempty"`
 	AssetSymbol     string    `json:"asset_symbol"`
+	ContractAddress string    `json:"contract_address,omitempty"`
+	Amount          string    `json:"amount,omitempty"`
+	Decimals        int32     `json:"decimals"`
 	Enabled         bool      `json:"enabled"`
 	PaymentMethodID uuid.UUID `json:"payment_method_id"`
 	AssetID         uuid.UUID `json:"asset_id"`
@@ -88,9 +92,6 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 	}
 
 	priceUSD := route.PriceUsd
-	if priceUSD == "" && route.PriceAmount > 0 {
-		priceUSD = fmt.Sprintf("%.6f", float64(route.PriceAmount)/100.0)
-	}
 
 	resp := resolveRouteResponse{
 		ProjectID:       route.ProjectID,
@@ -135,9 +136,28 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 			if m.PayoutAddress.Valid {
 				dto.PayoutAddress = m.PayoutAddress.String
 			}
+			if m.ContractAddress.Valid {
+				dto.ContractAddress = m.ContractAddress.String
+				dto.Amount = computeRawAmount(priceUSD, m.Decimals)
+				dto.Decimals = m.Decimals
+			}
 			resp.PaymentChannels = append(resp.PaymentChannels, dto)
 		}
 	}
 
 	c.JSON(nethttp.StatusOK, resp)
+}
+
+// computeRawAmount converts a USD price string (e.g. "0.001") to a raw blockchain
+// integer string using the asset's on-chain decimals (e.g. 6 for USDC → "1000").
+func computeRawAmount(priceUSD string, decimals int32) string {
+	if priceUSD == "" || decimals <= 0 {
+		return ""
+	}
+	f, err := strconv.ParseFloat(priceUSD, 64)
+	if err != nil || f <= 0 {
+		return ""
+	}
+	raw := int64(math.Round(f * math.Pow10(int(decimals))))
+	return strconv.FormatInt(raw, 10)
 }

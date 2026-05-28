@@ -45,20 +45,6 @@ func int32PtrToPgInt4(i *int32) pgtype.Int4 {
 	return pgtype.Int4{Int32: *i, Valid: true}
 }
 
-func pgInt8ToPtr(i pgtype.Int8) *int64 {
-	if !i.Valid {
-		return nil
-	}
-	return &i.Int64
-}
-
-func int64PtrToPgInt8(i *int64) pgtype.Int8 {
-	if i == nil {
-		return pgtype.Int8{Valid: false}
-	}
-	return pgtype.Int8{Int64: *i, Valid: true}
-}
-
 func pgTimestampToPtr(t pgtype.Timestamp) *time.Time {
 	if !t.Valid {
 		return nil
@@ -113,7 +99,6 @@ type requestLogResponse struct {
 	PaymentCompletedAt     *time.Time `json:"payment_completed_at,omitempty"`
 	PaymentChannelID       *uuid.UUID `json:"payment_channel_id,omitempty"`
 	PaymentChannelAssetID  *uuid.UUID `json:"payment_channel_asset_id,omitempty"`
-	AmountPaid             *int64     `json:"amount_paid,omitempty"`
 	AmountUSD              *string    `json:"amount_usd,omitempty"`
 	UpstreamURL            *string    `json:"upstream_url,omitempty"`
 	UpstreamStatusCode     *int32     `json:"upstream_status_code,omitempty"`
@@ -150,7 +135,6 @@ func toRequestLogResponse(r postgres.RequestLog) requestLogResponse {
 		PaymentCompletedAt:     pgTimestampToPtr(r.PaymentCompletedAt),
 		PaymentChannelID:       pgUUIDToPtr(r.PaymentChannelID),
 		PaymentChannelAssetID:  pgUUIDToPtr(r.PaymentChannelAssetID),
-		AmountPaid:             pgInt8ToPtr(r.AmountPaid),
 		AmountUSD:              pgNumericToStringPtr(r.AmountUsd),
 		UpstreamURL:            r.UpstreamUrl,
 		UpstreamStatusCode:     pgInt4ToPtr(r.UpstreamStatusCode),
@@ -279,7 +263,6 @@ type createRequestLogRequest struct {
 	PaymentCompletedAt     *time.Time `json:"payment_completed_at"`
 	PaymentChannelID       *uuid.UUID `json:"payment_channel_id"`
 	PaymentChannelAssetID  *uuid.UUID `json:"payment_channel_asset_id"`
-	AmountPaid             *int64     `json:"amount_paid"`
 	AmountUSD              *string    `json:"amount_usd"`
 	UpstreamURL            *string    `json:"upstream_url"`
 	UpstreamStatusCode     *int32     `json:"upstream_status_code"`
@@ -326,7 +309,6 @@ func (h *Handler) CreateRequestLog(c *gin.Context) {
 		PaymentCompletedAt:     timePtrToPgTimestamp(req.PaymentCompletedAt),
 		PaymentChannelID:       uuidPtrToPgUUID(req.PaymentChannelID),
 		PaymentChannelAssetID:  uuidPtrToPgUUID(req.PaymentChannelAssetID),
-		AmountPaid:             int64PtrToPgInt8(req.AmountPaid),
 		AmountUsd:              stringPtrToPgNumeric(req.AmountUSD),
 		UpstreamUrl:            req.UpstreamURL,
 		UpstreamStatusCode:     int32PtrToPgInt4(req.UpstreamStatusCode),
@@ -351,7 +333,6 @@ type updateRequestLogRequest struct {
 	PaymentCompletedAt     *time.Time `json:"payment_completed_at"`
 	PaymentChannelID       *uuid.UUID `json:"payment_channel_id"`
 	PaymentChannelAssetID  *uuid.UUID `json:"payment_channel_asset_id"`
-	AmountPaid             *int64     `json:"amount_paid"`
 	AmountUSD              *string    `json:"amount_usd"`
 	UpstreamURL            *string    `json:"upstream_url"`
 	UpstreamStatusCode     *int32     `json:"upstream_status_code"`
@@ -394,7 +375,6 @@ func (h *Handler) UpdateRequestLog(c *gin.Context) {
 		PaymentCompletedAt:     timePtrToPgTimestamp(req.PaymentCompletedAt),
 		PaymentChannelID:       uuidPtrToPgUUID(req.PaymentChannelID),
 		PaymentChannelAssetID:  uuidPtrToPgUUID(req.PaymentChannelAssetID),
-		AmountPaid:             int64PtrToPgInt8(req.AmountPaid),
 		AmountUsd:              stringPtrToPgNumeric(req.AmountUSD),
 		UpstreamUrl:            req.UpstreamURL,
 		UpstreamStatusCode:     int32PtrToPgInt4(req.UpstreamStatusCode),

@@ -57,6 +57,7 @@ type X402Method struct {
 	TimeoutSeconds         int    `json:"timeout_seconds" yaml:"timeout_seconds" mapstructure:"timeout_seconds"`
 	Merchant               string `json:"merchant" yaml:"merchant" mapstructure:"merchant"`
 	Asset                  string `json:"asset" yaml:"asset" mapstructure:"asset"`
+	Decimals               int32  `json:"decimals" yaml:"decimals" mapstructure:"decimals"`
 }
 
 //type MPPMethod struct {

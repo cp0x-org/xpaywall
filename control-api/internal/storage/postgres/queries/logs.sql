@@ -5,7 +5,7 @@ INSERT INTO request_logs (
     payment_required, payment_requested_at,
     payment_completed, payment_completed_at,
     payment_channel_id, payment_channel_asset_id,
-    amount_paid, amount_usd,
+    amount_usd,
     upstream_url, upstream_status_code, upstream_response_time_ms,
     final_status_code, error_type, error_message
 ) VALUES (
@@ -14,9 +14,9 @@ INSERT INTO request_logs (
     $10, $11,
     $12, $13,
     $14, $15,
-    $16, $17,
-    $18, $19, $20,
-    $21, $22, $23
+    $16,
+    $17, $18, $19,
+    $20, $21, $22
 )
 RETURNING *;
 
@@ -30,14 +30,13 @@ SET status                    = $2,
     payment_completed_at      = COALESCE($7, payment_completed_at),
     payment_channel_id        = COALESCE($8, payment_channel_id),
     payment_channel_asset_id  = COALESCE($9, payment_channel_asset_id),
-    amount_paid               = COALESCE($10, amount_paid),
-    amount_usd                = COALESCE($11, amount_usd),
-    upstream_url              = COALESCE($12, upstream_url),
-    upstream_status_code      = COALESCE($13, upstream_status_code),
-    upstream_response_time_ms = COALESCE($14, upstream_response_time_ms),
-    final_status_code         = COALESCE($15, final_status_code),
-    error_type                = COALESCE($16, error_type),
-    error_message             = COALESCE($17, error_message),
+    amount_usd                = COALESCE($10, amount_usd),
+    upstream_url              = COALESCE($11, upstream_url),
+    upstream_status_code      = COALESCE($12, upstream_status_code),
+    upstream_response_time_ms = COALESCE($13, upstream_response_time_ms),
+    final_status_code         = COALESCE($14, final_status_code),
+    error_type                = COALESCE($15, error_type),
+    error_message             = COALESCE($16, error_message),
     updated_at                = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

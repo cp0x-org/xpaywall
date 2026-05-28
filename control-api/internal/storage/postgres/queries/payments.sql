@@ -94,6 +94,25 @@ DELETE FROM facilitators WHERE id = $1;
 -- name: ListProjectPaymentMethods :many
 SELECT * FROM project_payment_methods WHERE project_id = $1 ORDER BY created_at DESC;
 
+-- name: ListAllProjectPaymentMethods :many
+SELECT
+    ppm.id,
+    ppm.project_id,          p.name   AS project_name,
+    ppm.payment_method_id,   pm.name  AS payment_method_name,
+    ppm.asset_id,            a.symbol AS asset_symbol,
+    ppm.scheme,
+    ppm.facilitator_id,      f.name   AS facilitator_name,
+    ppm.payout_address,
+    ppm.enabled,
+    ppm.created_at,
+    ppm.updated_at
+FROM project_payment_methods ppm
+JOIN projects              p  ON p.id  = ppm.project_id
+JOIN payment_methods       pm ON pm.id = ppm.payment_method_id
+JOIN payment_method_assets a  ON a.id  = ppm.asset_id
+JOIN facilitators          f  ON f.id  = ppm.facilitator_id
+ORDER BY p.name, ppm.created_at DESC;
+
 -- name: GetProjectPaymentMethod :one
 SELECT * FROM project_payment_methods WHERE id = $1;
 

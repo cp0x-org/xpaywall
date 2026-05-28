@@ -50,7 +50,7 @@ INSERT INTO request_logs (
     payment_required, payment_requested_at,
     payment_completed, payment_completed_at,
     payment_channel_id, payment_channel_asset_id,
-    amount_paid, amount_usd,
+    amount_usd,
     upstream_url, upstream_status_code, upstream_response_time_ms,
     final_status_code, error_type, error_message
 ) VALUES (
@@ -59,11 +59,11 @@ INSERT INTO request_logs (
     $10, $11,
     $12, $13,
     $14, $15,
-    $16, $17,
-    $18, $19, $20,
-    $21, $22, $23
+    $16,
+    $17, $18, $19,
+    $20, $21, $22
 )
-RETURNING id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_paid, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at
+RETURNING id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at
 `
 
 type CreateRequestLogParams struct {
@@ -82,7 +82,6 @@ type CreateRequestLogParams struct {
 	PaymentCompletedAt     pgtype.Timestamp
 	PaymentChannelID       pgtype.UUID
 	PaymentChannelAssetID  pgtype.UUID
-	AmountPaid             pgtype.Int8
 	AmountUsd              pgtype.Numeric
 	UpstreamUrl            *string
 	UpstreamStatusCode     pgtype.Int4
@@ -109,7 +108,6 @@ func (q *Queries) CreateRequestLog(ctx context.Context, arg CreateRequestLogPara
 		arg.PaymentCompletedAt,
 		arg.PaymentChannelID,
 		arg.PaymentChannelAssetID,
-		arg.AmountPaid,
 		arg.AmountUsd,
 		arg.UpstreamUrl,
 		arg.UpstreamStatusCode,
@@ -135,7 +133,6 @@ func (q *Queries) CreateRequestLog(ctx context.Context, arg CreateRequestLogPara
 		&i.PaymentCompletedAt,
 		&i.PaymentChannelID,
 		&i.PaymentChannelAssetID,
-		&i.AmountPaid,
 		&i.AmountUsd,
 		&i.UpstreamUrl,
 		&i.UpstreamStatusCode,
@@ -261,7 +258,7 @@ func (q *Queries) GetRecentRequestsForDashboardByProject(ctx context.Context, pr
 }
 
 const getRequestLog = `-- name: GetRequestLog :one
-SELECT id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_paid, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at FROM request_logs WHERE id = $1
+SELECT id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at FROM request_logs WHERE id = $1
 `
 
 func (q *Queries) GetRequestLog(ctx context.Context, id uuid.UUID) (RequestLog, error) {
@@ -283,7 +280,6 @@ func (q *Queries) GetRequestLog(ctx context.Context, id uuid.UUID) (RequestLog, 
 		&i.PaymentCompletedAt,
 		&i.PaymentChannelID,
 		&i.PaymentChannelAssetID,
-		&i.AmountPaid,
 		&i.AmountUsd,
 		&i.UpstreamUrl,
 		&i.UpstreamStatusCode,
@@ -298,7 +294,7 @@ func (q *Queries) GetRequestLog(ctx context.Context, id uuid.UUID) (RequestLog, 
 }
 
 const getRequestLogByRequestID = `-- name: GetRequestLogByRequestID :one
-SELECT id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_paid, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at FROM request_logs WHERE request_id = $1
+SELECT id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at FROM request_logs WHERE request_id = $1
 `
 
 func (q *Queries) GetRequestLogByRequestID(ctx context.Context, requestID string) (RequestLog, error) {
@@ -320,7 +316,6 @@ func (q *Queries) GetRequestLogByRequestID(ctx context.Context, requestID string
 		&i.PaymentCompletedAt,
 		&i.PaymentChannelID,
 		&i.PaymentChannelAssetID,
-		&i.AmountPaid,
 		&i.AmountUsd,
 		&i.UpstreamUrl,
 		&i.UpstreamStatusCode,
@@ -367,7 +362,7 @@ func (q *Queries) ListRequestEventsByLog(ctx context.Context, requestLogID uuid.
 }
 
 const listRequestLogs = `-- name: ListRequestLogs :many
-SELECT id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_paid, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at FROM request_logs
+SELECT id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at FROM request_logs
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
 `
@@ -402,7 +397,6 @@ func (q *Queries) ListRequestLogs(ctx context.Context, arg ListRequestLogsParams
 			&i.PaymentCompletedAt,
 			&i.PaymentChannelID,
 			&i.PaymentChannelAssetID,
-			&i.AmountPaid,
 			&i.AmountUsd,
 			&i.UpstreamUrl,
 			&i.UpstreamStatusCode,
@@ -424,7 +418,7 @@ func (q *Queries) ListRequestLogs(ctx context.Context, arg ListRequestLogsParams
 }
 
 const listRequestLogsByProject = `-- name: ListRequestLogsByProject :many
-SELECT id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_paid, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at FROM request_logs
+SELECT id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at FROM request_logs
 WHERE project_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3
@@ -461,7 +455,6 @@ func (q *Queries) ListRequestLogsByProject(ctx context.Context, arg ListRequestL
 			&i.PaymentCompletedAt,
 			&i.PaymentChannelID,
 			&i.PaymentChannelAssetID,
-			&i.AmountPaid,
 			&i.AmountUsd,
 			&i.UpstreamUrl,
 			&i.UpstreamStatusCode,
@@ -492,17 +485,16 @@ SET status                    = $2,
     payment_completed_at      = COALESCE($7, payment_completed_at),
     payment_channel_id        = COALESCE($8, payment_channel_id),
     payment_channel_asset_id  = COALESCE($9, payment_channel_asset_id),
-    amount_paid               = COALESCE($10, amount_paid),
-    amount_usd                = COALESCE($11, amount_usd),
-    upstream_url              = COALESCE($12, upstream_url),
-    upstream_status_code      = COALESCE($13, upstream_status_code),
-    upstream_response_time_ms = COALESCE($14, upstream_response_time_ms),
-    final_status_code         = COALESCE($15, final_status_code),
-    error_type                = COALESCE($16, error_type),
-    error_message             = COALESCE($17, error_message),
+    amount_usd                = COALESCE($10, amount_usd),
+    upstream_url              = COALESCE($11, upstream_url),
+    upstream_status_code      = COALESCE($12, upstream_status_code),
+    upstream_response_time_ms = COALESCE($13, upstream_response_time_ms),
+    final_status_code         = COALESCE($14, final_status_code),
+    error_type                = COALESCE($15, error_type),
+    error_message             = COALESCE($16, error_message),
     updated_at                = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_paid, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at
+RETURNING id, project_id, outbound_route_id, request_id, method, path, client_ip, user_agent, status, payment_required, payment_requested_at, payment_completed, payment_completed_at, payment_channel_id, payment_channel_asset_id, amount_usd, upstream_url, upstream_status_code, upstream_response_time_ms, final_status_code, error_type, error_message, created_at, updated_at
 `
 
 type UpdateRequestLogParams struct {
@@ -515,7 +507,6 @@ type UpdateRequestLogParams struct {
 	PaymentCompletedAt     pgtype.Timestamp
 	PaymentChannelID       pgtype.UUID
 	PaymentChannelAssetID  pgtype.UUID
-	AmountPaid             pgtype.Int8
 	AmountUsd              pgtype.Numeric
 	UpstreamUrl            *string
 	UpstreamStatusCode     pgtype.Int4
@@ -536,7 +527,6 @@ func (q *Queries) UpdateRequestLog(ctx context.Context, arg UpdateRequestLogPara
 		arg.PaymentCompletedAt,
 		arg.PaymentChannelID,
 		arg.PaymentChannelAssetID,
-		arg.AmountPaid,
 		arg.AmountUsd,
 		arg.UpstreamUrl,
 		arg.UpstreamStatusCode,
@@ -562,7 +552,6 @@ func (q *Queries) UpdateRequestLog(ctx context.Context, arg UpdateRequestLogPara
 		&i.PaymentCompletedAt,
 		&i.PaymentChannelID,
 		&i.PaymentChannelAssetID,
-		&i.AmountPaid,
 		&i.AmountUsd,
 		&i.UpstreamUrl,
 		&i.UpstreamStatusCode,

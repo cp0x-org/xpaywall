@@ -37,7 +37,6 @@ const emptyValues = {
   name: '',
   path_pattern: '',
   free: false,
-  price_amount: 0,
   price_usd: '',
   description: '',
   submit: null
@@ -78,7 +77,6 @@ export default function RouteFormPage() {
             name: d.name,
             path_pattern: d.path_pattern,
             free: d.free,
-            price_amount: d.price_amount,
             price_usd: d.price_usd ?? '',
             description: d.description ?? '',
             submit: null
@@ -116,9 +114,12 @@ export default function RouteFormPage() {
           project_id: Yup.string().required('Project is required'),
           name: Yup.string().required('Name is required'),
           path_pattern: Yup.string().required('Path pattern is required'),
-          price_amount: Yup.number().when('free', {
+          price_usd: Yup.string().when('free', {
             is: false,
-            then: (s) => s.min(0, 'Must be 0 or greater')
+            then: (s) =>
+              s
+                .required('Price is required')
+                .matches(/^\d+(\.\d+)?$/, 'Must be a positive number, e.g. 0.10')
           })
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
@@ -128,7 +129,7 @@ export default function RouteFormPage() {
               name: values.name,
               path_pattern: values.path_pattern,
               free: values.free,
-              price_amount: values.free ? 0 : Number(values.price_amount),
+              price_amount: 0,
               price_usd: values.free ? '' : values.price_usd,
               description: values.description
             };
@@ -217,32 +218,17 @@ export default function RouteFormPage() {
               />
 
               {!values.free && (
-                <>
-                  <TextField
-                    fullWidth
-                    label="Price Amount (cents)"
-                    name="price_amount"
-                    type="number"
-                    value={values.price_amount}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    error={Boolean(touched.price_amount && errors.price_amount)}
-                    helperText={touched.price_amount && errors.price_amount}
-                    slotProps={{ htmlInput: { min: 0 } }}
-                    disabled={isView}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Price USD"
-                    name="price_usd"
-                    value={values.price_usd}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    helperText='e.g. "0.01"'
-                    disabled={isView}
-                  />
-                </>
+                <TextField
+                  fullWidth
+                  label="Price (USD)"
+                  name="price_usd"
+                  value={values.price_usd}
+                  onBlur={handleBlur}
+                  onChange={handleChange}
+                  error={Boolean(touched.price_usd && errors.price_usd)}
+                  helperText={(touched.price_usd && errors.price_usd) || 'e.g. 0.10'}
+                  disabled={isView}
+                />
               )}
 
               {errors.submit && (

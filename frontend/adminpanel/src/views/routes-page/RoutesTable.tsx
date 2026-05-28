@@ -139,7 +139,7 @@ export default function RoutesTable({
                   <TableCell>
                     <Chip label={row.free ? 'Free' : 'Paid'} size="small" color={row.free ? 'success' : 'default'} />
                   </TableCell>
-                  <TableCell>{row.free ? '—' : row.price_usd || `$${(row.price_amount / 100).toFixed(2)}`}</TableCell>
+                  <TableCell>{row.free ? '—' : row.price_usd ? `$${row.price_usd}` : '—'}</TableCell>
                   <TableCell>{row.project_name || row.project_id.slice(0, 8)}</TableCell>
                   <TableCell align="center">
                     <UrlLinkCell url={buildUrl(proxyUrl, `${row.project_slug}${row.path_pattern}`)} />

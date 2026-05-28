@@ -36,6 +36,7 @@ type PaymentChannel struct {
 	Method        string
 	Scheme        string
 	Price         string
+	Decimals      int32
 	Enabled       bool
 	ChannelConfig map[string]string
 }

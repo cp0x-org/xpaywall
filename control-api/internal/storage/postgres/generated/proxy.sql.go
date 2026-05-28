@@ -99,7 +99,6 @@ SELECT
     oroute.project_id,
     oroute.name,
     oroute.path_pattern,
-    oroute.price_amount,
     oroute.price_usd,
     oroute.description,
     oroute.free,
@@ -128,7 +127,6 @@ type ResolveOutboundRouteRow struct {
 	ProjectID       uuid.UUID
 	Name            string
 	PathPattern     string
-	PriceAmount     int32
 	PriceUsd        string
 	Description     string
 	Free            bool
@@ -146,7 +144,6 @@ func (q *Queries) ResolveOutboundRoute(ctx context.Context, arg ResolveOutboundR
 		&i.ProjectID,
 		&i.Name,
 		&i.PathPattern,
-		&i.PriceAmount,
 		&i.PriceUsd,
 		&i.Description,
 		&i.Free,

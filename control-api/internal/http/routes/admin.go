@@ -27,6 +27,7 @@ func RegisterAdminRoutes(router gin.IRouter, h *handlers.Handler) {
 func registerSystemRoutes(api *gin.RouterGroup, h *handlers.Handler) {
 	users := api.Group("/system")
 	users.GET("/proxy-url", h.GetProxyUrl)
+	users.GET("/networks", h.ListNetworks)
 }
 
 func registerStatsRoutes(api *gin.RouterGroup, h *handlers.Handler) {
@@ -102,6 +103,7 @@ func registerFacilitatorRoutes(api *gin.RouterGroup, h *handlers.Handler) {
 func registerProjectPaymentMethodRoutes(api *gin.RouterGroup, h *handlers.Handler) {
 	projectPaymentMethods := api.Group("/project-payment-methods")
 	projectPaymentMethods.GET("", h.ListProjectPaymentMethods)
+	projectPaymentMethods.GET("/all", h.ListAllProjectPaymentMethods)
 	projectPaymentMethods.GET("/:id", h.GetProjectPaymentMethod)
 	projectPaymentMethods.POST("", h.CreateProjectPaymentMethod)
 	projectPaymentMethods.PUT("/:id", h.UpdateProjectPaymentMethod)

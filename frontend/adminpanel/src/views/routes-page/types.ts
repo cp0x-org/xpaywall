@@ -5,7 +5,6 @@ export interface RouteRow {
   project_slug: string;
   name: string;
   path_pattern: string;
-  price_amount: number;
   price_usd: string;
   description: string;
   free: boolean;

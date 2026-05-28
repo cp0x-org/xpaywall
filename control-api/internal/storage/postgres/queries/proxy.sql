@@ -4,7 +4,6 @@ SELECT
     oroute.project_id,
     oroute.name,
     oroute.path_pattern,
-    oroute.price_amount,
     oroute.price_usd,
     oroute.description,
     oroute.free,

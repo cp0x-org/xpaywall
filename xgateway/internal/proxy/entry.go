@@ -5,9 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -177,13 +179,19 @@ func resolvePaymentChannelInfo(channels []*rules.PaymentChannel, usedProtocol, r
 			continue
 		}
 
-		price := ch.Price
-		if price == "" {
-			price = routePrice
+		rawPrice := ch.Price
+		if rawPrice == "" {
+			rawPrice = routePrice
 		}
 		var pricePtr *string
-		if price != "" {
-			pricePtr = &price
+		if rawPrice != "" && ch.Decimals > 0 {
+			if raw, err := strconv.ParseFloat(rawPrice, 64); err == nil && raw > 0 {
+				usd := raw / math.Pow10(int(ch.Decimals))
+				s := strconv.FormatFloat(usd, 'f', 6, 64)
+				pricePtr = &s
+			}
+		} else if rawPrice != "" {
+			pricePtr = &rawPrice
 		}
 
 		var channelID, assetID *uuid.UUID

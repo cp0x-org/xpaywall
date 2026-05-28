@@ -55,16 +55,33 @@ const mainPage: NavItemType = {
       icon: icons.IconRoute2,
     },
     {
-      id: 'projects-item',
+      id: 'projects',
       title: 'Projects',
-      type: 'item',
-      url: '/projects',
-      icon: IconArticle,
+      type: 'collapse',
+      icon: IconFolderBolt,
+      children: [
+        {
+          id: 'project-list',
+          title: 'Project List',
+          type: 'item',
+          url: '/projects',
+          icon: IconCapProjecting,
+        },
+        {
+          id: 'payment-methods',
+          title: 'Payment Methods',
+          type: 'item',
+          url: '/project-payment-methods',
+          icon: IconMoneybagHeart,
+        },
+      ]
     },
     {
       id: 'payment-channels-item',
       title: 'Payments',
       type: 'collapse',
+      // url: '/payment-channels',
+      icon: IconMoneybagPlus,
       children: [
         {
           id: 'payment-method-item',
@@ -88,8 +105,6 @@ const mainPage: NavItemType = {
           icon: IconServer,
         },
       ],
-      // url: '/payment-channels',
-      icon: IconMoneybagPlus,
     },
     {
       id: 'requests-item',

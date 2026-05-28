@@ -15,6 +15,8 @@ import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Typography from '@mui/material/Typography';
 
 // third party
@@ -25,6 +27,11 @@ import { Formik } from 'formik';
 import MainCard from 'ui-component/cards/MainCard';
 import axios from 'utils/axios';
 import { PaymentMethod } from './types';
+
+interface NetworkItem {
+  caip2: string;
+  name: string;
+}
 
 const emptyValues = {
   code: '',
@@ -48,6 +55,23 @@ export default function PaymentMethodForm() {
   const [loading, setLoading] = useState(isEdit || isView);
   const [loadError, setLoadError] = useState('');
   const [initialValues, setInitialValues] = useState(emptyValues);
+  const [networks, setNetworks] = useState<NetworkItem[]>([]);
+  const [networkMode, setNetworkMode] = useState<'select' | 'custom'>('select');
+
+  useEffect(() => {
+    axios
+      .get<NetworkItem[]>('/api/v1/system/networks')
+      .then((res) => setNetworks(res.data))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!(isEdit || isView) || networks.length === 0) return;
+    const caip2 = initialValues.caip2_chain_id;
+    if (caip2 && !networks.find((n) => n.caip2 === caip2)) {
+      setNetworkMode('custom');
+    }
+  }, [networks, initialValues.caip2_chain_id, isEdit, isView]);
 
   useEffect(() => {
     if ((isEdit || isView) && id) {
@@ -155,28 +179,73 @@ export default function PaymentMethodForm() {
                 {touched.protocol && errors.protocol && <FormHelperText>{errors.protocol}</FormHelperText>}
               </FormControl>
 
-              <TextField
-                fullWidth
-                label="Name"
-                name="name"
-                value={values.name}
-                onBlur={handleBlur}
-                onChange={handleChange}
-                disabled={isView}
-                error={Boolean(touched.name && errors.name)}
-                helperText={(touched.name && errors.name) || 'Human-readable name, e.g. Base Mainnet'}
-              />
+              {!isView && (
+                <ToggleButtonGroup
+                  exclusive
+                  size="small"
+                  value={networkMode}
+                  onChange={(_, val) => {
+                    if (val) setNetworkMode(val);
+                  }}
+                >
+                  <ToggleButton value="select">Select network</ToggleButton>
+                  <ToggleButton value="custom">Custom</ToggleButton>
+                </ToggleButtonGroup>
+              )}
 
-              <TextField
-                fullWidth
-                label="CAIP-2 Chain ID"
-                name="caip2_chain_id"
-                value={values.caip2_chain_id}
-                onBlur={handleBlur}
-                onChange={handleChange}
-                disabled={isView}
-                helperText="Optional, e.g. eip155:8453"
-              />
+              {!isView && networkMode === 'select' && (
+                <FormControl fullWidth>
+                  <InputLabel id="network-label">Network</InputLabel>
+                  <Select
+                    labelId="network-label"
+                    value={values.caip2_chain_id}
+                    label="Network"
+                    onChange={(e) => {
+                      const selected = networks.find((n) => n.caip2 === e.target.value);
+                      setFieldValue('caip2_chain_id', e.target.value);
+                      setFieldValue('name', selected?.name ?? '');
+                    }}
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {networks.map((n) => (
+                      <MenuItem key={n.caip2} value={n.caip2}>
+                        {n.name}
+                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                          {n.caip2}
+                        </Typography>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+
+              {(isView || networkMode === 'custom') && (
+                <>
+                  <TextField
+                    fullWidth
+                    label="Name"
+                    name="name"
+                    value={values.name}
+                    onBlur={handleBlur}
+                    onChange={handleChange}
+                    disabled={isView}
+                    error={Boolean(touched.name && errors.name)}
+                    helperText={(touched.name && errors.name) || 'Human-readable name, e.g. Base Mainnet'}
+                  />
+                  <TextField
+                    fullWidth
+                    label="CAIP-2 Chain ID"
+                    name="caip2_chain_id"
+                    value={values.caip2_chain_id}
+                    onBlur={handleBlur}
+                    onChange={handleChange}
+                    disabled={isView}
+                    helperText="Optional, e.g. eip155:8453"
+                  />
+                </>
+              )}
 
               <FormControlLabel
                 control={

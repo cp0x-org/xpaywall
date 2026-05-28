@@ -129,8 +129,16 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
       .catch(() => {});
   }, [periodMode, customFrom, customTo, projectId]);
 
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
   const options = useMemo((): ApexOptions => {
     const isHourly = granularity === 'hour';
+
+    const maxReq  = series[0].data.length ? Math.max(...series[0].data.map((d) => d.y)) : 0;
+    const maxEarn = series[1].data.length ? Math.max(...series[1].data.map((d) => d.y)) : 0;
+    const reqMax  = Math.ceil((maxReq  || 1) * 1.2);
+    const earnMax = Math.ceil((maxEarn || 1) * 1.2 * 10000) / 10000;
+
     return {
       chart: {
         height: 350,
@@ -139,7 +147,10 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
         fontFamily,
         foreColor: textPrimary,
         toolbar: { show: true },
-        zoom: { enabled: false }
+        zoom: { enabled: false },
+        events: {
+          mounted: (chart) => { chart.windowResizeHandler(); }
+        }
       },
       colors: [COLOR_REQUESTS, COLOR_EARNINGS],
       dataLabels: { enabled: false },
@@ -172,7 +183,6 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
       },
       xaxis: {
         type: 'datetime',
-        tickPlacement: 'on',
         axisBorder: { show: true, color: gridColor },
         axisTicks: { show: true, color: gridColor },
         labels: {
@@ -180,16 +190,21 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
           rotate: 0,
           hideOverlappingLabels: true,
           style: { colors: textPrimary },
-          datetimeUTC: false,
-          format: isHourly ? 'HH:mm' : 'dd MMM',
-          datetimeFormatter: isHourly
-            ? { year: 'yyyy', month: 'MMM dd', day: 'dd MMM', hour: 'HH:mm', minute: 'HH:mm' }
-            : { year: 'yyyy', month: 'MMM yyyy', day: 'dd MMM', hour: 'HH:mm' }
+          formatter: (_val: string, timestamp?: number) => {
+            const d = new Date(timestamp ?? Number(_val));
+            if (isHourly) {
+              return `${String(d.getUTCHours()).padStart(2, '0')}:00`;
+            }
+            return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+          }
         },
         tooltip: { enabled: true }
       },
       yaxis: [
         {
+          seriesName: 'Requests',
+          min: 0,
+          max: reqMax,
           labels: {
             style: { colors: textPrimary },
             formatter: (v) => String(Math.round(v))
@@ -197,6 +212,9 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
           title: { text: 'Requests', style: { color: COLOR_REQUESTS } }
         },
         {
+          seriesName: 'Earnings (USD)',
+          min: 0,
+          max: earnMax,
           opposite: true,
           labels: {
             style: { colors: textPrimary },
@@ -211,7 +229,17 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
         intersect: false,
         followCursor: true,
         theme: isDark ? 'dark' : 'light',
-        x: { format: isHourly ? 'dd MMM HH:mm' : 'dd MMM yyyy' },
+        x: {
+          formatter: (_val: number, opts?: { dataPointIndex?: number }) => {
+            const ts = series[0].data[opts?.dataPointIndex ?? 0]?.x;
+            if (ts === undefined) return '';
+            const d = new Date(ts);
+            if (isHourly) {
+              return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${String(d.getUTCHours()).padStart(2, '0')}:00 UTC`;
+            }
+            return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+          }
+        },
         y: [
           { formatter: (v) => (v !== undefined ? String(Math.round(v)) + ' req' : '—') },
           { formatter: (v) => (v !== undefined ? `$${v.toFixed(4)}` : '—') }
@@ -240,7 +268,7 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
         fontWeight: 600
       }
     };
-  }, [colorScheme, fontFamily, textPrimary, gridColor, isDark, granularity]);
+  }, [colorScheme, fontFamily, textPrimary, gridColor, isDark, granularity, series]);
 
   return (
     <Box

@@ -1,13 +1,15 @@
 # x402 config — required when any rule uses scheme "exact" or "upto".
 x402:
   - name: "x402-base-exact"
-    facilitator_url: "https://x402.dexter.cash"
+    facilitator_url: "https://x402.org/facilitator"
     network: "eip155:84532"                               # Base Sepolia (CAIP-2)
     scheme: "exact"                                       # Default x402 scheme for rules that don't specify one.
     sync_facilitator_on_start: true
     timeout_seconds: 30
-    merchant: "0xEb6ae6fA22D307Eae06BE0862087FdFFdD25Bab4" #pay_to address
-    asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" # USDC on Base Mainnet (CAIP-19)
+    merchant: "0x30F61d67d9db6787bC3B83A6A9ef093ef140140D" #pay_to address
+    asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e" # USDC on Base Mainnet (CAIP-19)
+    decimals: 6                                              # USDC has 6 decimal places
+#    asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913" # ???? USDC on Base Mainnet (CAIP-19)
 
 outbound:
   target: "http://localhost:4021"
@@ -19,15 +21,15 @@ outbound:
   rules:
     - name: "health"
       path: "/health"
-      price: "$0.001"
+      price: "1000"                                       # $0.001 USDC (6 decimals)
       description: "Get weather data"
     - name: "metered-api"
       path: "/api/metered/*"
-      price: "$0.10"                                      # Maximum authorized amount.
+      price: "12000000"                                     # $0.10 USDC (6 decimals); maximum authorized amount
       description: "Metered API billed by actual usage"
     - name: "weather"
       path: "/weather"
-      price: "$0.10"                                      # Maximum authorized amount.
+      price: "100000"                                     # $0.10 USDC (6 decimals)
       description: "get weather data"
       payment_methods: [ "x402-base-exact"]
     - name: "free-endpoint"

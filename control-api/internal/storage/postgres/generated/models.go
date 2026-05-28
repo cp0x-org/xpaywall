@@ -111,7 +111,6 @@ type RequestLog struct {
 	PaymentCompletedAt     pgtype.Timestamp
 	PaymentChannelID       pgtype.UUID
 	PaymentChannelAssetID  pgtype.UUID
-	AmountPaid             pgtype.Int8
 	AmountUsd              pgtype.Numeric
 	UpstreamUrl            *string
 	UpstreamStatusCode     pgtype.Int4
@@ -129,7 +128,6 @@ type Route struct {
 	Name        string
 	Enabled     bool
 	PathPattern string
-	PriceAmount int32
 	Description string
 	Free        bool
 	PriceUsd    string
