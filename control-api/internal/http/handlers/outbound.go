@@ -292,7 +292,7 @@ func (h *Handler) UpdateOutboundRoute(c *gin.Context) {
 	}
 	row, err := h.q.UpdateOutboundRoute(c.Request.Context(), postgres.UpdateOutboundRouteParams{
 		ID:          id,
-		ProjectID:   uuidPtrToPgUUID(req.ProjectID),
+		ProjectID:   req.ProjectID,
 		Name:        ptrToPgText(req.Name),
 		PathPattern: ptrToPgText(req.PathPattern),
 		PriceUsd:    req.PriceUSD,
@@ -323,7 +323,7 @@ func (h *Handler) DeleteOutboundRoute(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	if err := h.q.NullifyRouteInRequestLogs(ctx, pgtype.UUID{Bytes: [16]byte(id), Valid: true}); err != nil {
+	if err := h.q.NullifyRouteInRequestLogs(ctx, &id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

@@ -20,7 +20,7 @@ RETURNING id, owner_user_id, name, slug, enabled, created_at, updated_at
 
 type CreateProjectParams struct {
 	ID          uuid.UUID
-	OwnerUserID uuid.UUID
+	OwnerUserID *uuid.UUID
 	Name        string
 	Slug        string
 }
@@ -134,7 +134,7 @@ WHERE owner_user_id = $1
 ORDER BY name
 `
 
-func (q *Queries) ListProjectsByOwner(ctx context.Context, ownerUserID uuid.UUID) ([]Project, error) {
+func (q *Queries) ListProjectsByOwner(ctx context.Context, ownerUserID *uuid.UUID) ([]Project, error) {
 	rows, err := q.db.Query(ctx, listProjectsByOwner, ownerUserID)
 	if err != nil {
 		return nil, err
@@ -187,7 +187,7 @@ ORDER BY p.name
 
 type ListProjectsWithConfigRow struct {
 	ID             uuid.UUID
-	OwnerUserID    uuid.UUID
+	OwnerUserID    *uuid.UUID
 	Name           string
 	Slug           string
 	Enabled        bool

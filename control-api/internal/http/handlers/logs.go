@@ -16,21 +16,6 @@ import (
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-func pgUUIDToPtr(u pgtype.UUID) *uuid.UUID {
-	if !u.Valid {
-		return nil
-	}
-	id := uuid.UUID(u.Bytes)
-	return &id
-}
-
-func uuidPtrToPgUUID(u *uuid.UUID) pgtype.UUID {
-	if u == nil {
-		return pgtype.UUID{Valid: false}
-	}
-	return pgtype.UUID{Bytes: [16]byte(*u), Valid: true}
-}
-
 func pgInt4ToPtr(i pgtype.Int4) *int32 {
 	if !i.Valid {
 		return nil
@@ -122,7 +107,7 @@ func toRequestLogResponse(r postgres.RequestLog) requestLogResponse {
 	return requestLogResponse{
 		ID:                     r.ID,
 		ProjectID:              r.ProjectID,
-		OutboundRouteID:        pgUUIDToPtr(r.OutboundRouteID),
+		OutboundRouteID:        r.OutboundRouteID,
 		RequestID:              r.RequestID,
 		Method:                 r.Method,
 		Path:                   r.Path,
@@ -133,8 +118,8 @@ func toRequestLogResponse(r postgres.RequestLog) requestLogResponse {
 		PaymentRequestedAt:     pgTimestampToPtr(r.PaymentRequestedAt),
 		PaymentCompleted:       r.PaymentCompleted,
 		PaymentCompletedAt:     pgTimestampToPtr(r.PaymentCompletedAt),
-		PaymentChannelID:       pgUUIDToPtr(r.PaymentChannelID),
-		PaymentChannelAssetID:  pgUUIDToPtr(r.PaymentChannelAssetID),
+		PaymentChannelID:       r.PaymentChannelID,
+		PaymentChannelAssetID:  r.PaymentChannelAssetID,
 		AmountUSD:              pgNumericToStringPtr(r.AmountUsd),
 		UpstreamURL:            r.UpstreamUrl,
 		UpstreamStatusCode:     pgInt4ToPtr(r.UpstreamStatusCode),
@@ -296,7 +281,7 @@ func (h *Handler) CreateRequestLog(c *gin.Context) {
 	row, err := h.q.CreateRequestLog(c.Request.Context(), postgres.CreateRequestLogParams{
 		ID:                     id,
 		ProjectID:              req.ProjectID,
-		OutboundRouteID:        uuidPtrToPgUUID(req.OutboundRouteID),
+		OutboundRouteID:        req.OutboundRouteID,
 		RequestID:              req.RequestID,
 		Method:                 req.Method,
 		Path:                   req.Path,
@@ -307,8 +292,8 @@ func (h *Handler) CreateRequestLog(c *gin.Context) {
 		PaymentRequestedAt:     timePtrToPgTimestamp(req.PaymentRequestedAt),
 		PaymentCompleted:       req.PaymentCompleted,
 		PaymentCompletedAt:     timePtrToPgTimestamp(req.PaymentCompletedAt),
-		PaymentChannelID:       uuidPtrToPgUUID(req.PaymentChannelID),
-		PaymentChannelAssetID:  uuidPtrToPgUUID(req.PaymentChannelAssetID),
+		PaymentChannelID:       req.PaymentChannelID,
+		PaymentChannelAssetID:  req.PaymentChannelAssetID,
 		AmountUsd:              stringPtrToPgNumeric(req.AmountUSD),
 		UpstreamUrl:            req.UpstreamURL,
 		UpstreamStatusCode:     int32PtrToPgInt4(req.UpstreamStatusCode),
@@ -368,13 +353,13 @@ func (h *Handler) UpdateRequestLog(c *gin.Context) {
 	row, err := h.q.UpdateRequestLog(c.Request.Context(), postgres.UpdateRequestLogParams{
 		ID:                     id,
 		Status:                 req.Status,
-		OutboundRouteID:        uuidPtrToPgUUID(req.OutboundRouteID),
+		OutboundRouteID:        req.OutboundRouteID,
 		PaymentRequired:        req.PaymentRequired,
 		PaymentRequestedAt:     timePtrToPgTimestamp(req.PaymentRequestedAt),
 		PaymentCompleted:       req.PaymentCompleted,
 		PaymentCompletedAt:     timePtrToPgTimestamp(req.PaymentCompletedAt),
-		PaymentChannelID:       uuidPtrToPgUUID(req.PaymentChannelID),
-		PaymentChannelAssetID:  uuidPtrToPgUUID(req.PaymentChannelAssetID),
+		PaymentChannelID:       req.PaymentChannelID,
+		PaymentChannelAssetID:  req.PaymentChannelAssetID,
 		AmountUsd:              stringPtrToPgNumeric(req.AmountUSD),
 		UpstreamUrl:            req.UpstreamURL,
 		UpstreamStatusCode:     int32PtrToPgInt4(req.UpstreamStatusCode),

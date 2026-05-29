@@ -41,7 +41,7 @@ type PaymentMethodAsset struct {
 
 type Project struct {
 	ID          uuid.UUID
-	OwnerUserID uuid.UUID
+	OwnerUserID *uuid.UUID
 	Name        string
 	Slug        string
 	Enabled     bool
@@ -98,7 +98,7 @@ type RequestEvent struct {
 type RequestLog struct {
 	ID                     uuid.UUID
 	ProjectID              uuid.UUID
-	OutboundRouteID        pgtype.UUID
+	OutboundRouteID        *uuid.UUID
 	RequestID              string
 	Method                 string
 	Path                   string
@@ -109,8 +109,8 @@ type RequestLog struct {
 	PaymentRequestedAt     pgtype.Timestamp
 	PaymentCompleted       bool
 	PaymentCompletedAt     pgtype.Timestamp
-	PaymentChannelID       pgtype.UUID
-	PaymentChannelAssetID  pgtype.UUID
+	PaymentChannelID       *uuid.UUID
+	PaymentChannelAssetID  *uuid.UUID
 	AmountUsd              pgtype.Numeric
 	UpstreamUrl            *string
 	UpstreamStatusCode     pgtype.Int4

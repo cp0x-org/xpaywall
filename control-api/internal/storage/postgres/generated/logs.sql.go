@@ -69,7 +69,7 @@ RETURNING id, project_id, outbound_route_id, request_id, method, path, client_ip
 type CreateRequestLogParams struct {
 	ID                     uuid.UUID
 	ProjectID              uuid.UUID
-	OutboundRouteID        pgtype.UUID
+	OutboundRouteID        *uuid.UUID
 	RequestID              string
 	Method                 string
 	Path                   string
@@ -80,8 +80,8 @@ type CreateRequestLogParams struct {
 	PaymentRequestedAt     pgtype.Timestamp
 	PaymentCompleted       bool
 	PaymentCompletedAt     pgtype.Timestamp
-	PaymentChannelID       pgtype.UUID
-	PaymentChannelAssetID  pgtype.UUID
+	PaymentChannelID       *uuid.UUID
+	PaymentChannelAssetID  *uuid.UUID
 	AmountUsd              pgtype.Numeric
 	UpstreamUrl            *string
 	UpstreamStatusCode     pgtype.Int4
@@ -500,13 +500,13 @@ RETURNING id, project_id, outbound_route_id, request_id, method, path, client_ip
 type UpdateRequestLogParams struct {
 	ID                     uuid.UUID
 	Status                 string
-	OutboundRouteID        pgtype.UUID
+	OutboundRouteID        *uuid.UUID
 	PaymentRequired        bool
 	PaymentRequestedAt     pgtype.Timestamp
 	PaymentCompleted       bool
 	PaymentCompletedAt     pgtype.Timestamp
-	PaymentChannelID       pgtype.UUID
-	PaymentChannelAssetID  pgtype.UUID
+	PaymentChannelID       *uuid.UUID
+	PaymentChannelAssetID  *uuid.UUID
 	AmountUsd              pgtype.Numeric
 	UpstreamUrl            *string
 	UpstreamStatusCode     pgtype.Int4

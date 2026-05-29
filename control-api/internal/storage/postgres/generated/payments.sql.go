@@ -709,7 +709,7 @@ RETURNING id, project_id, payment_method_id, asset_id, scheme, facilitator_id, p
 type UpdateProjectPaymentMethodParams struct {
 	ID            uuid.UUID
 	Scheme        pgtype.Text
-	FacilitatorID pgtype.UUID
+	FacilitatorID *uuid.UUID
 	PayoutAddress pgtype.Text
 	Config        []byte
 	Enabled       pgtype.Bool

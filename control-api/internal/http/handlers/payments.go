@@ -777,7 +777,7 @@ func (h *Handler) UpdateProjectPaymentMethod(c *gin.Context) {
 	row, err := h.q.UpdateProjectPaymentMethod(c.Request.Context(), postgres.UpdateProjectPaymentMethodParams{
 		ID:            id,
 		Scheme:        ptrToPgText(req.Scheme),
-		FacilitatorID: uuidPtrToPgUUID(req.FacilitatorID),
+		FacilitatorID: req.FacilitatorID,
 		PayoutAddress: ptrToPgText(req.PayoutAddress),
 		Config:        req.Config,
 		Enabled:       boolPtrToPgBool(req.Enabled),

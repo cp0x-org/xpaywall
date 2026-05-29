@@ -257,7 +257,7 @@ const nullifyRouteInRequestLogs = `-- name: NullifyRouteInRequestLogs :exec
 UPDATE request_logs SET outbound_route_id = NULL WHERE outbound_route_id = $1
 `
 
-func (q *Queries) NullifyRouteInRequestLogs(ctx context.Context, outboundRouteID pgtype.UUID) error {
+func (q *Queries) NullifyRouteInRequestLogs(ctx context.Context, outboundRouteID *uuid.UUID) error {
 	_, err := q.db.Exec(ctx, nullifyRouteInRequestLogs, outboundRouteID)
 	return err
 }
@@ -278,7 +278,7 @@ RETURNING id, project_id, name, path_pattern, price_usd, description, free, baza
 
 type UpdateOutboundRouteParams struct {
 	ID          uuid.UUID
-	ProjectID   pgtype.UUID
+	ProjectID   *uuid.UUID
 	Name        pgtype.Text
 	PathPattern pgtype.Text
 	PriceUsd    *string

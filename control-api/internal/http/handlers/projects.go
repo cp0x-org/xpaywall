@@ -11,13 +11,13 @@ import (
 )
 
 type projectResponse struct {
-	ID            uuid.UUID `json:"id"`
-	OwnerUserID   uuid.UUID `json:"owner_user_id"`
-	OwnerUsername string    `json:"owner_username"`
-	Name          string    `json:"name"`
-	Slug          string    `json:"slug"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            uuid.UUID  `json:"id"`
+	OwnerUserID   *uuid.UUID `json:"owner_user_id"`
+	OwnerUsername string     `json:"owner_username"`
+	Name          string     `json:"name"`
+	Slug          string     `json:"slug"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
 type fullProjectResponse struct {
@@ -64,7 +64,9 @@ func (h *Handler) ListProjects(c *gin.Context) {
 	result := make([]projectResponse, len(projects))
 	for i, p := range projects {
 		r := toProjectResponse(p)
-		r.OwnerUsername = usernames[p.OwnerUserID]
+		if p.OwnerUserID != nil {
+			r.OwnerUsername = usernames[*p.OwnerUserID]
+		}
 		result[i] = r
 	}
 	c.JSON(http.StatusOK, result)
@@ -126,9 +128,10 @@ func (h *Handler) GetFullProject(c *gin.Context) {
 		resp.AllowUnmatched = settings.AllowUnmatched
 	}
 
-	user, err := h.q.GetUser(c.Request.Context(), resp.OwnerUserID)
-	if err == nil {
-		resp.OwnerUsername = user.Username
+	if resp.OwnerUserID != nil {
+		if user, err := h.q.GetUser(c.Request.Context(), *resp.OwnerUserID); err == nil {
+			resp.OwnerUsername = user.Username
+		}
 	}
 
 	c.JSON(http.StatusOK, resp)
@@ -174,7 +177,7 @@ func (h *Handler) CreateProject(c *gin.Context) {
 
 	project, err := h.q.CreateProject(c.Request.Context(), postgres.CreateProjectParams{
 		ID:          uuid.New(),
-		OwnerUserID: ownerID,
+		OwnerUserID: &ownerID,
 		Name:        req.Name,
 		Slug:        req.Slug,
 	})
@@ -295,16 +298,16 @@ func (h *Handler) DeleteProject(c *gin.Context) {
 }
 
 type projectWithConfigResponse struct {
-	ID             uuid.UUID `json:"id"`
-	OwnerUserID    uuid.UUID `json:"owner_user_id"`
-	OwnerUsername  string    `json:"owner_username"`
-	Name           string    `json:"name"`
-	Slug           string    `json:"slug"`
-	Enabled        bool      `json:"enabled"`
-	BaseURL        *string   `json:"base_url"`
-	PaymentMethods []string  `json:"payment_methods"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             uuid.UUID  `json:"id"`
+	OwnerUserID    *uuid.UUID `json:"owner_user_id"`
+	OwnerUsername  string     `json:"owner_username"`
+	Name           string     `json:"name"`
+	Slug           string     `json:"slug"`
+	Enabled        bool       `json:"enabled"`
+	BaseURL        *string    `json:"base_url"`
+	PaymentMethods []string   `json:"payment_methods"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 // ListProjectsWithConfig returns all projects with their payment configuration.
@@ -331,9 +334,14 @@ func (h *Handler) ListProjectsWithConfig(c *gin.Context) {
 	result := make([]projectWithConfigResponse, len(projects))
 	for i, p := range projects {
 		result[i] = projectWithConfigResponse{
-			ID:             p.ID,
-			OwnerUserID:    p.OwnerUserID,
-			OwnerUsername:  usernames[p.OwnerUserID],
+			ID:          p.ID,
+			OwnerUserID: p.OwnerUserID,
+			OwnerUsername: func() string {
+				if p.OwnerUserID != nil {
+					return usernames[*p.OwnerUserID]
+				}
+				return ""
+			}(),
 			Name:           p.Name,
 			Slug:           p.Slug,
 			Enabled:        p.Enabled,
