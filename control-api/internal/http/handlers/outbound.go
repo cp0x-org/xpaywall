@@ -226,6 +226,9 @@ func (h *Handler) CreateOutboundRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if !h.requireProjectOwner(c, req.ProjectID) {
+		return
+	}
 	bazaarJSON, err := normalizeBazaarJSON(req.Bazaar)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid bazaar payload: " + err.Error()})
@@ -276,10 +279,23 @@ func (h *Handler) UpdateOutboundRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	existing, err := h.q.GetOutboundRoute(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, existing.ProjectID) {
+		return
+	}
 	var req updateOutboundRouteRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	if req.ProjectID != nil && *req.ProjectID != existing.ProjectID {
+		if !h.requireProjectOwner(c, *req.ProjectID) {
+			return
+		}
 	}
 	if req.PathPattern != nil {
 		normalized := normalizePathPattern(*req.PathPattern)
@@ -320,6 +336,14 @@ func (h *Handler) DeleteOutboundRoute(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	existing, err := h.q.GetOutboundRoute(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, existing.ProjectID) {
 		return
 	}
 	ctx := c.Request.Context()

@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/cp0x-org/xpaywall/control-api/internal/http/handlers"
+	"github.com/cp0x-org/xpaywall/control-api/internal/http/middleware"
 )
 
 func RegisterAdminRoutes(router gin.IRouter, h *handlers.Handler) {
@@ -39,7 +40,7 @@ func registerStatsRoutes(api *gin.RouterGroup, h *handlers.Handler) {
 }
 
 func registerUserRoutes(api *gin.RouterGroup, h *handlers.Handler) {
-	users := api.Group("/users")
+	users := api.Group("/users", middleware.SuperadminOnly())
 	users.GET("", h.ListUsers)
 	users.GET("/:id", h.GetUser)
 	users.POST("", h.CreateUser)

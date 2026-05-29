@@ -2,9 +2,12 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/urfave/cli/v3"
 
@@ -25,6 +28,21 @@ func installCommand() *cli.Command {
 						return err
 					}
 					return runDemoSeed(ctx, cfg.DB_DSN)
+				},
+			},
+			{
+				Name:  "user",
+				Usage: "create a user with a bcrypt-hashed password",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "username", Required: true, Usage: "login username"},
+					&cli.StringFlag{Name: "password", Required: true, Usage: "plaintext password (will be hashed)"},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					cfg, err := appconfig.NewControlAPIConfig()
+					if err != nil {
+						return err
+					}
+					return runCreateUser(ctx, cfg.DB_DSN, cmd.String("username"), cmd.String("password"))
 				},
 			},
 		},
@@ -102,6 +120,36 @@ BEGIN
 END;
 $$;
 `
+
+func runCreateUser(ctx context.Context, dsn, username, password string) error {
+	if username == "" || password == "" {
+		return fmt.Errorf("username and password are required")
+	}
+
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		return fmt.Errorf("connect to db: %w", err)
+	}
+	defer pool.Close()
+
+	const stmt = `
+INSERT INTO users (id, username, password_hash)
+VALUES (gen_random_uuid(), $1, crypt($2, gen_salt('bf', 10)))
+ON CONFLICT (username) DO NOTHING
+RETURNING id`
+
+	var id uuid.UUID
+	err = pool.QueryRow(ctx, stmt, username, password).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("user with username %q already exists", username)
+	}
+	if err != nil {
+		return fmt.Errorf("create user: %w", err)
+	}
+
+	log.Printf("user created: %s (id: %s)", username, id)
+	return nil
+}
 
 func runDemoSeed(ctx context.Context, dsn string) error {
 	pool, err := pgxpool.New(ctx, dsn)

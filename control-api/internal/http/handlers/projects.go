@@ -238,6 +238,10 @@ func (h *Handler) UpdateProject(c *gin.Context) {
 		return
 	}
 
+	if !h.requireProjectOwner(c, id) {
+		return
+	}
+
 	var req updateProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -288,6 +292,9 @@ func (h *Handler) DeleteProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	if !h.requireProjectOwner(c, id) {
 		return
 	}
 	if err := h.q.DeleteProject(c.Request.Context(), id); err != nil {

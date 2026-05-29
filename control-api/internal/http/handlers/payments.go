@@ -725,6 +725,9 @@ func (h *Handler) CreateProjectPaymentMethod(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if !h.requireProjectOwner(c, req.ProjectID) {
+		return
+	}
 	row, err := h.q.CreateProjectPaymentMethod(c.Request.Context(), postgres.CreateProjectPaymentMethodParams{
 		ID:              uuid.New(),
 		ProjectID:       req.ProjectID,
@@ -769,6 +772,14 @@ func (h *Handler) UpdateProjectPaymentMethod(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	existing, err := h.q.GetProjectPaymentMethod(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "project payment method not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, existing.ProjectID) {
+		return
+	}
 	var req updateProjectPaymentMethodRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -802,6 +813,14 @@ func (h *Handler) DeleteProjectPaymentMethod(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	existing, err := h.q.GetProjectPaymentMethod(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "project payment method not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, existing.ProjectID) {
 		return
 	}
 	if err := h.q.DeleteProjectPaymentMethod(c.Request.Context(), id); err != nil {
