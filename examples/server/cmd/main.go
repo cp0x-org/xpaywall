@@ -11,6 +11,7 @@ import (
 func main() {
 	r := gin.Default()
 	r.SetTrustedProxies(nil)
+	r.Use(corsMiddleware)
 
 	r.GET("/health", handleHealth)
 	r.Any("/api/metered/*path", handleMetered)
@@ -20,6 +21,25 @@ func main() {
 	r.GET("/http-endpoint", httpEndpoint)
 
 	r.Run(":4021")
+}
+
+// corsMiddleware sets permissive CORS headers so the demo server can be called
+// directly from a browser (e.g. the admin panel's Bazaar auto-generator).
+func corsMiddleware(c *gin.Context) {
+	origin := c.GetHeader("Origin")
+	if origin == "" {
+		origin = "*"
+	}
+	c.Header("Access-Control-Allow-Origin", origin)
+	c.Header("Vary", "Origin")
+	c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+	c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Api-Key, X-Requested-With")
+	c.Header("Access-Control-Max-Age", "86400")
+	if c.Request.Method == http.MethodOptions {
+		c.AbortWithStatus(http.StatusNoContent)
+		return
+	}
+	c.Next()
 }
 
 func handleHealth(c *gin.Context) {

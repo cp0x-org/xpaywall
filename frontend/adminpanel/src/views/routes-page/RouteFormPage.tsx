@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import CircularProgress from '@mui/material/CircularProgress';
+import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
@@ -15,6 +16,10 @@ import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import FormControl from '@mui/material/FormControl';
 import Typography from '@mui/material/Typography';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 // third party
 import * as Yup from 'yup';
@@ -32,6 +37,30 @@ interface Project {
   slug: string;
 }
 
+const BAZAAR_TEMPLATE = {
+  disabled: false,
+  method: 'POST',
+  body_type: 'json',
+  input_example: { name: 'Alice', age: 30 },
+  input_schema: {
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      age: { type: 'integer' }
+    },
+    required: ['name']
+  },
+  output_example: { id: 'usr_1', name: 'Alice', age: 30 },
+  output_schema: {
+    type: 'object',
+    properties: {
+      id: { type: 'string' },
+      name: { type: 'string' },
+      age: { type: 'integer' }
+    }
+  }
+};
+
 const emptyValues = {
   project_id: '',
   name: '',
@@ -39,8 +68,31 @@ const emptyValues = {
   free: false,
   price_usd: '',
   description: '',
+  bazaar: '',
   submit: null
 };
+
+function inferJSONSchema(value: unknown): Record<string, unknown> {
+  if (value === null) return { type: 'null' };
+  if (Array.isArray(value)) {
+    return {
+      type: 'array',
+      items: value.length > 0 ? inferJSONSchema(value[0]) : {}
+    };
+  }
+  if (typeof value === 'object') {
+    const props: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      props[k] = inferJSONSchema(v);
+    }
+    return { type: 'object', properties: props };
+  }
+  if (typeof value === 'number') {
+    return { type: Number.isInteger(value) ? 'integer' : 'number' };
+  }
+  if (typeof value === 'boolean') return { type: 'boolean' };
+  return { type: 'string' };
+}
 
 export default function RouteFormPage() {
   const { pathname, state } = useLocation();
@@ -56,6 +108,13 @@ export default function RouteFormPage() {
   const [loading, setLoading] = useState(isEdit || isView);
   const [loadError, setLoadError] = useState('');
   const [initialValues, setInitialValues] = useState(emptyValues);
+
+  // Auto-generator state
+  const [genUrl, setGenUrl] = useState('');
+  const [genMethod, setGenMethod] = useState<'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'>('GET');
+  const [genBody, setGenBody] = useState('');
+  const [genBusy, setGenBusy] = useState(false);
+  const [genError, setGenError] = useState('');
 
   let title = 'Route';
   if (isCreate) title = 'Create Route';
@@ -79,6 +138,7 @@ export default function RouteFormPage() {
             free: d.free,
             price_usd: d.price_usd ?? '',
             description: d.description ?? '',
+            bazaar: d.bazaar ? JSON.stringify(d.bazaar, null, 2) : '',
             submit: null
           });
         })
@@ -120,18 +180,32 @@ export default function RouteFormPage() {
               s
                 .required('Price is required')
                 .matches(/^\d+(\.\d+)?$/, 'Must be a positive number, e.g. 0.10')
+          }),
+          bazaar: Yup.string().test('json', 'Bazaar must be valid JSON object', (val) => {
+            if (!val || !val.trim()) return true;
+            try {
+              const parsed = JSON.parse(val);
+              return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed);
+            } catch {
+              return false;
+            }
           })
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
           try {
-            const payload = {
+            let bazaarObj: Record<string, unknown> | null = null;
+            if (values.bazaar && values.bazaar.trim()) {
+              bazaarObj = JSON.parse(values.bazaar);
+            }
+            const payload: Record<string, unknown> = {
               project_id: values.project_id,
               name: values.name,
               path_pattern: values.path_pattern,
               free: values.free,
               price_amount: 0,
               price_usd: values.free ? '' : values.price_usd,
-              description: values.description
+              description: values.description,
+              bazaar: bazaarObj
             };
             if (isEdit && routeId) {
               await axios.put(`/api/v1/outbound-routes/${routeId}`, payload);
@@ -146,9 +220,78 @@ export default function RouteFormPage() {
           }
         }}
       >
-        {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, setFieldValue, touched, values }) => (
+        {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, setFieldValue, touched, values }) => {
+          const handleGenerateBazaar = async () => {
+            setGenError('');
+            if (!genUrl.trim()) {
+              setGenError('URL is required');
+              return;
+            }
+            let parsedBody: unknown = undefined;
+            if (genBody.trim() && genMethod !== 'GET' && genMethod !== 'DELETE') {
+              try {
+                parsedBody = JSON.parse(genBody);
+              } catch {
+                setGenError('Request body must be valid JSON');
+                return;
+              }
+            }
+            setGenBusy(true);
+            try {
+              const init: RequestInit = { method: genMethod };
+              if (parsedBody !== undefined) {
+                init.headers = { 'Content-Type': 'application/json' };
+                init.body = JSON.stringify(parsedBody);
+              }
+              let res: Response;
+              try {
+                res = await fetch(genUrl, init);
+              } catch (netErr: any) {
+                // fetch throws TypeError("Failed to fetch") on CORS, DNS failure, mixed-content, etc.
+                const msg = netErr?.message || String(netErr);
+                const hint =
+                  msg === 'Failed to fetch' || msg.toLowerCase().includes('network')
+                    ? ' — likely CORS (server did not return Access-Control-Allow-Origin), DNS, or the target is unreachable. Check the browser devtools Network tab for the exact reason.'
+                    : '';
+                setGenError(`Request failed: ${msg}${hint}`);
+                return;
+              }
+              const text = await res.text();
+              if (!res.ok) {
+                const snippet = text ? ` — ${text.slice(0, 200)}` : '';
+                setGenError(`HTTP ${res.status} ${res.statusText}${snippet}`);
+                return;
+              }
+              let outputExample: unknown = text;
+              try {
+                outputExample = JSON.parse(text);
+              } catch {
+                // keep raw text
+              }
+              const bazaar: Record<string, unknown> = {
+                disabled: false,
+                method: genMethod,
+                body_type: parsedBody !== undefined ? 'json' : ''
+              };
+              if (parsedBody !== undefined) {
+                bazaar.input_example = parsedBody;
+                bazaar.input_schema = inferJSONSchema(parsedBody);
+              }
+              if (typeof outputExample === 'object' && outputExample !== null) {
+                bazaar.output_example = outputExample;
+                bazaar.output_schema = inferJSONSchema(outputExample);
+              } else {
+                bazaar.output_example = outputExample;
+              }
+              setFieldValue('bazaar', JSON.stringify(bazaar, null, 2));
+            } finally {
+              setGenBusy(false);
+            }
+          };
+
+          return (
           <form onSubmit={handleSubmit}>
-            <Stack spacing={2} sx={{ maxWidth: 560 }}>
+            <Stack spacing={2} sx={{ maxWidth: 720 }}>
               <FormControl fullWidth error={Boolean(touched.project_id && errors.project_id)} disabled={isView}>
                 <InputLabel id="project-label">Project</InputLabel>
                 <Select
@@ -231,6 +374,149 @@ export default function RouteFormPage() {
                 />
               )}
 
+              <Divider />
+
+              <Accordion defaultExpanded={Boolean(values.bazaar)}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Stack>
+                    <Typography variant="subtitle1">Bazaar Discovery Extension</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Optional JSON describing the endpoint's method, body type, request/response schemas and examples.
+                      Leave empty for auto-mode (minimal GET declaration).
+                    </Typography>
+                  </Stack>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Stack spacing={2}>
+                    {!isView && (
+                      <Stack direction="row" spacing={1} flexWrap="wrap">
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => setFieldValue('bazaar', JSON.stringify(BAZAAR_TEMPLATE, null, 2))}
+                        >
+                          Insert Template
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          color="warning"
+                          onClick={() => setFieldValue('bazaar', '')}
+                          disabled={!values.bazaar}
+                        >
+                          Clear
+                        </Button>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => {
+                            try {
+                              const parsed = JSON.parse(values.bazaar);
+                              setFieldValue('bazaar', JSON.stringify(parsed, null, 2));
+                            } catch {
+                              // ignore — validation will catch it
+                            }
+                          }}
+                          disabled={!values.bazaar}
+                        >
+                          Format
+                        </Button>
+                      </Stack>
+                    )}
+
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={8}
+                      maxRows={24}
+                      label="Bazaar JSON"
+                      name="bazaar"
+                      value={values.bazaar}
+                      onBlur={handleBlur}
+                      onChange={handleChange}
+                      error={Boolean(touched.bazaar && errors.bazaar)}
+                      helperText={touched.bazaar && errors.bazaar}
+                      disabled={isView}
+                      slotProps={{
+                        input: { style: { fontFamily: 'monospace', fontSize: 13 } }
+                      }}
+                    />
+
+                    {!isView && (
+                      <Accordion variant="outlined">
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <Stack>
+                            <Typography variant="subtitle2">Auto-generate from a sample request</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              Sends the request from your browser, then derives Bazaar JSON from the request/response.
+                              Target must allow CORS from this origin.
+                            </Typography>
+                          </Stack>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <Stack spacing={2}>
+                            <Stack direction="row" spacing={1}>
+                              <FormControl sx={{ minWidth: 120 }} size="small">
+                                <InputLabel id="gen-method-label">Method</InputLabel>
+                                <Select
+                                  labelId="gen-method-label"
+                                  value={genMethod}
+                                  label="Method"
+                                  onChange={(e) => setGenMethod(e.target.value as typeof genMethod)}
+                                >
+                                  {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
+                                    <MenuItem key={m} value={m}>
+                                      {m}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Sample URL"
+                                placeholder="https://upstream.example.com/users"
+                                value={genUrl}
+                                onChange={(e) => setGenUrl(e.target.value)}
+                              />
+                            </Stack>
+
+                            {genMethod !== 'GET' && genMethod !== 'DELETE' && (
+                              <TextField
+                                fullWidth
+                                multiline
+                                minRows={3}
+                                size="small"
+                                label="Request body (JSON, optional)"
+                                value={genBody}
+                                onChange={(e) => setGenBody(e.target.value)}
+                                slotProps={{
+                                  input: { style: { fontFamily: 'monospace', fontSize: 13 } }
+                                }}
+                              />
+                            )}
+
+                            {genError && <FormHelperText error>{genError}</FormHelperText>}
+
+                            <Box>
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={handleGenerateBazaar}
+                                disabled={genBusy}
+                                startIcon={genBusy ? <CircularProgress size={16} color="inherit" /> : undefined}
+                              >
+                                {genBusy ? 'Fetching…' : 'Get Bazaar Description'}
+                              </Button>
+                            </Box>
+                          </Stack>
+                        </AccordionDetails>
+                      </Accordion>
+                    )}
+                  </Stack>
+                </AccordionDetails>
+              </Accordion>
+
               {errors.submit && (
                 <Box>
                   <FormHelperText error>{errors.submit}</FormHelperText>
@@ -249,7 +535,8 @@ export default function RouteFormPage() {
               </Stack>
             </Stack>
           </form>
-        )}
+          );
+        }}
       </Formik>
     </MainCard>
   );
