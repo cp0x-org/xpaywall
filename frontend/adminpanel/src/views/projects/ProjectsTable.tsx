@@ -17,6 +17,8 @@ import Typography from '@mui/material/Typography';
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
 import ProjectsTableHeader from './ProjectsTableHeader';
+import useAuth from 'hooks/useAuth';
+import { canManage } from 'utils/ownership';
 
 // assets
 import DeleteTwoToneIcon from '@mui/icons-material/DeleteTwoTone';
@@ -50,6 +52,8 @@ function stableSort(array: Project[], comparator: (a: Project, b: Project) => nu
 }
 
 export default function ProjectsTable({ rows }: { rows: Project[] }) {
+  const { user } = useAuth();
+  const currentUserId = (user as { id?: string } | null | undefined)?.id;
   const [order, setOrder] = React.useState<ArrangementOrder>('asc');
   const [orderBy, setOrderBy] = React.useState<string>('name');
   const [page, setPage] = React.useState<number>(0);
@@ -87,7 +91,9 @@ export default function ProjectsTable({ rows }: { rows: Project[] }) {
           <TableBody>
             {stableSort(rows, getComparator(order, orderBy))
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row) => (
+              .map((row) => {
+                const isOwner = canManage(currentUserId, row.owner_user_id);
+                return (
                 <TableRow hover tabIndex={-1} key={row.id}>
                   <TableCell>
                     <Typography variant="subtitle1">{row.name}</Typography>
@@ -96,7 +102,7 @@ export default function ProjectsTable({ rows }: { rows: Project[] }) {
                   <TableCell>
                     <Chip label={row.enabled ? 'Yes' : 'No'} size="small" color={row.enabled ? 'success' : 'default'} />
                   </TableCell>
-                  <TableCell>{row.owner_username || row.owner_user_id.slice(0, 8)}</TableCell>
+                  <TableCell>{row.owner_username || (row.owner_user_id ? row.owner_user_id.slice(0, 8) : '—')}</TableCell>
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.base_url}</TableCell>
                   <TableCell>{row.payment_methods?.join(', ') || '—'}</TableCell>
                   <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
@@ -107,20 +113,25 @@ export default function ProjectsTable({ rows }: { rows: Project[] }) {
                           <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Edit">
-                        <IconButton color="secondary" component={Link} to="/projects/edit" state={{ id: row.id }} size="small" aria-label="Edit">
-                          <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" size="small" aria-label="Delete">
-                          <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
+                      {isOwner && (
+                        <Tooltip title="Edit">
+                          <IconButton color="secondary" component={Link} to="/projects/edit" state={{ id: row.id }} size="small" aria-label="Edit">
+                            <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {isOwner && (
+                        <Tooltip title="Delete">
+                          <IconButton color="error" size="small" aria-label="Delete">
+                            <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             {emptyRows > 0 && (
               <TableRow sx={{ height: 53 * emptyRows }}>
                 <TableCell colSpan={8} />

@@ -27,6 +27,7 @@ import { Formik } from 'formik';
 import MainCard from 'ui-component/cards/MainCard';
 import useAuth from 'hooks/useAuth';
 import axios from 'utils/axios';
+import { canManage } from 'utils/ownership';
 
 import {FullProject, ProxyUrl} from './types';
 import {TableBody} from "../../ui-component/mui";
@@ -60,6 +61,8 @@ export default function ProjectFormPage() {
   const isCreate = pathname.includes('/create');
   const isEdit = pathname.includes('/edit');
   const isView = pathname.includes('/view');
+
+  const currentUserId = (user as { id?: string } | null | undefined)?.id;
 
   const projectId: string | undefined = (state as any)?.id;
 
@@ -142,7 +145,7 @@ export default function ProjectFormPage() {
       </Tabs>
 
       {tab === 1 && projectId && (
-        <ProjectPaymentMethods projectId={projectId} isView={isView} />
+        <ProjectPaymentMethods projectId={projectId} isView={isView} canEdit={isCreate || canManage(currentUserId, initialValues.owner_user_id)} />
       )}
 
       {tab === 0 && <>
@@ -372,7 +375,7 @@ export default function ProjectFormPage() {
                     Edit
                   </Button>
                 )}
-                {!isView && (
+                {!isView && (isCreate || canManage(currentUserId, initialValues.owner_user_id)) && (
                   <Button type="submit" variant="contained" disabled={isSubmitting}>
                     {isCreate ? 'Create Project' : 'Save Changes'}
                   </Button>

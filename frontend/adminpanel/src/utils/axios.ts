@@ -4,6 +4,9 @@
 
 import axios, { AxiosRequestConfig } from 'axios';
 
+import { dispatch } from 'store';
+import { openSnackbar } from 'store/slices/snackbar';
+
 declare global {
   interface Window {
     __CONFIG__?: { API_URL?: string; PROXY_URL?: string };
@@ -34,8 +37,21 @@ axiosServices.interceptors.request.use(
 axiosServices.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response.status === 401 && !window.location.href.includes('/login')) {
+    if (error.response?.status === 401 && !window.location.href.includes('/login')) {
       window.location.pathname = '/login';
+    }
+    if (error.response?.status === 403) {
+      const message = error.response?.data?.error || 'You do not have permission to perform this action';
+      dispatch(
+        openSnackbar({
+          open: true,
+          message,
+          variant: 'alert',
+          alert: { variant: 'filled' },
+          severity: 'error',
+          close: true
+        })
+      );
     }
     return Promise.reject((error.response && error.response.data) || 'Wrong Services');
   }

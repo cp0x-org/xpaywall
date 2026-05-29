@@ -23,6 +23,8 @@ import Typography from '@mui/material/Typography';
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
 import RoutesTableHeader from './RoutesTableHeader';
+import useAuth from 'hooks/useAuth';
+import { canManage } from 'utils/ownership';
 
 // assets
 import DeleteTwoToneIcon from '@mui/icons-material/DeleteTwoTone';
@@ -84,13 +86,17 @@ export default function RoutesTable({
   rows,
   proxyUrl,
   projectBaseUrls,
+  projectOwnerIds,
   onDelete
 }: {
   rows: RouteRow[];
   proxyUrl: string;
   projectBaseUrls: Record<string, string>;
+  projectOwnerIds: Record<string, string | null>;
   onDelete: (id: string) => Promise<void>;
 }) {
+  const { user } = useAuth();
+  const currentUserId = (user as { id?: string } | null | undefined)?.id;
   const [order, setOrder] = React.useState<ArrangementOrder>('asc');
   const [orderBy, setOrderBy] = React.useState<string>('name');
   const [page, setPage] = React.useState<number>(0);
@@ -130,7 +136,9 @@ export default function RoutesTable({
           <TableBody>
             {stableSort(rows, getComparator(order, orderBy))
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row) => (
+              .map((row) => {
+                const isOwner = canManage(currentUserId, projectOwnerIds[row.project_id]);
+                return (
                 <TableRow hover tabIndex={-1} key={row.id}>
                   <TableCell>
                     <Typography variant="subtitle1">{row.name}</Typography>
@@ -155,20 +163,25 @@ export default function RoutesTable({
                           <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Edit">
-                        <IconButton color="secondary" component={Link} to="/routes/edit" state={{ id: row.id }} size="small" aria-label="Edit">
-                          <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" size="small" aria-label="Delete" onClick={() => setDeletingRow(row)}>
-                          <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
+                      {isOwner && (
+                        <Tooltip title="Edit">
+                          <IconButton color="secondary" component={Link} to="/routes/edit" state={{ id: row.id }} size="small" aria-label="Edit">
+                            <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {isOwner && (
+                        <Tooltip title="Delete">
+                          <IconButton color="error" size="small" aria-label="Delete" onClick={() => setDeletingRow(row)}>
+                            <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             {emptyRows > 0 && (
               <TableRow sx={{ height: 53 * emptyRows }}>
                 <TableCell colSpan={9} />

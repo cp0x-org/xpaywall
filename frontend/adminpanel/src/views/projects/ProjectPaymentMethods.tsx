@@ -41,6 +41,7 @@ const SCHEMES = ['exact', 'upto', 'batch-payment'] as const;
 interface Props {
   projectId: string;
   isView: boolean;
+  canEdit: boolean;
 }
 
 const emptyForm = {
@@ -52,7 +53,8 @@ const emptyForm = {
   enabled: true,
 };
 
-export default function ProjectPaymentMethods({ projectId, isView }: Props) {
+export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Props) {
+  const showActions = !isView && canEdit;
   const [methods, setMethods] = React.useState<ProjectPaymentMethod[]>([]);
   const [paymentMethods, setPaymentMethods] = React.useState<PaymentMethod[]>([]);
   const [assets, setAssets] = React.useState<PaymentMethodAsset[]>([]);
@@ -105,7 +107,7 @@ export default function ProjectPaymentMethods({ projectId, isView }: Props) {
 
   return (
     <Box>
-      {!isView && (
+      {showActions && (
         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
           <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
             Add Payment Method
@@ -128,7 +130,7 @@ export default function ProjectPaymentMethods({ projectId, isView }: Props) {
                 <TableCell>Facilitator</TableCell>
                 <TableCell>Payout Address</TableCell>
                 <TableCell>Status</TableCell>
-                {!isView && <TableCell align="right">Actions</TableCell>}
+                {showActions && <TableCell align="right">Actions</TableCell>}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -150,7 +152,7 @@ export default function ProjectPaymentMethods({ projectId, isView }: Props) {
                       color={m.enabled ? 'success' : 'default'}
                     />
                   </TableCell>
-                  {!isView && (
+                  {showActions && (
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => handleEdit(m)}>
                         <EditTwoToneIcon fontSize="small" />

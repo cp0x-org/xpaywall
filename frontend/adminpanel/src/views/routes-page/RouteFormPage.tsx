@@ -27,7 +27,9 @@ import { Formik } from 'formik';
 
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
+import useAuth from 'hooks/useAuth';
 import axios from 'utils/axios';
+import { canManage } from 'utils/ownership';
 
 import { RouteRow } from './types';
 
@@ -35,6 +37,7 @@ interface Project {
   id: string;
   name: string;
   slug: string;
+  owner_user_id?: string | null;
 }
 
 const BAZAAR_TEMPLATE = {
@@ -97,6 +100,8 @@ function inferJSONSchema(value: unknown): Record<string, unknown> {
 export default function RouteFormPage() {
   const { pathname, state } = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const currentUserId = (user as { id?: string } | null | undefined)?.id;
 
   const isCreate = pathname.includes('/create');
   const isEdit = pathname.includes('/edit');
@@ -122,8 +127,16 @@ export default function RouteFormPage() {
   if (isView) title = 'View Route';
 
   useEffect(() => {
-    axios.get('/api/v1/projects').then((res) => setProjects(res.data ?? []));
+    axios.get<Project[]>('/api/v1/projects/with-config').then((res) => setProjects(res.data ?? []));
   }, []);
+
+  const ownedProjects = projects.filter((p) => canManage(currentUserId, p.owner_user_id));
+  const projectOwnerMap: Record<string, string | null | undefined> = {};
+  for (const p of projects) projectOwnerMap[p.id] = p.owner_user_id;
+  const canEditCurrent = isCreate
+    ? true
+    : canManage(currentUserId, projectOwnerMap[initialValues.project_id]);
+  const projectsForSelect = isCreate ? ownedProjects : projects;
 
   useEffect(() => {
     if ((isEdit || isView) && routeId) {
@@ -301,7 +314,7 @@ export default function RouteFormPage() {
                   label="Project"
                   onChange={(e) => setFieldValue('project_id', e.target.value)}
                 >
-                  {projects.map((p) => (
+                  {projectsForSelect.map((p) => (
                     <MenuItem key={p.id} value={p.id}>
                       {p.name} ({p.slug})
                     </MenuItem>
@@ -527,7 +540,7 @@ export default function RouteFormPage() {
                 <Button variant="outlined" onClick={() => navigate('/routes')} disabled={isSubmitting}>
                   {isView ? 'Back' : 'Cancel'}
                 </Button>
-                {!isView && (
+                {!isView && canEditCurrent && (
                   <Button type="submit" variant="contained" disabled={isSubmitting}>
                     {isEdit ? 'Save Changes' : 'Create Route'}
                   </Button>
