@@ -7,6 +7,7 @@ SELECT
     oroute.price_usd,
     oroute.description,
     oroute.free,
+    oroute.bazaar,
     prs.base_url,
     prs.auth_header_name,
     prs.auth_header_value,

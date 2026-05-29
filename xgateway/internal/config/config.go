@@ -72,13 +72,28 @@ type X402Method struct {
 //}
 
 type Rule struct {
-	Name           string   `json:"name" yaml:"name" mapstructure:"name"`
-	Path           string   `json:"path" yaml:"path" mapstructure:"path"`
-	PathGlob       string   `json:"path_glob" yaml:"path_glob" mapstructure:"path_glob"`
-	Price          string   `json:"price" yaml:"price" mapstructure:"price"`
-	Description    string   `json:"description" yaml:"description" mapstructure:"description"`
-	Free           bool     `json:"free" yaml:"free" mapstructure:"free"`
-	PaymentMethods []string `json:"payment_methods" yaml:"payment_methods" mapstructure:"payment_methods"`
+	Name           string        `json:"name" yaml:"name" mapstructure:"name"`
+	Path           string        `json:"path" yaml:"path" mapstructure:"path"`
+	PathGlob       string        `json:"path_glob" yaml:"path_glob" mapstructure:"path_glob"`
+	Price          string        `json:"price" yaml:"price" mapstructure:"price"`
+	Description    string        `json:"description" yaml:"description" mapstructure:"description"`
+	Free           bool          `json:"free" yaml:"free" mapstructure:"free"`
+	PaymentMethods []string      `json:"payment_methods" yaml:"payment_methods" mapstructure:"payment_methods"`
+	Bazaar         *BazaarConfig `json:"bazaar" yaml:"bazaar" mapstructure:"bazaar"`
+}
+
+// BazaarConfig describes how a route should be advertised via the x402 Bazaar
+// discovery extension. When nil on a paid rule, a minimal declaration is
+// auto-generated (method=GET, empty schema) so facilitators can still catalog
+// the endpoint. Set fields here to give discovery clients richer metadata.
+type BazaarConfig struct {
+	Disabled      bool           `json:"disabled" yaml:"disabled" mapstructure:"disabled"`
+	Method        string         `json:"method" yaml:"method" mapstructure:"method"`
+	BodyType      string         `json:"body_type" yaml:"body_type" mapstructure:"body_type"`
+	InputExample  map[string]any `json:"input_example" yaml:"input_example" mapstructure:"input_example"`
+	InputSchema   map[string]any `json:"input_schema" yaml:"input_schema" mapstructure:"input_schema"`
+	OutputExample map[string]any `json:"output_example" yaml:"output_example" mapstructure:"output_example"`
+	OutputSchema  map[string]any `json:"output_schema" yaml:"output_schema" mapstructure:"output_schema"`
 }
 
 type ResolvedPaymentMethod struct {

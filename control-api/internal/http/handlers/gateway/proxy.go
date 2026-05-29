@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"encoding/json"
 	"math"
 	nethttp "net/http"
 	"strconv"
@@ -21,19 +22,20 @@ func New(q *postgres.Queries) *Handler {
 }
 
 type resolveRouteResponse struct {
-	ProjectID       uuid.UUID    `json:"project_id"`
-	OutboundRouteID uuid.UUID    `json:"outbound_route_id"`
-	Name            string       `json:"name"`
-	InboundPath     string       `json:"inbound_path"`
-	Target          string       `json:"target"`
-	AuthHeaderName  string       `json:"auth_header_name,omitempty"`
-	AuthHeaderValue string       `json:"auth_header_value,omitempty"`
-	AllowUnmatched  bool         `json:"allow_unmatched"`
-	Price           string       `json:"price"`
-	Free            bool         `json:"free"`
-	MimeType        string       `json:"mime_type,omitempty"`
-	Description     string       `json:"description,omitempty"`
-	PaymentChannels []channelDTO `json:"payment_channels"`
+	ProjectID       uuid.UUID       `json:"project_id"`
+	OutboundRouteID uuid.UUID       `json:"outbound_route_id"`
+	Name            string          `json:"name"`
+	InboundPath     string          `json:"inbound_path"`
+	Target          string          `json:"target"`
+	AuthHeaderName  string          `json:"auth_header_name,omitempty"`
+	AuthHeaderValue string          `json:"auth_header_value,omitempty"`
+	AllowUnmatched  bool            `json:"allow_unmatched"`
+	Price           string          `json:"price"`
+	Free            bool            `json:"free"`
+	MimeType        string          `json:"mime_type,omitempty"`
+	Description     string          `json:"description,omitempty"`
+	Bazaar          json.RawMessage `json:"bazaar,omitempty"`
+	PaymentChannels []channelDTO    `json:"payment_channels"`
 }
 
 type channelDTO struct {
@@ -105,6 +107,7 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 		Price:           priceUSD,
 		Free:            route.Free,
 		Description:     route.Description,
+		Bazaar:          json.RawMessage(route.Bazaar),
 		PaymentChannels: []channelDTO{},
 	}
 

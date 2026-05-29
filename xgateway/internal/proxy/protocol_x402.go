@@ -14,6 +14,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	x402 "github.com/x402-foundation/x402/go"
+	"github.com/x402-foundation/x402/go/extensions/bazaar"
+	exttypes "github.com/x402-foundation/x402/go/extensions/types"
 	x402http "github.com/x402-foundation/x402/go/http"
 	evmexact "github.com/x402-foundation/x402/go/mechanisms/evm/exact/server"
 	evmupto "github.com/x402-foundation/x402/go/mechanisms/evm/upto/server"
@@ -188,6 +190,7 @@ func buildX402Protocol(
 			Accepts:     options,
 			Description: rule.Description,
 			MimeType:    rule.MimeType,
+			Extensions:  buildBazaarExtensions(rule),
 		},
 	}
 
@@ -204,6 +207,7 @@ func buildX402Protocol(
 	}
 
 	srv := x402http.Newx402HTTPResourceServer(routes, serverOpts...)
+	srv.RegisterExtension(bazaar.BazaarResourceServerExtension)
 	for _, ch := range channels {
 		network := x402.Network(ch.ChannelConfig["network"])
 		switch config.NormalizeScheme(ch.Scheme) {
@@ -307,6 +311,57 @@ func handleX402Verified(
 	}
 	c.Writer.WriteHeader(writer.statusCode)
 	_, _ = c.Writer.Write(writer.body.Bytes())
+}
+
+// buildBazaarExtensions returns the Extensions map for an x402 RouteConfig.
+// When the rule has no Bazaar block, a minimal GET declaration is generated so
+// the endpoint still appears in facilitator catalogs. The server-side
+// BazaarResourceServerExtension rewrites method and path params per-request.
+// Returns nil when discovery is explicitly disabled.
+func buildBazaarExtensions(rule *rules.Rule) map[string]any {
+	if rule == nil {
+		return nil
+	}
+	cfg := rule.Bazaar
+	if cfg != nil && cfg.Disabled {
+		return nil
+	}
+
+	method := exttypes.MethodGET
+	if cfg != nil && strings.TrimSpace(cfg.Method) != "" {
+		method = exttypes.QueryParamMethods(strings.ToUpper(strings.TrimSpace(cfg.Method)))
+	}
+
+	var (
+		inputExample any
+		inputSchema  exttypes.JSONSchema
+		bodyType     exttypes.BodyType
+		outputConfig *exttypes.OutputConfig
+	)
+	if cfg != nil {
+		if len(cfg.InputExample) > 0 {
+			inputExample = cfg.InputExample
+		}
+		if len(cfg.InputSchema) > 0 {
+			inputSchema = exttypes.JSONSchema(cfg.InputSchema)
+		}
+		if strings.TrimSpace(cfg.BodyType) != "" {
+			bodyType = exttypes.BodyType(strings.ToLower(strings.TrimSpace(cfg.BodyType)))
+		}
+		if len(cfg.OutputExample) > 0 || len(cfg.OutputSchema) > 0 {
+			outputConfig = &exttypes.OutputConfig{
+				Example: cfg.OutputExample,
+				Schema:  exttypes.JSONSchema(cfg.OutputSchema),
+			}
+		}
+	}
+
+	ext, err := bazaar.DeclareDiscoveryExtension(method, inputExample, inputSchema, bodyType, outputConfig)
+	if err != nil {
+		log.Printf("[x402] bazaar: failed to declare extension for %q: %v", rule.InboundPath, err)
+		return nil
+	}
+	return map[string]any{bazaar.BAZAAR.Key(): ext}
 }
 
 // applyUpstreamSettlementHeaders translates the upstream's X-X402-Settlement-Amount

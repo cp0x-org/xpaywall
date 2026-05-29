@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
@@ -36,20 +37,35 @@ func boolPtrToPgBool(b *bool) pgtype.Bool {
 	return pgtype.Bool{Bool: *b, Valid: true}
 }
 
+// normalizeBazaarJSON validates that the payload is a JSON object (or empty) and
+// returns the canonical bytes for storage. Returns nil bytes when the payload is empty.
+func normalizeBazaarJSON(raw json.RawMessage) ([]byte, error) {
+	trimmed := strings.TrimSpace(string(raw))
+	if trimmed == "" || trimmed == "null" {
+		return nil, nil
+	}
+	var probe map[string]any
+	if err := json.Unmarshal([]byte(trimmed), &probe); err != nil {
+		return nil, err
+	}
+	return []byte(trimmed), nil
+}
+
 // ─── Outbound Routes ─────────────────────────────────────────────────────────
 
 type outboundRouteResponse struct {
-	ID          uuid.UUID `json:"id"`
-	ProjectID   uuid.UUID `json:"project_id"`
-	ProjectName string    `json:"project_name"`
-	ProjectSlug string    `json:"project_slug"`
-	Name        string    `json:"name"`
-	PathPattern string    `json:"path_pattern"`
-	PriceUSD    string    `json:"price_usd"`
-	Description string    `json:"description"`
-	Free        bool      `json:"free"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          uuid.UUID       `json:"id"`
+	ProjectID   uuid.UUID       `json:"project_id"`
+	ProjectName string          `json:"project_name"`
+	ProjectSlug string          `json:"project_slug"`
+	Name        string          `json:"name"`
+	PathPattern string          `json:"path_pattern"`
+	PriceUSD    string          `json:"price_usd"`
+	Description string          `json:"description"`
+	Free        bool            `json:"free"`
+	Bazaar      json.RawMessage `json:"bazaar,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
 func routeListRowToResponse(r postgres.ListOutboundRoutesRow) outboundRouteResponse {
@@ -57,6 +73,7 @@ func routeListRowToResponse(r postgres.ListOutboundRoutesRow) outboundRouteRespo
 		ID: r.ID, ProjectID: r.ProjectID, ProjectSlug: r.ProjectSlug,
 		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
 }
@@ -66,6 +83,7 @@ func routeListByProjectRowToResponse(r postgres.ListOutboundRoutesByProjectRow) 
 		ID: r.ID, ProjectID: r.ProjectID, ProjectSlug: r.ProjectSlug,
 		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
 }
@@ -75,6 +93,7 @@ func routeGetRowToResponse(r postgres.GetOutboundRouteRow) outboundRouteResponse
 		ID: r.ID, ProjectID: r.ProjectID,
 		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
 }
@@ -84,6 +103,7 @@ func routeCreateRowToResponse(r postgres.CreateOutboundRouteRow) outboundRouteRe
 		ID: r.ID, ProjectID: r.ProjectID,
 		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
 }
@@ -93,6 +113,7 @@ func routeUpdateRowToResponse(r postgres.UpdateOutboundRouteRow) outboundRouteRe
 		ID: r.ID, ProjectID: r.ProjectID,
 		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
 }
@@ -174,12 +195,13 @@ func (h *Handler) GetOutboundRoute(c *gin.Context) {
 }
 
 type createOutboundRouteRequest struct {
-	ProjectID   uuid.UUID `json:"project_id" binding:"required"`
-	Name        string    `json:"name" binding:"required"`
-	PathPattern string    `json:"path_pattern" binding:"required"`
-	PriceUSD    string    `json:"price_usd"`
-	Description string    `json:"description"`
-	Free        bool      `json:"free"`
+	ProjectID   uuid.UUID       `json:"project_id" binding:"required"`
+	Name        string          `json:"name" binding:"required"`
+	PathPattern string          `json:"path_pattern" binding:"required"`
+	PriceUSD    string          `json:"price_usd"`
+	Description string          `json:"description"`
+	Free        bool            `json:"free"`
+	Bazaar      json.RawMessage `json:"bazaar,omitempty"`
 }
 
 // CreateOutboundRoute creates a new outbound route.
@@ -204,6 +226,11 @@ func (h *Handler) CreateOutboundRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	bazaarJSON, err := normalizeBazaarJSON(req.Bazaar)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid bazaar payload: " + err.Error()})
+		return
+	}
 	row, err := h.q.CreateOutboundRoute(c.Request.Context(), postgres.CreateOutboundRouteParams{
 		ID:          uuid.New(),
 		ProjectID:   req.ProjectID,
@@ -212,6 +239,7 @@ func (h *Handler) CreateOutboundRoute(c *gin.Context) {
 		PriceUsd:    req.PriceUSD,
 		Description: req.Description,
 		Free:        req.Free,
+		Bazaar:      bazaarJSON,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -221,12 +249,13 @@ func (h *Handler) CreateOutboundRoute(c *gin.Context) {
 }
 
 type updateOutboundRouteRequest struct {
-	ProjectID   *uuid.UUID `json:"project_id"`
-	Name        *string    `json:"name"`
-	PathPattern *string    `json:"path_pattern"`
-	PriceUSD    *string    `json:"price_usd"`
-	Description *string    `json:"description"`
-	Free        *bool      `json:"free"`
+	ProjectID   *uuid.UUID      `json:"project_id"`
+	Name        *string         `json:"name"`
+	PathPattern *string         `json:"path_pattern"`
+	PriceUSD    *string         `json:"price_usd"`
+	Description *string         `json:"description"`
+	Free        *bool           `json:"free"`
+	Bazaar      json.RawMessage `json:"bazaar,omitempty"`
 }
 
 // UpdateOutboundRoute updates an outbound route by ID.
@@ -256,6 +285,11 @@ func (h *Handler) UpdateOutboundRoute(c *gin.Context) {
 		normalized := normalizePathPattern(*req.PathPattern)
 		req.PathPattern = &normalized
 	}
+	bazaarJSON, err := normalizeBazaarJSON(req.Bazaar)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid bazaar payload: " + err.Error()})
+		return
+	}
 	row, err := h.q.UpdateOutboundRoute(c.Request.Context(), postgres.UpdateOutboundRouteParams{
 		ID:          id,
 		ProjectID:   uuidPtrToPgUUID(req.ProjectID),
@@ -264,6 +298,7 @@ func (h *Handler) UpdateOutboundRoute(c *gin.Context) {
 		PriceUsd:    req.PriceUSD,
 		Description: req.Description,
 		Free:        boolPtrToPgBool(req.Free),
+		Bazaar:      bazaarJSON,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

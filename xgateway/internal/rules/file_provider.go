@@ -48,6 +48,7 @@ func fromConfigRule(cfg *config.Config, rule config.Rule) Rule {
 		Description:     rule.Description,
 		Free:            rule.Free,
 		PaymentChannels: resolveChannels(cfg, rule),
+		Bazaar:          fromConfigBazaar(rule.Bazaar),
 		Target:          cfg.Outbound.Target,
 		AllowUnmatched:  cfg.Outbound.AllowUnmatched,
 	}
@@ -56,6 +57,21 @@ func fromConfigRule(cfg *config.Config, rule config.Rule) Rule {
 		r.AuthHeaderValue = cfg.Outbound.AuthHeader.Value
 	}
 	return r
+}
+
+func fromConfigBazaar(b *config.BazaarConfig) *BazaarConfig {
+	if b == nil {
+		return nil
+	}
+	return &BazaarConfig{
+		Disabled:      b.Disabled,
+		Method:        b.Method,
+		BodyType:      b.BodyType,
+		InputExample:  b.InputExample,
+		InputSchema:   b.InputSchema,
+		OutputExample: b.OutputExample,
+		OutputSchema:  b.OutputSchema,
+	}
 }
 
 func resolveChannels(cfg *config.Config, rule config.Rule) []*PaymentChannel {

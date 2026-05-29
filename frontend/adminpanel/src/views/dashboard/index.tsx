@@ -454,37 +454,37 @@ export default function DashboardPage() {
       </Grid>
 
       {/* ── Chart + Proxy Status ── */}
-      <Grid size={{ xs: 12, lg: 8 }}>
+      <Grid size={{ xs: 12 }}>
         <MainCard border boxShadow title="Traffic & Revenue" sx={{ height: '100%' }}>
           <RequestsAndEarnings periodMode={periodMode} customFrom={customFrom} customTo={customTo} projectId={projectId} />
         </MainCard>
       </Grid>
 
-      <Grid size={{ xs: 12, lg: 4 }}>
-        <MainCard
-          border
-          boxShadow
-          title="Proxy Status"
-          secondary={
-            <Chip
-              icon={<FiberManualRecordIcon sx={{ fontSize: '10px !important' }} />}
-              label={MOCK_PROXY_STATUS.online ? 'Online' : 'Offline'}
-              size="small"
-              color={MOCK_PROXY_STATUS.online ? 'success' : 'error'}
-            />
-          }
-          sx={{ height: '100%' }}
-        >
-          <Stack divider={<Divider flexItem />}>
-            <ProxyStatusRow label="Upstream Target" value={MOCK_PROXY_STATUS.upstream_target} mono />
-            <ProxyStatusRow label="Network"         value={MOCK_PROXY_STATUS.network} />
-            <ProxyStatusRow label="Safe Wallet"     value={MOCK_PROXY_STATUS.save_wallet} mono />
-            <ProxyStatusRow label="Asset"           value={MOCK_PROXY_STATUS.asset} />
-            <ProxyStatusRow label="Version"         value={MOCK_PROXY_STATUS.version} />
-            <ProxyStatusRow label="Uptime"          value={MOCK_PROXY_STATUS.uptime} />
-          </Stack>
-        </MainCard>
-      </Grid>
+      {/*<Grid size={{ xs: 12, lg: 4 }}>*/}
+      {/*  <MainCard*/}
+      {/*    border*/}
+      {/*    boxShadow*/}
+      {/*    title="Proxy Status"*/}
+      {/*    secondary={*/}
+      {/*      <Chip*/}
+      {/*        icon={<FiberManualRecordIcon sx={{ fontSize: '10px !important' }} />}*/}
+      {/*        label={MOCK_PROXY_STATUS.online ? 'Online' : 'Offline'}*/}
+      {/*        size="small"*/}
+      {/*        color={MOCK_PROXY_STATUS.online ? 'success' : 'error'}*/}
+      {/*      />*/}
+      {/*    }*/}
+      {/*    sx={{ height: '100%' }}*/}
+      {/*  >*/}
+      {/*    <Stack divider={<Divider flexItem />}>*/}
+      {/*      <ProxyStatusRow label="Upstream Target" value={MOCK_PROXY_STATUS.upstream_target} mono />*/}
+      {/*      <ProxyStatusRow label="Network"         value={MOCK_PROXY_STATUS.network} />*/}
+      {/*      <ProxyStatusRow label="Safe Wallet"     value={MOCK_PROXY_STATUS.save_wallet} mono />*/}
+      {/*      <ProxyStatusRow label="Asset"           value={MOCK_PROXY_STATUS.asset} />*/}
+      {/*      <ProxyStatusRow label="Version"         value={MOCK_PROXY_STATUS.version} />*/}
+      {/*      <ProxyStatusRow label="Uptime"          value={MOCK_PROXY_STATUS.uptime} />*/}
+      {/*    </Stack>*/}
+      {/*  </MainCard>*/}
+      {/*</Grid>*/}
 
       {/* ── Top Routes + Recent Requests ── */}
       <Grid size={{ xs: 12, lg: 6 }}>

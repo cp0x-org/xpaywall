@@ -133,6 +133,7 @@ type Route struct {
 	PriceUsd    string
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
+	Bazaar      []byte
 }
 
 type RouteDailyStat struct {

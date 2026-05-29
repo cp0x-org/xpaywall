@@ -30,19 +30,32 @@ func NewHttpProvider(baseURL, apiKey string) *HttpProvider {
 }
 
 type resolveRouteResponse struct {
-	ProjectID       uuid.UUID    `json:"project_id"`
-	OutboundRouteID uuid.UUID    `json:"outbound_route_id"`
-	Name            string       `json:"name"`
-	InboundPath     string       `json:"inbound_path"`
-	Target          string       `json:"target"`
-	AuthHeaderName  string       `json:"auth_header_name"`
-	AuthHeaderValue string       `json:"auth_header_value"`
-	AllowUnmatched  bool         `json:"allow_unmatched"`
-	Price           string       `json:"price"`
-	Free            bool         `json:"free"`
-	MimeType        string       `json:"mime_type"`
-	Description     string       `json:"description"`
-	PaymentChannels []channelDTO `json:"payment_channels"`
+	ProjectID       uuid.UUID       `json:"project_id"`
+	OutboundRouteID uuid.UUID       `json:"outbound_route_id"`
+	Name            string          `json:"name"`
+	InboundPath     string          `json:"inbound_path"`
+	Target          string          `json:"target"`
+	AuthHeaderName  string          `json:"auth_header_name"`
+	AuthHeaderValue string          `json:"auth_header_value"`
+	AllowUnmatched  bool            `json:"allow_unmatched"`
+	Price           string          `json:"price"`
+	Free            bool            `json:"free"`
+	MimeType        string          `json:"mime_type"`
+	Description     string          `json:"description"`
+	Bazaar          json.RawMessage `json:"bazaar,omitempty"`
+	PaymentChannels []channelDTO    `json:"payment_channels"`
+}
+
+// bazaarDTO mirrors the YAML BazaarConfig shape so HTTP-delivered bazaar payloads
+// follow the same field names as the file provider.
+type bazaarDTO struct {
+	Disabled      bool           `json:"disabled,omitempty"`
+	Method        string         `json:"method,omitempty"`
+	BodyType      string         `json:"body_type,omitempty"`
+	InputExample  map[string]any `json:"input_example,omitempty"`
+	InputSchema   map[string]any `json:"input_schema,omitempty"`
+	OutputExample map[string]any `json:"output_example,omitempty"`
+	OutputSchema  map[string]any `json:"output_schema,omitempty"`
 }
 
 type channelDTO struct {
@@ -159,6 +172,28 @@ func fromResolveResponse(dto resolveRouteResponse) *Rule {
 		Free:            dto.Free,
 		MimeType:        dto.MimeType,
 		Description:     dto.Description,
+		Bazaar:          decodeBazaar(dto.Bazaar),
 		PaymentChannels: channels,
+	}
+}
+
+// decodeBazaar parses the JSON payload from control-api into BazaarConfig.
+// Returns nil when the payload is absent or malformed — auto-mode kicks in upstream.
+func decodeBazaar(raw json.RawMessage) *BazaarConfig {
+	if len(raw) == 0 {
+		return nil
+	}
+	var dto bazaarDTO
+	if err := json.Unmarshal(raw, &dto); err != nil {
+		return nil
+	}
+	return &BazaarConfig{
+		Disabled:      dto.Disabled,
+		Method:        dto.Method,
+		BodyType:      dto.BodyType,
+		InputExample:  dto.InputExample,
+		InputSchema:   dto.InputSchema,
+		OutputExample: dto.OutputExample,
+		OutputSchema:  dto.OutputSchema,
 	}
 }

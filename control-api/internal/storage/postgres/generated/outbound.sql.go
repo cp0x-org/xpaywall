@@ -13,9 +13,9 @@ import (
 )
 
 const createOutboundRoute = `-- name: CreateOutboundRoute :one
-INSERT INTO routes (id, project_id, name, path_pattern, price_usd, description, free)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, project_id, name, path_pattern, price_usd, description, free, created_at, updated_at
+INSERT INTO routes (id, project_id, name, path_pattern, price_usd, description, free, bazaar)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, project_id, name, path_pattern, price_usd, description, free, bazaar, created_at, updated_at
 `
 
 type CreateOutboundRouteParams struct {
@@ -26,6 +26,7 @@ type CreateOutboundRouteParams struct {
 	PriceUsd    string
 	Description string
 	Free        bool
+	Bazaar      []byte
 }
 
 type CreateOutboundRouteRow struct {
@@ -36,6 +37,7 @@ type CreateOutboundRouteRow struct {
 	PriceUsd    string
 	Description string
 	Free        bool
+	Bazaar      []byte
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
 }
@@ -49,6 +51,7 @@ func (q *Queries) CreateOutboundRoute(ctx context.Context, arg CreateOutboundRou
 		arg.PriceUsd,
 		arg.Description,
 		arg.Free,
+		arg.Bazaar,
 	)
 	var i CreateOutboundRouteRow
 	err := row.Scan(
@@ -59,6 +62,7 @@ func (q *Queries) CreateOutboundRoute(ctx context.Context, arg CreateOutboundRou
 		&i.PriceUsd,
 		&i.Description,
 		&i.Free,
+		&i.Bazaar,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -84,7 +88,7 @@ func (q *Queries) DeleteRouteDailyStats(ctx context.Context, outboundRouteID uui
 }
 
 const getOutboundRoute = `-- name: GetOutboundRoute :one
-SELECT id, project_id, name, path_pattern, price_usd, description, free, created_at, updated_at
+SELECT id, project_id, name, path_pattern, price_usd, description, free, bazaar, created_at, updated_at
 FROM routes
 WHERE id = $1
 `
@@ -97,6 +101,7 @@ type GetOutboundRouteRow struct {
 	PriceUsd    string
 	Description string
 	Free        bool
+	Bazaar      []byte
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
 }
@@ -112,6 +117,7 @@ func (q *Queries) GetOutboundRoute(ctx context.Context, id uuid.UUID) (GetOutbou
 		&i.PriceUsd,
 		&i.Description,
 		&i.Free,
+		&i.Bazaar,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -141,7 +147,7 @@ func (q *Queries) GetProjectRouteSettings(ctx context.Context, projectID uuid.UU
 }
 
 const listOutboundRoutes = `-- name: ListOutboundRoutes :many
-SELECT r.id, r.project_id, p.slug AS project_slug, r.name, r.path_pattern, r.price_usd, r.description, r.free, r.created_at, r.updated_at
+SELECT r.id, r.project_id, p.slug AS project_slug, r.name, r.path_pattern, r.price_usd, r.description, r.free, r.bazaar, r.created_at, r.updated_at
 FROM routes r
 JOIN projects p ON p.id = r.project_id
 ORDER BY r.name
@@ -156,6 +162,7 @@ type ListOutboundRoutesRow struct {
 	PriceUsd    string
 	Description string
 	Free        bool
+	Bazaar      []byte
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
 }
@@ -178,6 +185,7 @@ func (q *Queries) ListOutboundRoutes(ctx context.Context) ([]ListOutboundRoutesR
 			&i.PriceUsd,
 			&i.Description,
 			&i.Free,
+			&i.Bazaar,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -192,7 +200,7 @@ func (q *Queries) ListOutboundRoutes(ctx context.Context) ([]ListOutboundRoutesR
 }
 
 const listOutboundRoutesByProject = `-- name: ListOutboundRoutesByProject :many
-SELECT r.id, r.project_id, p.slug AS project_slug, r.name, r.path_pattern, r.price_usd, r.description, r.free, r.created_at, r.updated_at
+SELECT r.id, r.project_id, p.slug AS project_slug, r.name, r.path_pattern, r.price_usd, r.description, r.free, r.bazaar, r.created_at, r.updated_at
 FROM routes r
 JOIN projects p ON p.id = r.project_id
 WHERE r.project_id = $1
@@ -208,6 +216,7 @@ type ListOutboundRoutesByProjectRow struct {
 	PriceUsd    string
 	Description string
 	Free        bool
+	Bazaar      []byte
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
 }
@@ -230,6 +239,7 @@ func (q *Queries) ListOutboundRoutesByProject(ctx context.Context, projectID uui
 			&i.PriceUsd,
 			&i.Description,
 			&i.Free,
+			&i.Bazaar,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -260,9 +270,10 @@ SET project_id   = COALESCE($2, project_id),
     price_usd    = COALESCE($5, price_usd),
     description  = COALESCE($6, description),
     free         = COALESCE($7, free),
+    bazaar       = COALESCE($8, bazaar),
     updated_at   = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, project_id, name, path_pattern, price_usd, description, free, created_at, updated_at
+RETURNING id, project_id, name, path_pattern, price_usd, description, free, bazaar, created_at, updated_at
 `
 
 type UpdateOutboundRouteParams struct {
@@ -273,6 +284,7 @@ type UpdateOutboundRouteParams struct {
 	PriceUsd    *string
 	Description *string
 	Free        pgtype.Bool
+	Bazaar      []byte
 }
 
 type UpdateOutboundRouteRow struct {
@@ -283,6 +295,7 @@ type UpdateOutboundRouteRow struct {
 	PriceUsd    string
 	Description string
 	Free        bool
+	Bazaar      []byte
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
 }
@@ -296,6 +309,7 @@ func (q *Queries) UpdateOutboundRoute(ctx context.Context, arg UpdateOutboundRou
 		arg.PriceUsd,
 		arg.Description,
 		arg.Free,
+		arg.Bazaar,
 	)
 	var i UpdateOutboundRouteRow
 	err := row.Scan(
@@ -306,6 +320,7 @@ func (q *Queries) UpdateOutboundRoute(ctx context.Context, arg UpdateOutboundRou
 		&i.PriceUsd,
 		&i.Description,
 		&i.Free,
+		&i.Bazaar,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

@@ -102,6 +102,7 @@ SELECT
     oroute.price_usd,
     oroute.description,
     oroute.free,
+    oroute.bazaar,
     prs.base_url,
     prs.auth_header_name,
     prs.auth_header_value,
@@ -130,6 +131,7 @@ type ResolveOutboundRouteRow struct {
 	PriceUsd        string
 	Description     string
 	Free            bool
+	Bazaar          []byte
 	BaseUrl         string
 	AuthHeaderName  pgtype.Text
 	AuthHeaderValue pgtype.Text
@@ -147,6 +149,7 @@ func (q *Queries) ResolveOutboundRoute(ctx context.Context, arg ResolveOutboundR
 		&i.PriceUsd,
 		&i.Description,
 		&i.Free,
+		&i.Bazaar,
 		&i.BaseUrl,
 		&i.AuthHeaderName,
 		&i.AuthHeaderValue,
