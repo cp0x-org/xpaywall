@@ -21,7 +21,7 @@ func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:     "control-api",
 		Usage:    "run xpaywall control api",
-		Commands: []*cli.Command{installCommand()},
+		Commands: []*cli.Command{installCommand(), migrateCommand()},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "env-file",
