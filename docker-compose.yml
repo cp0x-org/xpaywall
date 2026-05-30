@@ -9,7 +9,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_APP_BASE_NAME: /
-    image: philpher/xpaywall-adminpanel:latest
+    image: cp0x/xpaywall-adminpanel:latest
     container_name: xpaywall-adminpanel
     restart: unless-stopped
     networks:
@@ -26,7 +26,7 @@ services:
     build:
       context: ./control-api
       dockerfile: Dockerfile
-    image: philpher/xpaywall-control-api:latest
+    image: cp0x/xpaywall-control-api:latest
     container_name: xpaywall-control-api
     restart: unless-stopped
     networks:
@@ -37,12 +37,13 @@ services:
     environment:
       CONTROL_DB_DSN: postgres://user:password@xpaywall-postgres:5432/xpaywalldb?sslmode=disable
       PORT: 9091
-      MODE: release
+      MODE: debug
       INTERNAL_API_KEY: change-me-internal-secret-key
       JWT_SECRET: change-me-jwt-secret-key
-      PROXY_URL: http://localhost:8081
+      PROXY_URL: http://127.0.0.1:8081
       SUPERADMIN_USERNAME: superadmin
       SUPERADMIN_PASSWORD: superadmin
+      DEBUG: true
     ports:
       - "3101:9091"
 
@@ -50,7 +51,7 @@ services:
     build:
       context: ./xgateway
       dockerfile: Dockerfile
-    image: philpher/xgateway:0.1.0
+    image: cp0x/xgateway:0.1.0
     container_name: xgateway
     restart: unless-stopped
     networks:
@@ -63,7 +64,8 @@ services:
       CONFIG_PROVIDER: http
       CONTROL_API_URL: http://xpaywall-control-api:9091
       INTERNAL_API_KEY: change-me-internal-secret-key
-      GIN_MODE: release
+      GIN_MODE: debug
+      DEBUG: true
     ports:
       - "3102:8081"
 
@@ -71,7 +73,7 @@ services:
     build:
       context: ./examples/server
       dockerfile: Dockerfile
-    image: philpher/xpaywall-example-server:latest
+    image: cp0x/xpaywall-example-server:latest
     container_name: xpaywall-example-server
     restart: unless-stopped
     networks:

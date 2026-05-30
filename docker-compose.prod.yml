@@ -3,9 +3,13 @@ networks:
     driver: bridge
 
 services:
-  # https://xpaywall.cp0x.com/
   adminpanel:
-    image: philpher/xpaywall-adminpanel:latest
+    build:
+      context: ./frontend/adminpanel
+      dockerfile: Dockerfile
+      args:
+        VITE_APP_BASE_NAME: /
+    image: cp0x/xpaywall-adminpanel:latest
     container_name: xpaywall-adminpanel
     restart: unless-stopped
     networks:
@@ -13,16 +17,16 @@ services:
     depends_on:
       - control-api
     environment:
-      #      API_URL: http://127.0.0.1:3101/
-      #      PROXY_URL: http://127.0.0.1:3102/
-      API_URL: https://xpaywall-api.cp0x.com/
-      PROXY_URL: https://xpaywall-gate.cp0x.com/
+      API_URL: http://127.0.0.1:3101/
+      PROXY_URL: http://127.0.0.1:3102/
     ports:
       - "3100:80"
 
-  # https://xpaywall-api.cp0x.com/
   control-api:
-    image: philpher/xpaywall-control-api:latest
+    build:
+      context: ./control-api
+      dockerfile: Dockerfile
+    image: cp0x/xpaywall-control-api:latest
     container_name: xpaywall-control-api
     restart: unless-stopped
     networks:
@@ -33,19 +37,22 @@ services:
     environment:
       CONTROL_DB_DSN: postgres://user:password@xpaywall-postgres:5432/xpaywalldb?sslmode=disable
       PORT: 9091
-      MODE: release
+      MODE: debug
       INTERNAL_API_KEY: change-me-internal-secret-key
       JWT_SECRET: change-me-jwt-secret-key
-      PROXY_URL: https://xpaywall-gate.cp0x.com/
+      PROXY_URL: http://127.0.0.1:8081
       SUPERADMIN_USERNAME: superadmin
       SUPERADMIN_PASSWORD: superadmin
+      DEBUG: true
     ports:
       - "3101:9091"
 
-  # https://xpaywall-gate.cp0x.com/
   xgateway:
-    image: philpher/xpaywall-xgateway:0.1.1
-    container_name: xpaywall-xgateway
+    build:
+      context: ./xgateway
+      dockerfile: Dockerfile
+    image: cp0x/xgateway:0.1.0
+    container_name: xgateway
     restart: unless-stopped
     networks:
       - xpaywall-net
@@ -57,14 +64,16 @@ services:
       CONFIG_PROVIDER: http
       CONTROL_API_URL: http://xpaywall-control-api:9091
       INTERNAL_API_KEY: change-me-internal-secret-key
-      GIN_MODE: release
-      PROXY_URL: https://xpaywall-gate.cp0x.com/
+      GIN_MODE: debug
+      DEBUG: true
     ports:
       - "3102:8081"
 
-  # https://xpaywall-demo-server.cp0x.com/
   example-server:
-    image: philpher/xpaywall-example-server:latest
+    build:
+      context: ./examples/server
+      dockerfile: Dockerfile
+    image: cp0x/xpaywall-example-server:latest
     container_name: xpaywall-example-server
     restart: unless-stopped
     networks:
