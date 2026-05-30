@@ -50,8 +50,8 @@ services:
     build:
       context: ./xgateway
       dockerfile: Dockerfile
-    image: philpher/xpaywall-xgateway:0.1.1
-    container_name: xpaywall-xgateway
+    image: philpher/xgateway:0.1.0
+    container_name: xgateway
     restart: unless-stopped
     networks:
       - xpaywall-net
