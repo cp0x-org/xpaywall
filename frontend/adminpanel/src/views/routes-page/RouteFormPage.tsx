@@ -328,39 +328,35 @@ export default function RouteFormPage() {
           return (
           <form onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ maxWidth: 720 }}>
-              {selectedProject && (
-                <>
-                  <Grid container spacing={3}>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <Grid container spacing={1} sx={{ alignItems: 'center' }}>
-                        <Grid>
-                          <LinkTwoToneIcon color="primary" />
-                        </Grid>
-                        <Grid size={{ sm: 'grow' }}>
-                          <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
-                            {fullProxyUrl || '—'}
-                          </Typography>
-                          <Typography variant="subtitle2">PROXY URL</Typography>
-                        </Grid>
-                      </Grid>
+              <Grid container spacing={3}>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Grid container spacing={1} sx={{ alignItems: 'center' }}>
+                    <Grid>
+                      <LinkTwoToneIcon color="primary" />
                     </Grid>
-                    <Grid size={{ xs: 12, sm: 6 }}>
-                      <Grid container spacing={1} sx={{ alignItems: 'center' }}>
-                        <Grid>
-                          <LanguageTwoToneIcon color="secondary" />
-                        </Grid>
-                        <Grid size={{ sm: 'grow' }}>
-                          <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
-                            {fullTargetUrl || '—'}
-                          </Typography>
-                          <Typography variant="subtitle2">TARGET URL</Typography>
-                        </Grid>
-                      </Grid>
+                    <Grid size={{ sm: 'grow' }}>
+                      <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
+                        {selectedProject ? (fullProxyUrl || '—') : 'choose project'}
+                      </Typography>
+                      <Typography variant="subtitle2">PROXY URL</Typography>
                     </Grid>
                   </Grid>
-                  <Divider />
-                </>
-              )}
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6 }}>
+                  <Grid container spacing={1} sx={{ alignItems: 'center' }}>
+                    <Grid>
+                      <LanguageTwoToneIcon color="secondary" />
+                    </Grid>
+                    <Grid size={{ sm: 'grow' }}>
+                      <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
+                        {selectedProject ? (fullTargetUrl || '—') : 'choose project'}
+                      </Typography>
+                      <Typography variant="subtitle2">TARGET URL</Typography>
+                    </Grid>
+                  </Grid>
+                </Grid>
+              </Grid>
+              <Divider />
 
               <FormControl fullWidth error={Boolean(touched.project_id && errors.project_id)} disabled={isView}>
                 <InputLabel id="project-label">Project</InputLabel>

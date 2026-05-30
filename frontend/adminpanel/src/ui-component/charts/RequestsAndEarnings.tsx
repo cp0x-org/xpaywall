@@ -149,7 +149,7 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
         toolbar: { show: true },
         zoom: { enabled: false },
         events: {
-          mounted: (chart) => { chart.windowResizeHandler(); }
+          mounted: () => { window.dispatchEvent(new Event('resize')); }
         }
       },
       colors: [COLOR_REQUESTS, COLOR_EARNINGS],
