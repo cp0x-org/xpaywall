@@ -19,7 +19,10 @@ import Typography from '@mui/material/Typography';
 import Accordion from '@mui/material/Accordion';
 import AccordionDetails from '@mui/material/AccordionDetails';
 import AccordionSummary from '@mui/material/AccordionSummary';
+import Grid from '@mui/material/Grid';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import LinkTwoToneIcon from '@mui/icons-material/LinkTwoTone';
+import LanguageTwoToneIcon from '@mui/icons-material/LanguageTwoTone';
 
 // third party
 import * as Yup from 'yup';
@@ -37,7 +40,19 @@ interface Project {
   id: string;
   name: string;
   slug: string;
+  base_url?: string | null;
   owner_user_id?: string | null;
+}
+
+interface ProxyUrlResp {
+  proxy_url?: string;
+}
+
+function buildUrl(base: string, path: string): string {
+  if (!base) return '';
+  const cleanBase = base.replace(/\/$/, '');
+  if (!path) return cleanBase;
+  return cleanBase + (path.startsWith('/') ? path : `/${path}`);
 }
 
 const BAZAAR_TEMPLATE = {
@@ -110,6 +125,7 @@ export default function RouteFormPage() {
   const routeId: string | undefined = (state as any)?.id;
 
   const [projects, setProjects] = useState<Project[]>([]);
+  const [proxyUrl, setProxyUrl] = useState('');
   const [loading, setLoading] = useState(isEdit || isView);
   const [loadError, setLoadError] = useState('');
   const [initialValues, setInitialValues] = useState(emptyValues);
@@ -128,6 +144,7 @@ export default function RouteFormPage() {
 
   useEffect(() => {
     axios.get<Project[]>('/api/v1/projects/with-config').then((res) => setProjects(res.data ?? []));
+    axios.get<ProxyUrlResp>('/api/v1/system/proxy-url').then((res) => setProxyUrl(res.data.proxy_url ?? ''));
   }, []);
 
   const ownedProjects = projects.filter((p) => canManage(currentUserId, p.owner_user_id));
@@ -302,9 +319,49 @@ export default function RouteFormPage() {
             }
           };
 
+          const selectedProject = projects.find((p) => p.id === values.project_id);
+          const fullProxyUrl = selectedProject
+            ? buildUrl(proxyUrl, `/${selectedProject.slug}${values.path_pattern.startsWith('/') ? values.path_pattern : values.path_pattern ? `/${values.path_pattern}` : ''}`)
+            : '';
+          const fullTargetUrl = selectedProject ? buildUrl(selectedProject.base_url ?? '', values.path_pattern) : '';
+
           return (
           <form onSubmit={handleSubmit}>
             <Stack spacing={2} sx={{ maxWidth: 720 }}>
+              {selectedProject && (
+                <>
+                  <Grid container spacing={3}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Grid container spacing={1} sx={{ alignItems: 'center' }}>
+                        <Grid>
+                          <LinkTwoToneIcon color="primary" />
+                        </Grid>
+                        <Grid size={{ sm: 'grow' }}>
+                          <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
+                            {fullProxyUrl || '—'}
+                          </Typography>
+                          <Typography variant="subtitle2">PROXY URL</Typography>
+                        </Grid>
+                      </Grid>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6 }}>
+                      <Grid container spacing={1} sx={{ alignItems: 'center' }}>
+                        <Grid>
+                          <LanguageTwoToneIcon color="secondary" />
+                        </Grid>
+                        <Grid size={{ sm: 'grow' }}>
+                          <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
+                            {fullTargetUrl || '—'}
+                          </Typography>
+                          <Typography variant="subtitle2">TARGET URL</Typography>
+                        </Grid>
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                  <Divider />
+                </>
+              )}
+
               <FormControl fullWidth error={Boolean(touched.project_id && errors.project_id)} disabled={isView}>
                 <InputLabel id="project-label">Project</InputLabel>
                 <Select
