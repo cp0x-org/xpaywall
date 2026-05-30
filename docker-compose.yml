@@ -9,7 +9,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_APP_BASE_NAME: /
-    image: cp0x/xpaywall-adminpanel:latest
+    image: cp0x/xpaywall-adminpanel:0.1.0
     container_name: xpaywall-adminpanel
     restart: unless-stopped
     networks:
@@ -26,7 +26,7 @@ services:
     build:
       context: ./control-api
       dockerfile: Dockerfile
-    image: cp0x/xpaywall-control-api:latest
+    image: cp0x/xpaywall-control-api:0.1.0
     container_name: xpaywall-control-api
     restart: unless-stopped
     networks:
@@ -73,7 +73,7 @@ services:
     build:
       context: ./examples/server
       dockerfile: Dockerfile
-    image: cp0x/xpaywall-example-server:latest
+    image: cp0x/xpaywall-example-server:0.1.0
     container_name: xpaywall-example-server
     restart: unless-stopped
     networks:
