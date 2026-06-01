@@ -4,6 +4,20 @@
 
 ---
 
+## Why xpaywall
+
+**Get paid per request. No accounts. No keys. No invoices.**
+
+- ⚡ **Drop-in monetisation.** Point xpaywall at your existing API. No code changes upstream.
+- 💸 **On-chain settlement.** Every call is its own payment. You get paid the moment the request is made.
+- 🔓 **No client signup.** Callers hit the URL, get `HTTP 402`, pay, retry. That's the entire onboarding.
+- 🎛️ **Web UI for everything.** Projects, routes, prices, payment methods, request logs — all in the admin panel.
+- 🏠 **Self-hosted and open source.** MIT licensed, one `docker compose up` away.
+
+📖 **Full documentation:** <http://xpaywall.cp0x.com/docs>
+
+---
+
 ## How It Works
 
 ```
