@@ -82,7 +82,13 @@ export default function ProjectsPage() {
           <CircularProgress />
         </CardContent>
       ) : (
-        <ProjectsTable rows={rows} />
+        <ProjectsTable
+          rows={rows}
+          onDelete={async (id) => {
+            await axiosServices.delete(`/api/v1/projects/${id}`);
+            setProjects((prev) => prev.filter((p) => p.id !== id));
+          }}
+        />
       )}
     </MainCard>
   );
