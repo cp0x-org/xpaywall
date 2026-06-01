@@ -88,7 +88,7 @@ export default function Login() {
                 </Stack> */}
                 <Stack sx={{ alignItems: 'center', gap: 0.5 }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Demo credentials</Typography>
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>username: admin</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>username: admin123</Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>password: admin123</Typography>
                 </Stack>
               </Stack>
