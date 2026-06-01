@@ -30,6 +30,7 @@ export default function RoutesPage() {
   const [search, setSearch] = useState<string>('');
   const [proxyUrl, setProxyUrl] = useState<string>('');
   const [projectBaseUrls, setProjectBaseUrls] = useState<Record<string, string>>({});
+  const [projectOwnerIds, setProjectOwnerIds] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     const fetchRoutes = axiosServices
@@ -43,9 +44,14 @@ export default function RoutesPage() {
     const fetchProjects = axiosServices
       .get<Project[]>('/api/v1/projects/with-config')
       .then((res) => {
-        const map: Record<string, string> = {};
-        for (const p of res.data ?? []) map[p.id] = p.base_url ?? '';
-        setProjectBaseUrls(map);
+        const baseMap: Record<string, string> = {};
+        const ownerMap: Record<string, string | null> = {};
+        for (const p of res.data ?? []) {
+          baseMap[p.id] = p.base_url ?? '';
+          ownerMap[p.id] = p.owner_user_id ?? null;
+        }
+        setProjectBaseUrls(baseMap);
+        setProjectOwnerIds(ownerMap);
       });
 
     Promise.all([fetchRoutes, fetchProxy, fetchProjects])
@@ -102,7 +108,16 @@ export default function RoutesPage() {
           <CircularProgress />
         </CardContent>
       ) : (
-        <RoutesTable rows={rows} proxyUrl={proxyUrl} projectBaseUrls={projectBaseUrls} />
+        <RoutesTable
+        rows={rows}
+        proxyUrl={proxyUrl}
+        projectBaseUrls={projectBaseUrls}
+        projectOwnerIds={projectOwnerIds}
+        onDelete={async (id) => {
+          await axiosServices.delete(`/api/v1/outbound-routes/${id}`);
+          setRoutes((prev) => prev.filter((r) => r.id !== id));
+        }}
+      />
       )}
     </MainCard>
   );

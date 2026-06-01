@@ -3,17 +3,21 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 // material-ui
 import Button from '@mui/material/Button';
+import EditTwoToneIcon from '@mui/icons-material/EditTwoTone';
 import Checkbox from '@mui/material/Checkbox';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Typography from '@mui/material/Typography';
 import LinkTwoToneIcon from '@mui/icons-material/LinkTwoTone';
 import LanguageTwoToneIcon from '@mui/icons-material/LanguageTwoTone';
+import PersonTwoToneIcon from '@mui/icons-material/PersonTwoTone';
 
 // third party
 import * as Yup from 'yup';
@@ -23,9 +27,11 @@ import { Formik } from 'formik';
 import MainCard from 'ui-component/cards/MainCard';
 import useAuth from 'hooks/useAuth';
 import axios from 'utils/axios';
+import { canManage } from 'utils/ownership';
 
 import {FullProject, ProxyUrl} from './types';
 import {TableBody} from "../../ui-component/mui";
+import ProjectPaymentMethods from './ProjectPaymentMethods';
 
 function toSlug(value: string) {
   return value
@@ -39,6 +45,7 @@ const emptyValues = {
   name: '',
   slug: '',
   owner_user_id: '',
+  owner_username: '',
   base_url: '',
   auth_header_name: '',
   auth_header_value: '',
@@ -55,17 +62,21 @@ export default function ProjectFormPage() {
   const isEdit = pathname.includes('/edit');
   const isView = pathname.includes('/view');
 
+  const currentUserId = (user as { id?: string } | null | undefined)?.id;
+
   const projectId: string | undefined = (state as any)?.id;
 
   const [loading, setLoading] = React.useState(isEdit || isView);
   const [loadError, setLoadError] = React.useState('');
   const [initialValues, setInitialValues] = React.useState({
     ...emptyValues,
-    owner_user_id: (user as any)?.id ?? ''
+    owner_user_id: (user as any)?.id ?? '',
+    owner_username: (user as any)?.username ?? '',
   });
 
   const [proxyUrl, setProxyUrl] = React.useState("")
   const [originTarget, setOriginTarget] = React.useState("")
+  const [tab, setTab] = React.useState(0)
 
   React.useEffect(() => {
     axios
@@ -89,6 +100,7 @@ export default function ProjectFormPage() {
             name: d.name,
             slug: d.slug,
             owner_user_id: d.owner_user_id,
+            owner_username: d.owner_username ?? '',
             base_url: d.base_url ?? '',
             auth_header_name: d.auth_header_name ?? '',
             auth_header_value: d.auth_header_value ?? '',
@@ -127,8 +139,18 @@ export default function ProjectFormPage() {
 
   return (
     <MainCard title={title}>
+      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+        <Tab label="General" />
+        <Tab label="Payment Methods" disabled={isCreate} />
+      </Tabs>
+
+      {tab === 1 && projectId && (
+        <ProjectPaymentMethods projectId={projectId} isView={isView} canEdit={isCreate || canManage(currentUserId, initialValues.owner_user_id)} />
+      )}
+
+      {tab === 0 && <>
       <Grid container spacing={3} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: (isEdit || isView) ? 4 : 6 }}>
           <Grid container spacing={1} sx={{ alignItems: 'center' }}>
             <Grid>
               <LinkTwoToneIcon color="primary" />
@@ -141,7 +163,7 @@ export default function ProjectFormPage() {
             </Grid>
           </Grid>
         </Grid>
-        <Grid size={{ xs: 12, sm: 6 }}>
+        <Grid size={{ xs: 12, sm: (isEdit || isView) ? 4 : 6 }}>
           <Grid container spacing={1} sx={{ alignItems: 'center' }}>
             <Grid>
               <LanguageTwoToneIcon color="secondary" />
@@ -154,6 +176,21 @@ export default function ProjectFormPage() {
             </Grid>
           </Grid>
         </Grid>
+        {(isEdit || isView) && (
+          <Grid size={{ xs: 12, sm: 4 }}>
+            <Grid container spacing={1} sx={{ alignItems: 'center' }}>
+              <Grid>
+                <PersonTwoToneIcon color="action" />
+              </Grid>
+              <Grid size={{ sm: 'grow' }}>
+                <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
+                  {initialValues.owner_username || '—'}
+                </Typography>
+                <Typography variant="subtitle2">OWNER</Typography>
+              </Grid>
+            </Grid>
+          </Grid>
+        )}
       </Grid>
       <Box sx={{ mb: 3, width: '100%', height: 1, bgcolor: 'divider' }} />
       <Formik
@@ -164,7 +201,6 @@ export default function ProjectFormPage() {
           slug: Yup.string()
             .matches(/^[a-z0-9-]+$/, 'Only lowercase letters, numbers and hyphens')
             .required('Slug is required'),
-          owner_user_id: Yup.string().uuid('Must be a valid UUID').required('Owner User ID is required'),
           base_url: Yup.string().url('Must be a valid URL').required('Server Base URL is required')
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
@@ -249,17 +285,6 @@ export default function ProjectFormPage() {
                     helperText={(touched.slug && errors.slug) || 'URL-friendly identifier, e.g. my-project'}
                   />
 
-                  <TextField
-                    fullWidth
-                    label="Owner User ID"
-                    name="owner_user_id"
-                    value={values.owner_user_id}
-                    onBlur={handleBlur}
-                    disabled={isView}
-                    onChange={handleChange}
-                    error={Boolean(touched.owner_user_id && errors.owner_user_id)}
-                    helperText={touched.owner_user_id && (errors.owner_user_id as string)}
-                  />
                 </Stack>
 
                 <Stack spacing={2.5}>
@@ -341,7 +366,16 @@ export default function ProjectFormPage() {
                 <Button variant="outlined" onClick={() => navigate('/projects')} disabled={isSubmitting}>
                   {isView ? 'Back' : 'Cancel'}
                 </Button>
-                {!isView && (
+                {isView && projectId && (
+                  <Button
+                    variant="contained"
+                    startIcon={<EditTwoToneIcon />}
+                    onClick={() => navigate('/projects/edit', { state: { id: projectId } })}
+                  >
+                    Edit
+                  </Button>
+                )}
+                {!isView && (isCreate || canManage(currentUserId, initialValues.owner_user_id)) && (
                   <Button type="submit" variant="contained" disabled={isSubmitting}>
                     {isCreate ? 'Create Project' : 'Save Changes'}
                   </Button>
@@ -351,6 +385,7 @@ export default function ProjectFormPage() {
           </form>
         )}
       </Formik>
+      </>}
     </MainCard>
   );
 }

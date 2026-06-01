@@ -1,0 +1,3 @@
+[submodule "xgateway"]
+	path = xgateway
+	url = git@github.com:cp0x-org/xgateway.git

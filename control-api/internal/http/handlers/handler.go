@@ -5,6 +5,10 @@ import (
 	postgres "github.com/cp0x-org/xpaywall/control-api/internal/storage/postgres/generated"
 )
 
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
 type Handler struct {
 	cfg *config.ControlAPIConfig
 	q   *postgres.Queries

@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -35,28 +37,43 @@ func boolPtrToPgBool(b *bool) pgtype.Bool {
 	return pgtype.Bool{Bool: *b, Valid: true}
 }
 
+// normalizeBazaarJSON validates that the payload is a JSON object (or empty) and
+// returns the canonical bytes for storage. Returns nil bytes when the payload is empty.
+func normalizeBazaarJSON(raw json.RawMessage) ([]byte, error) {
+	trimmed := strings.TrimSpace(string(raw))
+	if trimmed == "" || trimmed == "null" {
+		return nil, nil
+	}
+	var probe map[string]any
+	if err := json.Unmarshal([]byte(trimmed), &probe); err != nil {
+		return nil, err
+	}
+	return []byte(trimmed), nil
+}
+
 // ─── Outbound Routes ─────────────────────────────────────────────────────────
 
 type outboundRouteResponse struct {
-	ID          uuid.UUID `json:"id"`
-	ProjectID   uuid.UUID `json:"project_id"`
-	ProjectName string    `json:"project_name"`
-	ProjectSlug string    `json:"project_slug"`
-	Name        string    `json:"name"`
-	PathPattern string    `json:"path_pattern"`
-	PriceAmount int32     `json:"price_amount"`
-	PriceUSD    string    `json:"price_usd"`
-	Description string    `json:"description"`
-	Free        bool      `json:"free"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
+	ID          uuid.UUID       `json:"id"`
+	ProjectID   uuid.UUID       `json:"project_id"`
+	ProjectName string          `json:"project_name"`
+	ProjectSlug string          `json:"project_slug"`
+	Name        string          `json:"name"`
+	PathPattern string          `json:"path_pattern"`
+	PriceUSD    string          `json:"price_usd"`
+	Description string          `json:"description"`
+	Free        bool            `json:"free"`
+	Bazaar      json.RawMessage `json:"bazaar,omitempty"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
 func routeListRowToResponse(r postgres.ListOutboundRoutesRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID, ProjectSlug: r.ProjectSlug,
-		Name: r.Name, PathPattern: r.PathPattern, PriceAmount: r.PriceAmount,
+		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
 }
@@ -64,8 +81,9 @@ func routeListRowToResponse(r postgres.ListOutboundRoutesRow) outboundRouteRespo
 func routeListByProjectRowToResponse(r postgres.ListOutboundRoutesByProjectRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID, ProjectSlug: r.ProjectSlug,
-		Name: r.Name, PathPattern: r.PathPattern, PriceAmount: r.PriceAmount,
+		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
 }
@@ -73,8 +91,9 @@ func routeListByProjectRowToResponse(r postgres.ListOutboundRoutesByProjectRow) 
 func routeGetRowToResponse(r postgres.GetOutboundRouteRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID,
-		Name: r.Name, PathPattern: r.PathPattern, PriceAmount: r.PriceAmount,
+		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
 }
@@ -82,8 +101,9 @@ func routeGetRowToResponse(r postgres.GetOutboundRouteRow) outboundRouteResponse
 func routeCreateRowToResponse(r postgres.CreateOutboundRouteRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID,
-		Name: r.Name, PathPattern: r.PathPattern, PriceAmount: r.PriceAmount,
+		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
 }
@@ -91,12 +111,23 @@ func routeCreateRowToResponse(r postgres.CreateOutboundRouteRow) outboundRouteRe
 func routeUpdateRowToResponse(r postgres.UpdateOutboundRouteRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID,
-		Name: r.Name, PathPattern: r.PathPattern, PriceAmount: r.PriceAmount,
+		Name: r.Name, PathPattern: r.PathPattern,
 		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
 		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
 	}
 }
 
+// ListOutboundRoutes returns all outbound routes, optionally filtered by project.
+// @Summary     List outbound routes
+// @Tags        outbound-routes
+// @Produce     json
+// @Param       project_id query string false "Filter by Project ID (UUID)"
+// @Success     200 {array} outboundRouteResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/outbound-routes [get]
 func (h *Handler) ListOutboundRoutes(c *gin.Context) {
 	projects, _ := h.q.ListProjects(c.Request.Context())
 	projectNames := make(map[uuid.UUID]string, len(projects))
@@ -139,6 +170,16 @@ func (h *Handler) ListOutboundRoutes(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// GetOutboundRoute returns an outbound route by ID.
+// @Summary     Get outbound route
+// @Tags        outbound-routes
+// @Produce     json
+// @Param       id path string true "Route ID (UUID)"
+// @Success     200 {object} outboundRouteResponse
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/outbound-routes/{id} [get]
 func (h *Handler) GetOutboundRoute(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -154,13 +195,29 @@ func (h *Handler) GetOutboundRoute(c *gin.Context) {
 }
 
 type createOutboundRouteRequest struct {
-	ProjectID   uuid.UUID `json:"project_id" binding:"required"`
-	Name        string    `json:"name" binding:"required"`
-	PathPattern string    `json:"path_pattern" binding:"required"`
-	PriceAmount int32     `json:"price_amount"`
-	PriceUSD    string    `json:"price_usd"`
-	Description string    `json:"description"`
-	Free        bool      `json:"free"`
+	ProjectID   uuid.UUID       `json:"project_id" binding:"required"`
+	Name        string          `json:"name" binding:"required"`
+	PathPattern string          `json:"path_pattern" binding:"required"`
+	PriceUSD    string          `json:"price_usd"`
+	Description string          `json:"description"`
+	Free        bool            `json:"free"`
+	Bazaar      json.RawMessage `json:"bazaar,omitempty"`
+}
+
+// CreateOutboundRoute creates a new outbound route.
+// @Summary     Create outbound route
+// @Tags        outbound-routes
+// @Accept      json
+// @Produce     json
+// @Param       body body createOutboundRouteRequest true "Route data"
+// @Success     201 {object} outboundRouteResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/outbound-routes [post]
+// normalizePathPattern ensures the pattern has exactly one leading slash.
+func normalizePathPattern(p string) string {
+	return "/" + strings.TrimLeft(p, "/")
 }
 
 func (h *Handler) CreateOutboundRoute(c *gin.Context) {
@@ -169,15 +226,23 @@ func (h *Handler) CreateOutboundRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if !h.requireProjectOwner(c, req.ProjectID) {
+		return
+	}
+	bazaarJSON, err := normalizeBazaarJSON(req.Bazaar)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid bazaar payload: " + err.Error()})
+		return
+	}
 	row, err := h.q.CreateOutboundRoute(c.Request.Context(), postgres.CreateOutboundRouteParams{
 		ID:          uuid.New(),
 		ProjectID:   req.ProjectID,
 		Name:        req.Name,
-		PathPattern: req.PathPattern,
-		PriceAmount: req.PriceAmount,
+		PathPattern: normalizePathPattern(req.PathPattern),
 		PriceUsd:    req.PriceUSD,
 		Description: req.Description,
 		Free:        req.Free,
+		Bazaar:      bazaarJSON,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -187,18 +252,39 @@ func (h *Handler) CreateOutboundRoute(c *gin.Context) {
 }
 
 type updateOutboundRouteRequest struct {
-	Name        *string `json:"name"`
-	PathPattern *string `json:"path_pattern"`
-	PriceAmount *int32  `json:"price_amount"`
-	PriceUSD    *string `json:"price_usd"`
-	Description *string `json:"description"`
-	Free        *bool   `json:"free"`
+	ProjectID   *uuid.UUID      `json:"project_id"`
+	Name        *string         `json:"name"`
+	PathPattern *string         `json:"path_pattern"`
+	PriceUSD    *string         `json:"price_usd"`
+	Description *string         `json:"description"`
+	Free        *bool           `json:"free"`
+	Bazaar      json.RawMessage `json:"bazaar,omitempty"`
 }
 
+// UpdateOutboundRoute updates an outbound route by ID.
+// @Summary     Update outbound route
+// @Tags        outbound-routes
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "Route ID (UUID)"
+// @Param       body body updateOutboundRouteRequest true "Fields to update"
+// @Success     200 {object} outboundRouteResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/outbound-routes/{id} [put]
 func (h *Handler) UpdateOutboundRoute(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	existing, err := h.q.GetOutboundRoute(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, existing.ProjectID) {
 		return
 	}
 	var req updateOutboundRouteRequest
@@ -206,14 +292,29 @@ func (h *Handler) UpdateOutboundRoute(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if req.ProjectID != nil && *req.ProjectID != existing.ProjectID {
+		if !h.requireProjectOwner(c, *req.ProjectID) {
+			return
+		}
+	}
+	if req.PathPattern != nil {
+		normalized := normalizePathPattern(*req.PathPattern)
+		req.PathPattern = &normalized
+	}
+	bazaarJSON, err := normalizeBazaarJSON(req.Bazaar)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid bazaar payload: " + err.Error()})
+		return
+	}
 	row, err := h.q.UpdateOutboundRoute(c.Request.Context(), postgres.UpdateOutboundRouteParams{
 		ID:          id,
+		ProjectID:   req.ProjectID,
 		Name:        ptrToPgText(req.Name),
 		PathPattern: ptrToPgText(req.PathPattern),
-		PriceAmount: int32PtrToPgInt4(req.PriceAmount),
 		PriceUsd:    req.PriceUSD,
 		Description: req.Description,
 		Free:        boolPtrToPgBool(req.Free),
+		Bazaar:      bazaarJSON,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -222,23 +323,41 @@ func (h *Handler) UpdateOutboundRoute(c *gin.Context) {
 	c.JSON(http.StatusOK, routeUpdateRowToResponse(row))
 }
 
+// DeleteOutboundRoute deletes an outbound route by ID.
+// @Summary     Delete outbound route
+// @Tags        outbound-routes
+// @Param       id path string true "Route ID (UUID)"
+// @Success     204 "No Content"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/outbound-routes/{id} [delete]
 func (h *Handler) DeleteOutboundRoute(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	if err := h.q.DeleteOutboundRoute(c.Request.Context(), id); err != nil {
+	existing, err := h.q.GetOutboundRoute(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, existing.ProjectID) {
+		return
+	}
+	ctx := c.Request.Context()
+	if err := h.q.NullifyRouteInRequestLogs(ctx, &id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.q.DeleteRouteDailyStats(ctx, id); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if err := h.q.DeleteOutboundRoute(ctx, id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
-
-// ─── Project Payment Configs (stubs) ─────────────────────────────────────────
-
-func (h *Handler) ListProjectPaymentConfigs(c *gin.Context)  {}
-func (h *Handler) GetProjectPaymentConfig(c *gin.Context)    {}
-func (h *Handler) CreateProjectPaymentConfig(c *gin.Context) {}
-func (h *Handler) UpdateProjectPaymentConfig(c *gin.Context) {}
-func (h *Handler) DeleteProjectPaymentConfig(c *gin.Context) {}

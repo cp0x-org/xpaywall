@@ -1,0 +1,1923 @@
+basePath: /
+definitions:
+  auth.authResponse:
+    properties:
+      token:
+        type: string
+      user:
+        $ref: '#/definitions/auth.userResponse'
+    type: object
+  auth.errorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  auth.loginRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  auth.userResponse:
+    properties:
+      id:
+        type: string
+      username:
+        type: string
+    type: object
+  gateway.channelDTO:
+    properties:
+      asset_id:
+        type: string
+      channel_config:
+        additionalProperties:
+          type: string
+        type: object
+      channel_id:
+        type: string
+      enabled:
+        type: boolean
+      method:
+        type: string
+      price:
+        type: string
+      protocol:
+        type: string
+      scheme:
+        type: string
+    type: object
+  gateway.errorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  gateway.resolveRouteResponse:
+    properties:
+      allow_unmatched:
+        type: boolean
+      auth_header_name:
+        type: string
+      auth_header_value:
+        type: string
+      description:
+        type: string
+      free:
+        type: boolean
+      inbound_path:
+        type: string
+      mime_type:
+        type: string
+      name:
+        type: string
+      outbound_route_id:
+        type: string
+      payment_channels:
+        items:
+          $ref: '#/definitions/gateway.channelDTO'
+        type: array
+      price:
+        type: string
+      project_id:
+        type: string
+      target:
+        type: string
+    type: object
+  handlers.chartStatsResponse:
+    properties:
+      granularity:
+        type: string
+      points:
+        items:
+          $ref: '#/definitions/handlers.dailyStatPoint'
+        type: array
+    type: object
+  handlers.createOutboundRouteRequest:
+    properties:
+      description:
+        type: string
+      free:
+        type: boolean
+      name:
+        type: string
+      path_pattern:
+        type: string
+      price_amount:
+        type: integer
+      price_usd:
+        type: string
+      project_id:
+        type: string
+    required:
+    - name
+    - path_pattern
+    - project_id
+    type: object
+  handlers.createPaymentChannelAssetRequest:
+    properties:
+      asset_address:
+        type: string
+      asset_symbol:
+        type: string
+      decimals:
+        type: integer
+      metadata:
+        type: object
+      payment_channel_id:
+        type: string
+    required:
+    - asset_symbol
+    - payment_channel_id
+    type: object
+  handlers.createPaymentChannelRequest:
+    properties:
+      enabled:
+        type: boolean
+      metadata:
+        type: object
+      method:
+        type: string
+      protocol:
+        type: string
+      scheme:
+        type: string
+    required:
+    - method
+    - protocol
+    - scheme
+    type: object
+  handlers.createProjectRequest:
+    properties:
+      allow_unmatched:
+        type: boolean
+      auth_header_name:
+        type: string
+      auth_header_value:
+        type: string
+      base_url:
+        type: string
+      name:
+        type: string
+      owner_user_id:
+        type: string
+      slug:
+        type: string
+    required:
+    - base_url
+    - name
+    - owner_user_id
+    - slug
+    type: object
+  handlers.createRequestEventRequest:
+    properties:
+      event_type:
+        type: string
+      metadata:
+        type: object
+      request_log_id:
+        type: string
+    required:
+    - event_type
+    - request_log_id
+    type: object
+  handlers.createRequestLogRequest:
+    properties:
+      amount_paid:
+        type: integer
+      amount_usd:
+        type: string
+      client_ip:
+        type: string
+      error_message:
+        type: string
+      error_type:
+        type: string
+      final_status_code:
+        type: integer
+      id:
+        type: string
+      method:
+        type: string
+      outbound_route_id:
+        type: string
+      path:
+        type: string
+      payment_channel_asset_id:
+        type: string
+      payment_channel_id:
+        type: string
+      payment_completed:
+        type: boolean
+      payment_completed_at:
+        type: string
+      payment_requested_at:
+        type: string
+      payment_required:
+        type: boolean
+      project_id:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: string
+      upstream_response_time_ms:
+        type: integer
+      upstream_status_code:
+        type: integer
+      upstream_url:
+        type: string
+      user_agent:
+        type: string
+    required:
+    - method
+    - path
+    - project_id
+    - request_id
+    - status
+    type: object
+  handlers.createUserRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      username:
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  handlers.dailyStatPoint:
+    properties:
+      earnings_usd:
+        type: number
+      time:
+        type: string
+      total_requests:
+        type: integer
+    type: object
+  handlers.dashboardStatsResponse:
+    properties:
+      period:
+        $ref: '#/definitions/handlers.periodStats'
+      previous_period:
+        $ref: '#/definitions/handlers.periodStats'
+    type: object
+  handlers.errorResponse:
+    properties:
+      error:
+        type: string
+    type: object
+  handlers.fullProjectResponse:
+    properties:
+      allow_unmatched:
+        type: boolean
+      auth_header_name:
+        type: string
+      auth_header_value:
+        type: string
+      base_url:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      owner_user_id:
+        type: string
+      owner_username:
+        type: string
+      route_settings_id:
+        type: string
+      slug:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.outboundRouteResponse:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      free:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      path_pattern:
+        type: string
+      price_amount:
+        type: integer
+      price_usd:
+        type: string
+      project_id:
+        type: string
+      project_name:
+        type: string
+      project_slug:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.paymentChannelResponse:
+    properties:
+      created_at:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      metadata:
+        type: object
+      method:
+        type: string
+      protocol:
+        type: string
+      scheme:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.periodRange:
+    properties:
+      from:
+        type: string
+      to:
+        type: string
+    type: object
+  handlers.periodStats:
+    properties:
+      range:
+        $ref: '#/definitions/handlers.periodRange'
+      success_rate:
+        type: number
+      total_earnings_usd:
+        type: number
+      total_projects:
+        type: integer
+      total_requests:
+        type: integer
+      total_routes:
+        type: integer
+    type: object
+  handlers.projectResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      owner_user_id:
+        type: string
+      owner_username:
+        type: string
+      slug:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.projectWithConfigResponse:
+    properties:
+      base_url:
+        type: string
+      created_at:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      owner_user_id:
+        type: string
+      owner_username:
+        type: string
+      payment_methods:
+        items:
+          type: string
+        type: array
+      slug:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.proxyResponse:
+    properties:
+      proxy_url:
+        type: string
+    type: object
+  handlers.recentRequestItem:
+    properties:
+      amount_usd:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      method:
+        type: string
+      path:
+        type: string
+      payment_channel:
+        type: string
+      status_code:
+        type: integer
+    type: object
+  handlers.requestEventResponse:
+    properties:
+      created_at:
+        type: string
+      event_type:
+        type: string
+      id:
+        type: string
+      metadata:
+        type: object
+      request_log_id:
+        type: string
+    type: object
+  handlers.requestLogResponse:
+    properties:
+      amount_paid:
+        type: integer
+      amount_usd:
+        type: string
+      client_ip:
+        type: string
+      created_at:
+        type: string
+      error_message:
+        type: string
+      error_type:
+        type: string
+      final_status_code:
+        type: integer
+      id:
+        type: string
+      method:
+        type: string
+      outbound_route_id:
+        type: string
+      path:
+        type: string
+      payment_channel_asset_id:
+        type: string
+      payment_channel_id:
+        type: string
+      payment_completed:
+        type: boolean
+      payment_completed_at:
+        type: string
+      payment_requested_at:
+        type: string
+      payment_required:
+        type: boolean
+      project_id:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+      upstream_response_time_ms:
+        type: integer
+      upstream_status_code:
+        type: integer
+      upstream_url:
+        type: string
+      user_agent:
+        type: string
+    type: object
+  handlers.topRouteItem:
+    properties:
+      path_pattern:
+        type: string
+      price_usd:
+        type: string
+      revenue_usd:
+        type: number
+      total_requests:
+        type: integer
+    type: object
+  handlers.updateOutboundRouteRequest:
+    properties:
+      description:
+        type: string
+      free:
+        type: boolean
+      name:
+        type: string
+      path_pattern:
+        type: string
+      price_amount:
+        type: integer
+      price_usd:
+        type: string
+    type: object
+  handlers.updatePaymentChannelAssetRequest:
+    properties:
+      asset_address:
+        type: string
+      asset_symbol:
+        type: string
+      decimals:
+        type: integer
+      metadata:
+        type: object
+    type: object
+  handlers.updatePaymentChannelRequest:
+    properties:
+      enabled:
+        type: boolean
+      metadata:
+        type: object
+      method:
+        type: string
+      protocol:
+        type: string
+      scheme:
+        type: string
+    type: object
+  handlers.updateProjectRequest:
+    properties:
+      allow_unmatched:
+        type: boolean
+      auth_header_name:
+        type: string
+      auth_header_value:
+        type: string
+      base_url:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+    required:
+    - base_url
+    type: object
+  handlers.updateRequestLogRequest:
+    properties:
+      amount_paid:
+        type: integer
+      amount_usd:
+        type: string
+      error_message:
+        type: string
+      error_type:
+        type: string
+      final_status_code:
+        type: integer
+      outbound_route_id:
+        type: string
+      payment_channel_asset_id:
+        type: string
+      payment_channel_id:
+        type: string
+      payment_completed:
+        type: boolean
+      payment_completed_at:
+        type: string
+      payment_requested_at:
+        type: string
+      payment_required:
+        type: boolean
+      status:
+        type: string
+      upstream_response_time_ms:
+        type: integer
+      upstream_status_code:
+        type: integer
+      upstream_url:
+        type: string
+    required:
+    - status
+    type: object
+  handlers.updateUserRequest:
+    properties:
+      username:
+        type: string
+    type: object
+host: localhost:9090
+info:
+  contact: {}
+  description: Control plane for xpaywall — manages projects, routes, users, payment
+    channels, and request logs.
+  title: xpaywall Control API
+  version: "1.0"
+paths:
+  /api/v1/outbound-routes:
+    get:
+      parameters:
+      - description: Filter by Project ID (UUID)
+        in: query
+        name: project_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.outboundRouteResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List outbound routes
+      tags:
+      - outbound-routes
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Route data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createOutboundRouteRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.outboundRouteResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create outbound route
+      tags:
+      - outbound-routes
+  /api/v1/outbound-routes/{id}:
+    delete:
+      parameters:
+      - description: Route ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete outbound route
+      tags:
+      - outbound-routes
+    get:
+      parameters:
+      - description: Route ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.outboundRouteResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get outbound route
+      tags:
+      - outbound-routes
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Route ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.updateOutboundRouteRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.outboundRouteResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update outbound route
+      tags:
+      - outbound-routes
+  /api/v1/payment-channel-assets:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Array of payment channel asset objects
+          schema:
+            items:
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List payment channel assets
+      tags:
+      - payment-channel-assets
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Asset data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createPaymentChannelAssetRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created asset object
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create payment channel asset
+      tags:
+      - payment-channel-assets
+  /api/v1/payment-channel-assets/{id}:
+    delete:
+      parameters:
+      - description: Asset ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete payment channel asset
+      tags:
+      - payment-channel-assets
+    get:
+      parameters:
+      - description: Asset ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Payment channel asset object
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get payment channel asset
+      tags:
+      - payment-channel-assets
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Asset ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.updatePaymentChannelAssetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated asset object
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update payment channel asset
+      tags:
+      - payment-channel-assets
+  /api/v1/payment-channels:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.paymentChannelResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List payment channels
+      tags:
+      - payment-channels
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Payment channel data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createPaymentChannelRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.paymentChannelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create payment channel
+      tags:
+      - payment-channels
+  /api/v1/payment-channels/{id}:
+    delete:
+      parameters:
+      - description: Payment Channel ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete payment channel
+      tags:
+      - payment-channels
+    get:
+      parameters:
+      - description: Payment Channel ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.paymentChannelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get payment channel
+      tags:
+      - payment-channels
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Payment Channel ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.updatePaymentChannelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.paymentChannelResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update payment channel
+      tags:
+      - payment-channels
+  /api/v1/project-payment-configs:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+      security:
+      - BearerAuth: []
+      summary: List project payment configs
+      tags:
+      - project-payment-configs
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create project payment config
+      tags:
+      - project-payment-configs
+  /api/v1/project-payment-configs/{id}:
+    delete:
+      parameters:
+      - description: Config ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      summary: Delete project payment config
+      tags:
+      - project-payment-configs
+    get:
+      parameters:
+      - description: Config ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get project payment config
+      tags:
+      - project-payment-configs
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Config ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update project payment config
+      tags:
+      - project-payment-configs
+  /api/v1/project-settings/{projectId}:
+    get:
+      parameters:
+      - description: Project ID (UUID)
+        in: path
+        name: projectId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get project settings
+      tags:
+      - projects
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID (UUID)
+        in: path
+        name: projectId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update project settings
+      tags:
+      - projects
+  /api/v1/projects:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.projectResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List projects
+      tags:
+      - projects
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.fullProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create project
+      tags:
+      - projects
+  /api/v1/projects/{id}:
+    delete:
+      parameters:
+      - description: Project ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete project
+      tags:
+      - projects
+    get:
+      parameters:
+      - description: Project ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.projectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get project
+      tags:
+      - projects
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.updateProjectRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.fullProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update project
+      tags:
+      - projects
+  /api/v1/projects/{id}/full:
+    get:
+      parameters:
+      - description: Project ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.fullProjectResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get project with settings
+      tags:
+      - projects
+  /api/v1/projects/with-config:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.projectWithConfigResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List projects with config
+      tags:
+      - projects
+  /api/v1/request-events:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Event data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createRequestEventRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.requestEventResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create request event
+      tags:
+      - request-logs
+  /api/v1/request-logs:
+    get:
+      parameters:
+      - description: Max results (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset for pagination (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Filter by Project ID (UUID)
+        in: query
+        name: project_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.requestLogResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List request logs
+      tags:
+      - request-logs
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request log data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createRequestLogRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.requestLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Create request log
+      tags:
+      - request-logs
+  /api/v1/request-logs/{id}:
+    get:
+      parameters:
+      - description: Request Log ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.requestLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get request log
+      tags:
+      - request-logs
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Request Log ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.updateRequestLogRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.requestLogResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Update request log
+      tags:
+      - request-logs
+  /api/v1/request-logs/{id}/events:
+    get:
+      parameters:
+      - description: Request Log ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.requestEventResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List request events
+      tags:
+      - request-logs
+  /api/v1/stats/daily:
+    get:
+      parameters:
+      - description: 'Period: day, week, month, custom (default: 7 days)'
+        in: query
+        name: period
+        type: string
+      - description: Start date (YYYY-MM-DD or DD.MM.YYYY) — required for period=custom
+        in: query
+        name: from
+        type: string
+      - description: End date (YYYY-MM-DD or DD.MM.YYYY) — required for period=custom
+        in: query
+        name: to
+        type: string
+      - description: Number of days (used when period is not set, default 7, max 90)
+        in: query
+        name: days
+        type: integer
+      - description: Filter by Project ID (UUID)
+        in: query
+        name: project_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.chartStatsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get daily/hourly stats
+      tags:
+      - stats
+  /api/v1/stats/dashboard:
+    get:
+      parameters:
+      - description: 'Period: day, week (default), month, custom'
+        in: query
+        name: period
+        type: string
+      - description: Start date (YYYY-MM-DD or DD.MM.YYYY) — required for period=custom
+        in: query
+        name: from
+        type: string
+      - description: End date (YYYY-MM-DD or DD.MM.YYYY) — required for period=custom
+        in: query
+        name: to
+        type: string
+      - description: Filter by Project ID (UUID)
+        in: query
+        name: project_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.dashboardStatsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get dashboard stats
+      tags:
+      - stats
+  /api/v1/stats/recent-requests:
+    get:
+      parameters:
+      - description: Filter by Project ID (UUID)
+        in: query
+        name: project_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.recentRequestItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get recent requests
+      tags:
+      - stats
+  /api/v1/stats/top-routes:
+    get:
+      parameters:
+      - description: Filter by Project ID (UUID)
+        in: query
+        name: project_id
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.topRouteItem'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get top routes
+      tags:
+      - stats
+  /api/v1/system/proxy-url:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.proxyResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get proxy URL
+      tags:
+      - system
+  /api/v1/users:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Array of user objects
+          schema:
+            items:
+              type: object
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List users
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: User data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created user object
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create user
+      tags:
+      - users
+  /api/v1/users/{id}:
+    delete:
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete user
+      tags:
+      - users
+    get:
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User object
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get user
+      tags:
+      - users
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: User ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.updateUserRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Updated user object
+          schema:
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update user
+      tags:
+      - users
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Login credentials
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.authResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+      summary: Login
+      tags:
+      - auth
+  /auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.userResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /proxy/resolve/{path}:
+    get:
+      parameters:
+      - description: Path in format {projectSlug}/{inboundPath}
+        in: path
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/gateway.resolveRouteResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/gateway.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/gateway.errorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Resolve route
+      tags:
+      - gateway
+securityDefinitions:
+  ApiKeyAuth:
+    description: Internal API key shared between xgateway and control-api
+    in: header
+    name: X-Api-Key
+    type: apiKey
+  BearerAuth:
+    description: 'JWT token. Format: "Bearer {token}"'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

@@ -2,7 +2,13 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 
 // material-ui
+import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -17,6 +23,8 @@ import Typography from '@mui/material/Typography';
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
 import ProjectsTableHeader from './ProjectsTableHeader';
+import useAuth from 'hooks/useAuth';
+import { canManage } from 'utils/ownership';
 
 // assets
 import DeleteTwoToneIcon from '@mui/icons-material/DeleteTwoTone';
@@ -49,11 +57,21 @@ function stableSort(array: Project[], comparator: (a: Project, b: Project) => nu
   return stabilized.map((el) => el[0]);
 }
 
-export default function ProjectsTable({ rows }: { rows: Project[] }) {
+export default function ProjectsTable({
+  rows,
+  onDelete
+}: {
+  rows: Project[];
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const { user } = useAuth();
+  const currentUserId = (user as { id?: string } | null | undefined)?.id;
   const [order, setOrder] = React.useState<ArrangementOrder>('asc');
   const [orderBy, setOrderBy] = React.useState<string>('name');
   const [page, setPage] = React.useState<number>(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState<number>(5);
+  const [rowsPerPage, setRowsPerPage] = React.useState<number>(10);
+  const [deletingRow, setDeletingRow] = React.useState<Project | null>(null);
+  const [deleteLoading, setDeleteLoading] = React.useState(false);
 
   const handleRequestSort = (_event: React.SyntheticEvent<Element, Event>, property: string) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -87,7 +105,9 @@ export default function ProjectsTable({ rows }: { rows: Project[] }) {
           <TableBody>
             {stableSort(rows, getComparator(order, orderBy))
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row) => (
+              .map((row) => {
+                const isOwner = canManage(currentUserId, row.owner_user_id);
+                return (
                 <TableRow hover tabIndex={-1} key={row.id}>
                   <TableCell>
                     <Typography variant="subtitle1">{row.name}</Typography>
@@ -96,7 +116,7 @@ export default function ProjectsTable({ rows }: { rows: Project[] }) {
                   <TableCell>
                     <Chip label={row.enabled ? 'Yes' : 'No'} size="small" color={row.enabled ? 'success' : 'default'} />
                   </TableCell>
-                  <TableCell>{row.owner_username || row.owner_user_id.slice(0, 8)}</TableCell>
+                  <TableCell>{row.owner_username || (row.owner_user_id ? row.owner_user_id.slice(0, 8) : '—')}</TableCell>
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.base_url}</TableCell>
                   <TableCell>{row.payment_methods?.join(', ') || '—'}</TableCell>
                   <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
@@ -107,20 +127,25 @@ export default function ProjectsTable({ rows }: { rows: Project[] }) {
                           <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Edit">
-                        <IconButton color="secondary" component={Link} to="/projects/edit" state={{ id: row.id }} size="small" aria-label="Edit">
-                          <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" size="small" aria-label="Delete">
-                          <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
+                      {isOwner && (
+                        <Tooltip title="Edit">
+                          <IconButton color="secondary" component={Link} to="/projects/edit" state={{ id: row.id }} size="small" aria-label="Edit">
+                            <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {isOwner && (
+                        <Tooltip title="Archive Project">
+                          <IconButton color="error" size="small" aria-label="Archive Project" onClick={() => setDeletingRow(row)}>
+                            <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             {emptyRows > 0 && (
               <TableRow sx={{ height: 53 * emptyRows }}>
                 <TableCell colSpan={8} />
@@ -139,6 +164,38 @@ export default function ProjectsTable({ rows }: { rows: Project[] }) {
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
+
+      <Dialog open={!!deletingRow} onClose={() => !deleteLoading && setDeletingRow(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Archive Project</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Archive <strong>{deletingRow?.name}</strong>? The project will be hidden from the panel and xgateway
+            will stop resolving its routes. Request logs and historical stats are preserved.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeletingRow(null)} disabled={deleteLoading}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deleteLoading}
+            onClick={async () => {
+              if (!deletingRow) return;
+              setDeleteLoading(true);
+              try {
+                await onDelete(deletingRow.id);
+                setDeletingRow(null);
+              } finally {
+                setDeleteLoading(false);
+              }
+            }}
+          >
+            Archive
+          </Button>
+        </DialogActions>
+      </Dialog>
     </MainCard>
   );
 }

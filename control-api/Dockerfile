@@ -12,6 +12,7 @@ WORKDIR /app
 
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=builder /out/control-api /usr/local/bin/control-api
+COPY --from=builder /src/migrations /app/migrations
 
 EXPOSE 9091
 

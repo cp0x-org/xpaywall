@@ -2,7 +2,13 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 
 // material-ui
+import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogTitle from '@mui/material/DialogTitle';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -17,6 +23,8 @@ import Typography from '@mui/material/Typography';
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
 import RoutesTableHeader from './RoutesTableHeader';
+import useAuth from 'hooks/useAuth';
+import { canManage } from 'utils/ownership';
 
 // assets
 import DeleteTwoToneIcon from '@mui/icons-material/DeleteTwoTone';
@@ -77,16 +85,24 @@ function stableSort(array: RouteRow[], comparator: (a: RouteRow, b: RouteRow) =>
 export default function RoutesTable({
   rows,
   proxyUrl,
-  projectBaseUrls
+  projectBaseUrls,
+  projectOwnerIds,
+  onDelete
 }: {
   rows: RouteRow[];
   proxyUrl: string;
   projectBaseUrls: Record<string, string>;
+  projectOwnerIds: Record<string, string | null>;
+  onDelete: (id: string) => Promise<void>;
 }) {
+  const { user } = useAuth();
+  const currentUserId = (user as { id?: string } | null | undefined)?.id;
   const [order, setOrder] = React.useState<ArrangementOrder>('asc');
   const [orderBy, setOrderBy] = React.useState<string>('name');
   const [page, setPage] = React.useState<number>(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState<number>(5);
+  const [rowsPerPage, setRowsPerPage] = React.useState<number>(10);
+  const [deletingRow, setDeletingRow] = React.useState<RouteRow | null>(null);
+  const [deleteLoading, setDeleteLoading] = React.useState(false);
 
   const handleRequestSort = (_event: React.SyntheticEvent<Element, Event>, property: string) => {
     const isAsc = orderBy === property && order === 'asc';
@@ -120,7 +136,9 @@ export default function RoutesTable({
           <TableBody>
             {stableSort(rows, getComparator(order, orderBy))
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row) => (
+              .map((row) => {
+                const isOwner = canManage(currentUserId, projectOwnerIds[row.project_id]);
+                return (
                 <TableRow hover tabIndex={-1} key={row.id}>
                   <TableCell>
                     <Typography variant="subtitle1">{row.name}</Typography>
@@ -129,7 +147,7 @@ export default function RoutesTable({
                   <TableCell>
                     <Chip label={row.free ? 'Free' : 'Paid'} size="small" color={row.free ? 'success' : 'default'} />
                   </TableCell>
-                  <TableCell>{row.free ? '—' : row.price_usd || `$${(row.price_amount / 100).toFixed(2)}`}</TableCell>
+                  <TableCell>{row.free ? '—' : row.price_usd ? `$${row.price_usd}` : '—'}</TableCell>
                   <TableCell>{row.project_name || row.project_id.slice(0, 8)}</TableCell>
                   <TableCell align="center">
                     <UrlLinkCell url={buildUrl(proxyUrl, `${row.project_slug}${row.path_pattern}`)} />
@@ -145,20 +163,25 @@ export default function RoutesTable({
                           <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Edit">
-                        <IconButton color="secondary" component={Link} to="/routes/edit" state={{ id: row.id }} size="small" aria-label="Edit">
-                          <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" size="small" aria-label="Delete">
-                          <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
+                      {isOwner && (
+                        <Tooltip title="Edit">
+                          <IconButton color="secondary" component={Link} to="/routes/edit" state={{ id: row.id }} size="small" aria-label="Edit">
+                            <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {isOwner && (
+                        <Tooltip title="Delete">
+                          <IconButton color="error" size="small" aria-label="Delete" onClick={() => setDeletingRow(row)}>
+                            <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             {emptyRows > 0 && (
               <TableRow sx={{ height: 53 * emptyRows }}>
                 <TableCell colSpan={9} />
@@ -177,6 +200,37 @@ export default function RoutesTable({
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
+
+      <Dialog open={!!deletingRow} onClose={() => !deleteLoading && setDeletingRow(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Delete Route</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete <strong>{deletingRow?.name}</strong>? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeletingRow(null)} disabled={deleteLoading}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            disabled={deleteLoading}
+            onClick={async () => {
+              if (!deletingRow) return;
+              setDeleteLoading(true);
+              try {
+                await onDelete(deletingRow.id);
+                setDeletingRow(null);
+              } finally {
+                setDeleteLoading(false);
+              }
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </MainCard>
   );
 }

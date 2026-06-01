@@ -18,6 +18,8 @@ import AnimateButton from 'ui-component/extended/AnimateButton';
 import CustomFormControl from 'ui-component/extended/Form/CustomFormControl';
 import useAuth from 'hooks/useAuth';
 import useScriptRef from 'hooks/useScriptRef';
+import { useDispatch } from 'store';
+import { openSnackbar } from 'store/slices/snackbar';
 
 // assets
 import Visibility from '@mui/icons-material/Visibility';
@@ -28,6 +30,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 export default function JWTLogin({ ...others }) {
   const { login } = useAuth();
   const scriptedRef = useScriptRef();
+  const dispatch = useDispatch();
 
   const [showPassword, setShowPassword] = useState(false);
   const handleClickShowPassword = () => {
@@ -49,7 +52,7 @@ export default function JWTLogin({ ...others }) {
         username: Yup.string().max(255).required('Username is required'),
         password: Yup.string().required('Password is required')
       })}
-      onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
+      onSubmit={async (values, { setStatus, setSubmitting }) => {
         try {
           await login?.(values.username, values.password);
 
@@ -59,9 +62,20 @@ export default function JWTLogin({ ...others }) {
           }
         } catch (err: any) {
           console.error(err);
+          const message = err.response?.data?.error || err.message || 'Login failed. Password or username incorrect.';
+          dispatch(
+            openSnackbar({
+              open: true,
+              message,
+              variant: 'alert',
+              alert: { variant: 'filled' },
+              severity: 'error',
+              anchorOrigin: { vertical: 'top', horizontal: 'center' },
+              close: true
+            })
+          );
           if (scriptedRef.current) {
             setStatus({ success: false });
-            setErrors({ submit: err.message });
             setSubmitting(false);
           }
         }
@@ -118,11 +132,6 @@ export default function JWTLogin({ ...others }) {
             )}
           </CustomFormControl>
 
-          {errors.submit && (
-            <Box sx={{ mt: 3 }}>
-              <FormHelperText error>{errors.submit}</FormHelperText>
-            </Box>
-          )}
           <Box sx={{ mt: 2 }}>
             <AnimateButton>
               <Button color="secondary" disabled={isSubmitting} fullWidth size="large" type="submit" variant="contained">

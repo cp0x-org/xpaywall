@@ -21,7 +21,7 @@ func NewCommand() *cli.Command {
 	return &cli.Command{
 		Name:     "control-api",
 		Usage:    "run xpaywall control api",
-		Commands: []*cli.Command{installCommand()},
+		Commands: []*cli.Command{installCommand(), migrateCommand()},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "env-file",
@@ -62,7 +62,7 @@ func run(ctx context.Context, cfg *appconfig.ControlAPIConfig) error {
 	ah := authhandler.New(q, cfg.JWTSecret, cfg.SuperadminUsername, cfg.SuperadminPassword)
 	gw := gateway.New(q)
 
-	router := internalhttp.SetupRouter(h, ah, gw, cfg.InternalAPIKey, cfg.JWTSecret)
+	router := internalhttp.SetupRouter(h, ah, gw, cfg.InternalAPIKey, cfg.JWTSecret, cfg.Debug, cfg.CORSOrigins)
 
 	addr := fmt.Sprintf(":%d", cfg.Port)
 	log.Printf("control-api listening on %s", addr)

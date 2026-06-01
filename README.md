@@ -1,6 +1,20 @@
 # xpaywall
 
-**xpaywall** is a self-hosted HTTP 402 payment gateway that enforces micropayments in front of any API. It sits between clients and your upstream services — no API keys, no billing accounts, no subscriptions. Clients pay per request using crypto (x402, MPP/Tempo) or Stripe, and the gateway proxies the request only after verifying payment proof.
+**xpaywall** is a self-hosted HTTP 402 payment gateway that enforces micropayments in front of any API. It sits between clients and your upstream services — no API keys, no billing accounts, no subscriptions. Clients pay per request using the [x402](https://www.x402.org/) protocol, and the gateway proxies the request only after verifying payment proof.
+
+---
+
+## Why xpaywall
+
+**Get paid per request. No accounts. No keys. No invoices.**
+
+- ⚡ **Drop-in monetisation.** Point xpaywall at your existing API. No code changes upstream.
+- 💸 **On-chain settlement.** Every call is its own payment. You get paid the moment the request is made.
+- 🔓 **No client signup.** Callers hit the URL, get `HTTP 402`, pay, retry. That's the entire onboarding.
+- 🎛️ **Web UI for everything.** Projects, routes, prices, payment methods, request logs — all in the admin panel.
+- 🏠 **Self-hosted and open source.** MIT licensed, one `docker compose up` away.
+
+📖 **Full documentation:** <http://xpaywall.cp0x.com/docs>
 
 ---
 
@@ -45,11 +59,11 @@ Client Request
 
 ## Services
 
-| Service | Directory | Port | Role |
+| Service | Directory | Container Port | Role |
 |---|---|---|---|
-| **xgateway** | `xgateway/` | 8081 | Reverse proxy that enforces payment rules |
+| **xgateway** | `xgateway/` (submodule) | 8081 | Reverse proxy that enforces payment rules |
 | **control-api** | `control-api/` | 9091 | REST control plane — projects, routes, users, logs |
-| **adminpanel** | `frontend/adminpanel/` | 3000 | React dashboard for managing everything |
+| **adminpanel** | `frontend/adminpanel/` | 80 (3000 in dev) | React dashboard for managing everything |
 | **example-server** | `examples/server/` | 4021 | Sample upstream API for testing |
 
 ---
@@ -59,18 +73,24 @@ Client Request
 ### With Docker Compose
 
 ```bash
-git clone https://github.com/your-org/xpaywall.git
+git clone https://github.com/cp0x-org/xpaywall.git
 cd xpaywall
+git submodule update --init --recursive
 docker compose up -d
 ```
 
+> `xgateway/` is a Git submodule from [`cp0x-org/xgateway`](https://github.com/cp0x-org/xgateway) — don't skip the `submodule update` step or the build will fail.
+
 | Service | URL |
 |---|---|
-| Admin Panel | http://localhost:3000 |
-| Control API | http://localhost:9091 |
-| Gateway | http://localhost:8081 |
+| Landing | http://localhost:3100 |
+| Control API | http://localhost:3101 |
+| Gateway | http://localhost:3102 |
+| Example upstream | http://localhost:3103 |
+| Admin Panel | http://localhost:3104 |
+| PostgreSQL | localhost:5482 |
 
-Default superadmin credentials: `superadmin` / `superadmin` (change in `docker-compose.yml`).
+Default superadmin credentials: `admin` / `admin123` (change in `docker-compose.yml`). Host ports are mapped in `docker-compose.yml` — adjust them there if you need different externals.
 
 ### Local Development
 
@@ -109,7 +129,8 @@ control-api:
   environment:
     INTERNAL_API_KEY: change-me-internal-secret-key   # shared with xgateway
     JWT_SECRET: change-me-jwt-secret-key
-    PROXY_URL: http://your-server-ip:8081             # public gateway URL
+    PROXY_URL: http://your-server-ip:3102             # public gateway URL
+    MODE: release                                     # Gin mode: release | debug
     SUPERADMIN_USERNAME: admin
     SUPERADMIN_PASSWORD: your-strong-password
 
@@ -119,8 +140,8 @@ xgateway:
 
 adminpanel:
   environment:
-    API_URL: http://your-server-ip:9091/              # browser-accessible URL
-    PROXY_URL: http://your-server-ip:8081/
+    API_URL: http://your-server-ip:3101/              # browser-accessible URL
+    PROXY_URL: http://your-server-ip:3102/
 ```
 
 > **Note:** `API_URL` and `PROXY_URL` for the admin panel are runtime env vars — you can change them without rebuilding the image.
@@ -135,9 +156,10 @@ adminpanel:
 | `CONTROL_API_URL` | http mode | URL of control-api, e.g. `http://control-api:9091` |
 | `INTERNAL_API_KEY` | http mode | Shared secret — must match control-api |
 | `CONFIG_FILE` | file mode | Path to YAML rules file |
-| `PORT` | No | Listen port (default: `8081`) |
+| `PORT` | No | Listen port (default: `8080`) |
 | `LOG_LEVEL` | No | `DEBUG`, `INFO`, `WARN`, `ERROR` |
 | `GIN_MODE` | No | `debug` or `release` |
+| `PUBLIC_URL` | No | Override the public-facing URL injected into 402 responses |
 
 ### control-api Environment Variables
 
@@ -147,7 +169,8 @@ adminpanel:
 | `INTERNAL_API_KEY` | Yes | Shared secret with xgateway |
 | `JWT_SECRET` | Yes | Signs admin JWT tokens |
 | `PROXY_URL` | Yes | Public URL of xgateway (returned in 402 responses) |
-| `PORT` | No | Listen port (default: `9091`) |
+| `PORT` | No | Listen port (default: `9090`) |
+| `MODE` | No | Gin mode: `release` or `debug` |
 | `SUPERADMIN_USERNAME` | No | Bootstrap admin username |
 | `SUPERADMIN_PASSWORD` | No | Bootstrap admin password |
 
@@ -163,16 +186,8 @@ x402:
     facilitator_url: https://x402.dexter.cash
     network: eip155:8453        # Base mainnet (CAIP-2)
     scheme: exact               # exact | upto
-    merchant: "0xYourAddress"
-    asset: "0xUSDCAddress"
-
-mpp:
-  - name: tempo-charge
-    method: tempo
-    rpc_url: http://localhost:4022
-    scheme: charge
-    merchant: "0xYourAddress"
-    asset: "0xUSDCAddress"
+    merchant: "0xYourAddress"        # pay_to address
+    asset: "0xUSDCAddress"           # CAIP-19 asset
 
 outbound:
   target: http://your-upstream:4021
@@ -188,15 +203,17 @@ outbound:
       free: true                # no payment required
 ```
 
+See [`xgateway/config.example.yaml`](xgateway/config.example.yaml) for the full schema.
+
 ---
 
 ## Payment Methods
 
-| Protocol | Description | Networks |
-|---|---|---|
-| **x402** | EVM-based micropayments | Base, Base Sepolia |
-| **MPP / Tempo** | Machine Payments Protocol | Tempo blockchain |
-| **Stripe** | Traditional card payments | — |
+| Protocol | Status | Description | Networks |
+|---|---|---|---|
+| **x402** | Shipped | EVM-based micropayments (`exact` and `upto` schemes) | Base, Base Sepolia, any EVM chain with an x402 facilitator |
+| **MPP / Tempo** | Roadmap | Machine Payments Protocol — code is scaffolded but disabled in the current build | Tempo blockchain |
+| **Stripe** | Roadmap | Traditional card payments | — |
 
 ---
 
@@ -226,6 +243,7 @@ outbound:
 | GET | `/api/v1/request-logs` | JWT | Paginated request logs |
 | GET | `/proxy/resolve/*path` | API Key | Rule resolution (used by xgateway) |
 | POST | `/api/v1/request-logs` | API Key | Log ingestion (used by xgateway) |
+| POST | `/api/v1/request-events` | API Key | Per-step event ingestion (used by xgateway) |
 
 ---
 
@@ -298,6 +316,10 @@ xpaywall/
 
 ---
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the dev setup, PR checklist, and contribution rules. Changes scoped to the gateway go through the [xgateway](https://github.com/cp0x-org/xgateway) repository — see [`xgateway/CONTRIBUTING.md`](xgateway/CONTRIBUTING.md).
+
 ## License
 
-MIT
+Released under the [MIT License](LICENSE).

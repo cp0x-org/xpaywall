@@ -9,36 +9,45 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type PaymentChannel struct {
+type Facilitator struct {
 	ID        uuid.UUID
-	Protocol  string
-	Method    string
-	Scheme    string
+	Name      string
+	Url       string
 	Enabled   bool
-	Metadata  []byte
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 }
 
-type PaymentChannelAsset struct {
-	ID               uuid.UUID
-	PaymentChannelID uuid.UUID
-	AssetSymbol      string
-	AssetAddress     pgtype.Text
-	Decimals         pgtype.Int4
-	Metadata         []byte
-	CreatedAt        pgtype.Timestamp
-	UpdatedAt        pgtype.Timestamp
+type PaymentMethod struct {
+	ID           uuid.UUID
+	Code         string
+	Protocol     string
+	Name         string
+	Caip2ChainID pgtype.Text
+	Enabled      bool
+	CreatedAt    pgtype.Timestamp
+	UpdatedAt    pgtype.Timestamp
+}
+
+type PaymentMethodAsset struct {
+	ID              uuid.UUID
+	PaymentMethodID uuid.UUID
+	Symbol          string
+	ContractAddress pgtype.Text
+	Decimals        int32
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
 }
 
 type Project struct {
 	ID          uuid.UUID
-	OwnerUserID uuid.UUID
+	OwnerUserID *uuid.UUID
 	Name        string
 	Slug        string
 	Enabled     bool
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
+	ArchivedAt  pgtype.Timestamp
 }
 
 type ProjectDailyStat struct {
@@ -54,16 +63,18 @@ type ProjectDailyStat struct {
 	UpdatedAt             pgtype.Timestamp
 }
 
-type ProjectPaymentConfig struct {
-	ID                    uuid.UUID
-	ProjectID             uuid.UUID
-	PaymentChannelID      uuid.UUID
-	PaymentChannelAssetID pgtype.UUID
-	Name                  string
-	PayoutAddress         pgtype.Text
-	Enabled               bool
-	CreatedAt             pgtype.Timestamp
-	UpdatedAt             pgtype.Timestamp
+type ProjectPaymentMethod struct {
+	ID              uuid.UUID
+	ProjectID       uuid.UUID
+	PaymentMethodID uuid.UUID
+	AssetID         uuid.UUID
+	Scheme          string
+	FacilitatorID   uuid.UUID
+	PayoutAddress   pgtype.Text
+	Config          []byte
+	Enabled         bool
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
 }
 
 type ProjectRoutesSetting struct {
@@ -88,7 +99,7 @@ type RequestEvent struct {
 type RequestLog struct {
 	ID                     uuid.UUID
 	ProjectID              uuid.UUID
-	OutboundRouteID        pgtype.UUID
+	OutboundRouteID        *uuid.UUID
 	RequestID              string
 	Method                 string
 	Path                   string
@@ -99,9 +110,8 @@ type RequestLog struct {
 	PaymentRequestedAt     pgtype.Timestamp
 	PaymentCompleted       bool
 	PaymentCompletedAt     pgtype.Timestamp
-	PaymentChannelID       pgtype.UUID
-	PaymentChannelAssetID  pgtype.UUID
-	AmountPaid             pgtype.Int8
+	PaymentChannelID       *uuid.UUID
+	PaymentChannelAssetID  *uuid.UUID
 	AmountUsd              pgtype.Numeric
 	UpstreamUrl            *string
 	UpstreamStatusCode     pgtype.Int4
@@ -119,12 +129,12 @@ type Route struct {
 	Name        string
 	Enabled     bool
 	PathPattern string
-	PriceAmount int32
 	Description string
 	Free        bool
 	PriceUsd    string
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
+	Bazaar      []byte
 }
 
 type RouteDailyStat struct {

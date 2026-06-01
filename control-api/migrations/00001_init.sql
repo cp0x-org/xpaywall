@@ -25,7 +25,6 @@ CREATE TABLE payment_channels (
     method VARCHAR NOT NULL,
     scheme VARCHAR NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    metadata JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (protocol, method, scheme)
@@ -37,7 +36,6 @@ CREATE TABLE payment_channel_assets (
     asset_symbol VARCHAR NOT NULL,
     asset_address VARCHAR,
     decimals INTEGER,
-    metadata JSONB,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (payment_channel_id, asset_symbol)
@@ -119,8 +117,6 @@ CREATE TABLE request_logs (
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_request_logs_project_id ON request_logs (project_id);
-CREATE INDEX idx_request_logs_route_id ON request_logs (outbound_route_id);
 CREATE INDEX idx_request_logs_created_at ON request_logs (created_at);
 CREATE INDEX idx_request_logs_status ON request_logs (status);
 CREATE INDEX idx_request_logs_payment_completed ON request_logs (payment_completed);
@@ -169,7 +165,6 @@ CREATE TABLE route_daily_stats (
     UNIQUE (outbound_route_id, date)
 );
 
-CREATE INDEX idx_route_daily_stats_route_id ON route_daily_stats (outbound_route_id);
 CREATE INDEX idx_route_daily_stats_date ON route_daily_stats (date);
 -- +goose StatementEnd
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,21 +15,6 @@ import (
 )
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-func pgUUIDToPtr(u pgtype.UUID) *uuid.UUID {
-	if !u.Valid {
-		return nil
-	}
-	id := uuid.UUID(u.Bytes)
-	return &id
-}
-
-func uuidPtrToPgUUID(u *uuid.UUID) pgtype.UUID {
-	if u == nil {
-		return pgtype.UUID{Valid: false}
-	}
-	return pgtype.UUID{Bytes: [16]byte(*u), Valid: true}
-}
 
 func pgInt4ToPtr(i pgtype.Int4) *int32 {
 	if !i.Valid {
@@ -42,20 +28,6 @@ func int32PtrToPgInt4(i *int32) pgtype.Int4 {
 		return pgtype.Int4{Valid: false}
 	}
 	return pgtype.Int4{Int32: *i, Valid: true}
-}
-
-func pgInt8ToPtr(i pgtype.Int8) *int64 {
-	if !i.Valid {
-		return nil
-	}
-	return &i.Int64
-}
-
-func int64PtrToPgInt8(i *int64) pgtype.Int8 {
-	if i == nil {
-		return pgtype.Int8{Valid: false}
-	}
-	return pgtype.Int8{Int64: *i, Valid: true}
 }
 
 func pgTimestampToPtr(t pgtype.Timestamp) *time.Time {
@@ -89,7 +61,8 @@ func stringPtrToPgNumeric(s *string) pgtype.Numeric {
 	if s == nil {
 		return n
 	}
-	_ = n.Scan(*s)
+	v := strings.TrimLeft(*s, "$")
+	_ = n.Scan(v)
 	return n
 }
 
@@ -111,7 +84,6 @@ type requestLogResponse struct {
 	PaymentCompletedAt     *time.Time `json:"payment_completed_at,omitempty"`
 	PaymentChannelID       *uuid.UUID `json:"payment_channel_id,omitempty"`
 	PaymentChannelAssetID  *uuid.UUID `json:"payment_channel_asset_id,omitempty"`
-	AmountPaid             *int64     `json:"amount_paid,omitempty"`
 	AmountUSD              *string    `json:"amount_usd,omitempty"`
 	UpstreamURL            *string    `json:"upstream_url,omitempty"`
 	UpstreamStatusCode     *int32     `json:"upstream_status_code,omitempty"`
@@ -127,7 +99,7 @@ type requestEventResponse struct {
 	ID           uuid.UUID       `json:"id"`
 	RequestLogID uuid.UUID       `json:"request_log_id"`
 	EventType    string          `json:"event_type"`
-	Metadata     json.RawMessage `json:"metadata,omitempty"`
+	Metadata     json.RawMessage `json:"metadata,omitempty" swaggertype:"object"`
 	CreatedAt    time.Time       `json:"created_at"`
 }
 
@@ -135,7 +107,7 @@ func toRequestLogResponse(r postgres.RequestLog) requestLogResponse {
 	return requestLogResponse{
 		ID:                     r.ID,
 		ProjectID:              r.ProjectID,
-		OutboundRouteID:        pgUUIDToPtr(r.OutboundRouteID),
+		OutboundRouteID:        r.OutboundRouteID,
 		RequestID:              r.RequestID,
 		Method:                 r.Method,
 		Path:                   r.Path,
@@ -146,9 +118,8 @@ func toRequestLogResponse(r postgres.RequestLog) requestLogResponse {
 		PaymentRequestedAt:     pgTimestampToPtr(r.PaymentRequestedAt),
 		PaymentCompleted:       r.PaymentCompleted,
 		PaymentCompletedAt:     pgTimestampToPtr(r.PaymentCompletedAt),
-		PaymentChannelID:       pgUUIDToPtr(r.PaymentChannelID),
-		PaymentChannelAssetID:  pgUUIDToPtr(r.PaymentChannelAssetID),
-		AmountPaid:             pgInt8ToPtr(r.AmountPaid),
+		PaymentChannelID:       r.PaymentChannelID,
+		PaymentChannelAssetID:  r.PaymentChannelAssetID,
 		AmountUSD:              pgNumericToStringPtr(r.AmountUsd),
 		UpstreamURL:            r.UpstreamUrl,
 		UpstreamStatusCode:     pgInt4ToPtr(r.UpstreamStatusCode),
@@ -173,6 +144,18 @@ func toRequestEventResponse(e postgres.RequestEvent) requestEventResponse {
 
 // ─── Request Logs ─────────────────────────────────────────────────────────────
 
+// ListRequestLogs returns request logs with optional pagination and project filter.
+// @Summary     List request logs
+// @Tags        request-logs
+// @Produce     json
+// @Param       limit query int false "Max results (default 50)"
+// @Param       offset query int false "Offset for pagination (default 0)"
+// @Param       project_id query string false "Filter by Project ID (UUID)"
+// @Success     200 {array} requestLogResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/request-logs [get]
 func (h *Handler) ListRequestLogs(c *gin.Context) {
 	limit := int32(50)
 	offset := int32(0)
@@ -225,6 +208,16 @@ func (h *Handler) ListRequestLogs(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+// GetRequestLog returns a single request log by ID.
+// @Summary     Get request log
+// @Tags        request-logs
+// @Produce     json
+// @Param       id path string true "Request Log ID (UUID)"
+// @Success     200 {object} requestLogResponse
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/request-logs/{id} [get]
 func (h *Handler) GetRequestLog(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -255,7 +248,6 @@ type createRequestLogRequest struct {
 	PaymentCompletedAt     *time.Time `json:"payment_completed_at"`
 	PaymentChannelID       *uuid.UUID `json:"payment_channel_id"`
 	PaymentChannelAssetID  *uuid.UUID `json:"payment_channel_asset_id"`
-	AmountPaid             *int64     `json:"amount_paid"`
 	AmountUSD              *string    `json:"amount_usd"`
 	UpstreamURL            *string    `json:"upstream_url"`
 	UpstreamStatusCode     *int32     `json:"upstream_status_code"`
@@ -265,6 +257,17 @@ type createRequestLogRequest struct {
 	ErrorMessage           *string    `json:"error_message"`
 }
 
+// CreateRequestLog creates a new request log entry (internal — called by xgateway).
+// @Summary     Create request log
+// @Tags        request-logs
+// @Accept      json
+// @Produce     json
+// @Param       body body createRequestLogRequest true "Request log data"
+// @Success     201 {object} requestLogResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    ApiKeyAuth
+// @Router      /api/v1/request-logs [post]
 func (h *Handler) CreateRequestLog(c *gin.Context) {
 	var req createRequestLogRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -278,7 +281,7 @@ func (h *Handler) CreateRequestLog(c *gin.Context) {
 	row, err := h.q.CreateRequestLog(c.Request.Context(), postgres.CreateRequestLogParams{
 		ID:                     id,
 		ProjectID:              req.ProjectID,
-		OutboundRouteID:        uuidPtrToPgUUID(req.OutboundRouteID),
+		OutboundRouteID:        req.OutboundRouteID,
 		RequestID:              req.RequestID,
 		Method:                 req.Method,
 		Path:                   req.Path,
@@ -289,9 +292,8 @@ func (h *Handler) CreateRequestLog(c *gin.Context) {
 		PaymentRequestedAt:     timePtrToPgTimestamp(req.PaymentRequestedAt),
 		PaymentCompleted:       req.PaymentCompleted,
 		PaymentCompletedAt:     timePtrToPgTimestamp(req.PaymentCompletedAt),
-		PaymentChannelID:       uuidPtrToPgUUID(req.PaymentChannelID),
-		PaymentChannelAssetID:  uuidPtrToPgUUID(req.PaymentChannelAssetID),
-		AmountPaid:             int64PtrToPgInt8(req.AmountPaid),
+		PaymentChannelID:       req.PaymentChannelID,
+		PaymentChannelAssetID:  req.PaymentChannelAssetID,
 		AmountUsd:              stringPtrToPgNumeric(req.AmountUSD),
 		UpstreamUrl:            req.UpstreamURL,
 		UpstreamStatusCode:     int32PtrToPgInt4(req.UpstreamStatusCode),
@@ -316,7 +318,6 @@ type updateRequestLogRequest struct {
 	PaymentCompletedAt     *time.Time `json:"payment_completed_at"`
 	PaymentChannelID       *uuid.UUID `json:"payment_channel_id"`
 	PaymentChannelAssetID  *uuid.UUID `json:"payment_channel_asset_id"`
-	AmountPaid             *int64     `json:"amount_paid"`
 	AmountUSD              *string    `json:"amount_usd"`
 	UpstreamURL            *string    `json:"upstream_url"`
 	UpstreamStatusCode     *int32     `json:"upstream_status_code"`
@@ -326,6 +327,18 @@ type updateRequestLogRequest struct {
 	ErrorMessage           *string    `json:"error_message"`
 }
 
+// UpdateRequestLog updates a request log entry (internal — called by xgateway).
+// @Summary     Update request log
+// @Tags        request-logs
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "Request Log ID (UUID)"
+// @Param       body body updateRequestLogRequest true "Fields to update"
+// @Success     200 {object} requestLogResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    ApiKeyAuth
+// @Router      /api/v1/request-logs/{id} [put]
 func (h *Handler) UpdateRequestLog(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -340,14 +353,13 @@ func (h *Handler) UpdateRequestLog(c *gin.Context) {
 	row, err := h.q.UpdateRequestLog(c.Request.Context(), postgres.UpdateRequestLogParams{
 		ID:                     id,
 		Status:                 req.Status,
-		OutboundRouteID:        uuidPtrToPgUUID(req.OutboundRouteID),
+		OutboundRouteID:        req.OutboundRouteID,
 		PaymentRequired:        req.PaymentRequired,
 		PaymentRequestedAt:     timePtrToPgTimestamp(req.PaymentRequestedAt),
 		PaymentCompleted:       req.PaymentCompleted,
 		PaymentCompletedAt:     timePtrToPgTimestamp(req.PaymentCompletedAt),
-		PaymentChannelID:       uuidPtrToPgUUID(req.PaymentChannelID),
-		PaymentChannelAssetID:  uuidPtrToPgUUID(req.PaymentChannelAssetID),
-		AmountPaid:             int64PtrToPgInt8(req.AmountPaid),
+		PaymentChannelID:       req.PaymentChannelID,
+		PaymentChannelAssetID:  req.PaymentChannelAssetID,
 		AmountUsd:              stringPtrToPgNumeric(req.AmountUSD),
 		UpstreamUrl:            req.UpstreamURL,
 		UpstreamStatusCode:     int32PtrToPgInt4(req.UpstreamStatusCode),
@@ -365,6 +377,16 @@ func (h *Handler) UpdateRequestLog(c *gin.Context) {
 
 // ─── Request Events ───────────────────────────────────────────────────────────
 
+// ListRequestEvents returns all events for a given request log.
+// @Summary     List request events
+// @Tags        request-logs
+// @Produce     json
+// @Param       id path string true "Request Log ID (UUID)"
+// @Success     200 {array} requestEventResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/request-logs/{id}/events [get]
 func (h *Handler) ListRequestEvents(c *gin.Context) {
 	logID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -386,9 +408,20 @@ func (h *Handler) ListRequestEvents(c *gin.Context) {
 type createRequestEventRequest struct {
 	RequestLogID uuid.UUID       `json:"request_log_id" binding:"required"`
 	EventType    string          `json:"event_type" binding:"required"`
-	Metadata     json.RawMessage `json:"metadata"`
+	Metadata     json.RawMessage `json:"metadata" swaggertype:"object"`
 }
 
+// CreateRequestEvent creates a request event (internal — called by xgateway).
+// @Summary     Create request event
+// @Tags        request-logs
+// @Accept      json
+// @Produce     json
+// @Param       body body createRequestEventRequest true "Event data"
+// @Success     201 {object} requestEventResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    ApiKeyAuth
+// @Router      /api/v1/request-events [post]
 func (h *Handler) CreateRequestEvent(c *gin.Context) {
 	var req createRequestEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

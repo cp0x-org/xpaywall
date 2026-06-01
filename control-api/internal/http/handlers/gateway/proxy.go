@@ -2,8 +2,9 @@ package gateway
 
 import (
 	"encoding/json"
-	"fmt"
+	"math"
 	nethttp "net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -21,34 +22,52 @@ func New(q *postgres.Queries) *Handler {
 }
 
 type resolveRouteResponse struct {
-	ProjectID       uuid.UUID    `json:"project_id"`
-	OutboundRouteID uuid.UUID    `json:"outbound_route_id"`
-	Name            string       `json:"name"`
-	InboundPath     string       `json:"inbound_path"`
-	Target          string       `json:"target"`
-	AuthHeaderName  string       `json:"auth_header_name,omitempty"`
-	AuthHeaderValue string       `json:"auth_header_value,omitempty"`
-	AllowUnmatched  bool         `json:"allow_unmatched"`
-	Price           string       `json:"price"`
-	Free            bool         `json:"free"`
-	MimeType        string       `json:"mime_type,omitempty"`
-	Description     string       `json:"description,omitempty"`
-	PaymentChannels []channelDTO `json:"payment_channels"`
+	ProjectID       uuid.UUID       `json:"project_id"`
+	OutboundRouteID uuid.UUID       `json:"outbound_route_id"`
+	Name            string          `json:"name"`
+	InboundPath     string          `json:"inbound_path"`
+	Target          string          `json:"target"`
+	AuthHeaderName  string          `json:"auth_header_name,omitempty"`
+	AuthHeaderValue string          `json:"auth_header_value,omitempty"`
+	AllowUnmatched  bool            `json:"allow_unmatched"`
+	Price           string          `json:"price"`
+	Free            bool            `json:"free"`
+	MimeType        string          `json:"mime_type,omitempty"`
+	Description     string          `json:"description,omitempty"`
+	Bazaar          json.RawMessage `json:"bazaar,omitempty"`
+	PaymentChannels []channelDTO    `json:"payment_channels"`
 }
 
 type channelDTO struct {
-	Protocol      string            `json:"protocol"`
-	Method        string            `json:"method,omitempty"`
-	Scheme        string            `json:"scheme"`
-	Price         string            `json:"price,omitempty"`
-	Enabled       bool              `json:"enabled"`
-	ChannelConfig map[string]string `json:"channel_config"`
-	ChannelID     uuid.UUID         `json:"channel_id"`
-	AssetID       *uuid.UUID        `json:"asset_id,omitempty"`
+	Protocol        string    `json:"protocol"`
+	Code            string    `json:"code"`
+	Scheme          string    `json:"scheme"`
+	CaIP2ChainID    string    `json:"caip2_chain_id,omitempty"`
+	FacilitatorURL  string    `json:"facilitator_url"`
+	PayoutAddress   string    `json:"payout_address,omitempty"`
+	AssetSymbol     string    `json:"asset_symbol"`
+	ContractAddress string    `json:"contract_address,omitempty"`
+	Amount          string    `json:"amount,omitempty"`
+	Decimals        int32     `json:"decimals"`
+	Enabled         bool      `json:"enabled"`
+	PaymentMethodID uuid.UUID `json:"payment_method_id"`
+	AssetID         uuid.UUID `json:"asset_id"`
 }
 
-// ResolveRoute resolves an inbound path to a full proxy rule including target config.
-// Path format: /{projectSlug}/{inboundPath...}
+type errorResponse struct {
+	Error string `json:"error"`
+}
+
+// ResolveRoute resolves an inbound path to a full proxy rule including target config and payment channels.
+// @Summary     Resolve route
+// @Tags        gateway
+// @Produce     json
+// @Param       path path string true "Path in format {projectSlug}/{inboundPath}"
+// @Success     200 {object} resolveRouteResponse
+// @Failure     404 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    ApiKeyAuth
+// @Router      /proxy/resolve/{path} [get]
 func (h *Handler) ResolveRoute(c *gin.Context) {
 	fullPath := c.Param("path")
 	fullPath = strings.TrimPrefix(fullPath, "/")
@@ -74,11 +93,7 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 		return
 	}
 
-	// Prefer the stored price_usd; fall back to computing from price_amount (cents).
 	priceUSD := route.PriceUsd
-	if priceUSD == "" && route.PriceAmount > 0 {
-		priceUSD = fmt.Sprintf("%.6f", float64(route.PriceAmount)/100.0)
-	}
 
 	resp := resolveRouteResponse{
 		ProjectID:       route.ProjectID,
@@ -92,43 +107,60 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 		Price:           priceUSD,
 		Free:            route.Free,
 		Description:     route.Description,
+		Bazaar:          json.RawMessage(route.Bazaar),
 		PaymentChannels: []channelDTO{},
 	}
 
 	if !route.Free {
-		dbChannels, err := h.q.GetPaymentChannelsByProjectSlug(c.Request.Context(), postgres.GetPaymentChannelsByProjectSlugParams{
+		dbMethods, err := h.q.GetPaymentMethodsByProjectSlug(c.Request.Context(), postgres.GetPaymentMethodsByProjectSlugParams{
 			Slug:      projectSlug,
 			Enabled:   true,
 			Enabled_2: true,
 		})
 		if err != nil {
-			c.JSON(nethttp.StatusInternalServerError, gin.H{"error": "failed to load payment channels"})
+			c.JSON(nethttp.StatusInternalServerError, gin.H{"error": "failed to load payment methods"})
 			return
 		}
 
-		for _, ch := range dbChannels {
-			cfg := make(map[string]string)
-			if len(ch.Metadata) > 0 {
-				_ = json.Unmarshal(ch.Metadata, &cfg)
-			}
-			if ch.PayoutAddress.Valid && ch.PayoutAddress.String != "" {
-				cfg["merchant"] = ch.PayoutAddress.String
-			}
+		for _, m := range dbMethods {
 			dto := channelDTO{
-				Protocol:      ch.Protocol,
-				Method:        ch.Method,
-				Scheme:        ch.Scheme,
-				Enabled:       ch.Enabled,
-				ChannelConfig: cfg,
-				ChannelID:     ch.ChannelID,
+				Protocol:        m.Protocol,
+				Code:            m.Code,
+				Scheme:          m.Scheme,
+				FacilitatorURL:  m.FacilitatorUrl,
+				AssetSymbol:     m.Symbol,
+				Enabled:         m.Enabled,
+				PaymentMethodID: m.PaymentMethodID,
+				AssetID:         m.AssetID,
 			}
-			if ch.PaymentChannelAssetID.Valid {
-				assetID := uuid.UUID(ch.PaymentChannelAssetID.Bytes)
-				dto.AssetID = &assetID
+			if m.Caip2ChainID.Valid {
+				dto.CaIP2ChainID = m.Caip2ChainID.String
+			}
+			if m.PayoutAddress.Valid {
+				dto.PayoutAddress = m.PayoutAddress.String
+			}
+			if m.ContractAddress.Valid {
+				dto.ContractAddress = m.ContractAddress.String
+				dto.Amount = computeRawAmount(priceUSD, m.Decimals)
+				dto.Decimals = m.Decimals
 			}
 			resp.PaymentChannels = append(resp.PaymentChannels, dto)
 		}
 	}
 
 	c.JSON(nethttp.StatusOK, resp)
+}
+
+// computeRawAmount converts a USD price string (e.g. "0.001") to a raw blockchain
+// integer string using the asset's on-chain decimals (e.g. 6 for USDC → "1000").
+func computeRawAmount(priceUSD string, decimals int32) string {
+	if priceUSD == "" || decimals <= 0 {
+		return ""
+	}
+	f, err := strconv.ParseFloat(priceUSD, 64)
+	if err != nil || f <= 0 {
+		return ""
+	}
+	raw := int64(math.Round(f * math.Pow10(int(decimals))))
+	return strconv.FormatInt(raw, 10)
 }

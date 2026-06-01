@@ -75,7 +75,8 @@ export default function Login() {
                 </Stack>
                 <Box sx={{ width: 1 }}>{AuthLoginComponent && <AuthLoginComponent />}</Box>
                 <Divider sx={{ width: 1 }} />
-                <Stack sx={{ alignItems: 'center' }}>
+                {/* Registration link hidden — not available yet */}
+                {/* <Stack sx={{ alignItems: 'center' }}>
                   <Typography
                     component={Link}
                     to="/register"
@@ -84,6 +85,11 @@ export default function Login() {
                   >
                     Don&apos;t have an account?
                   </Typography>
+                </Stack> */}
+                <Stack sx={{ alignItems: 'center', gap: 0.5 }}>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Demo credentials</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>username: admin</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>password: admin123</Typography>
                 </Stack>
               </Stack>
             </AuthCardWrapper>

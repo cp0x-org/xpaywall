@@ -18,6 +18,7 @@ import {
   IconBrandChrome,
   IconRoute2,
   IconCapProjecting, IconFolderBolt, IconMoneybagEdit, IconMoneybagHeart, IconMoneybagPlus,
+  IconCoins, IconServer,
   IconList
 } from '@tabler/icons-react';
 
@@ -54,18 +55,56 @@ const mainPage: NavItemType = {
       icon: icons.IconRoute2,
     },
     {
-      id: 'projects-item',
+      id: 'projects',
       title: 'Projects',
-      type: 'item',
-      url: '/projects',
-      icon: IconArticle,
+      type: 'collapse',
+      icon: IconFolderBolt,
+      children: [
+        {
+          id: 'project-list',
+          title: 'Project List',
+          type: 'item',
+          url: '/projects',
+          icon: IconCapProjecting,
+        },
+        {
+          id: 'payment-methods',
+          title: 'Payment Methods',
+          type: 'item',
+          url: '/project-payment-methods',
+          icon: IconMoneybagHeart,
+        },
+      ]
     },
     {
       id: 'payment-channels-item',
-      title: 'Payment Channels',
-      type: 'item',
-      url: '/payment-channels',
+      title: 'Payments',
+      type: 'collapse',
+      // url: '/payment-channels',
       icon: IconMoneybagPlus,
+      children: [
+        {
+          id: 'payment-method-item',
+          title: 'Payment Methods',
+          type: 'item',
+          url: '/payment-methods',
+          icon: IconMoneybagPlus,
+        },
+        {
+          id: 'payment-assets-item',
+          title: 'Payment Assets',
+          type: 'item',
+          url: '/payment-assets',
+          icon: IconCoins,
+        },
+        {
+          id: 'facilitators',
+          title: 'Facilitators (x402)',
+          type: 'item',
+          url: '/facilitators',
+          icon: IconServer,
+        },
+      ],
     },
     {
       id: 'requests-item',

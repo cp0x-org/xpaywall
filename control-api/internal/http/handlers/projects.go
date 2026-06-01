@@ -11,13 +11,13 @@ import (
 )
 
 type projectResponse struct {
-	ID            uuid.UUID `json:"id"`
-	OwnerUserID   uuid.UUID `json:"owner_user_id"`
-	OwnerUsername string    `json:"owner_username"`
-	Name          string    `json:"name"`
-	Slug          string    `json:"slug"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ID            uuid.UUID  `json:"id"`
+	OwnerUserID   *uuid.UUID `json:"owner_user_id"`
+	OwnerUsername string     `json:"owner_username"`
+	Name          string     `json:"name"`
+	Slug          string     `json:"slug"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
 type fullProjectResponse struct {
@@ -40,6 +40,14 @@ func toProjectResponse(p postgres.Project) projectResponse {
 	}
 }
 
+// ListProjects returns all projects.
+// @Summary     List projects
+// @Tags        projects
+// @Produce     json
+// @Success     200 {array} projectResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects [get]
 func (h *Handler) ListProjects(c *gin.Context) {
 	projects, err := h.q.ListProjects(c.Request.Context())
 	if err != nil {
@@ -56,12 +64,24 @@ func (h *Handler) ListProjects(c *gin.Context) {
 	result := make([]projectResponse, len(projects))
 	for i, p := range projects {
 		r := toProjectResponse(p)
-		r.OwnerUsername = usernames[p.OwnerUserID]
+		if p.OwnerUserID != nil {
+			r.OwnerUsername = usernames[*p.OwnerUserID]
+		}
 		result[i] = r
 	}
 	c.JSON(http.StatusOK, result)
 }
 
+// GetProject returns a project by ID.
+// @Summary     Get project
+// @Tags        projects
+// @Produce     json
+// @Param       id path string true "Project ID (UUID)"
+// @Success     200 {object} projectResponse
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects/{id} [get]
 func (h *Handler) GetProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -76,6 +96,16 @@ func (h *Handler) GetProject(c *gin.Context) {
 	c.JSON(http.StatusOK, toProjectResponse(project))
 }
 
+// GetFullProject returns a project with its route settings.
+// @Summary     Get project with settings
+// @Tags        projects
+// @Produce     json
+// @Param       id path string true "Project ID (UUID)"
+// @Success     200 {object} fullProjectResponse
+// @Failure     400 {object} errorResponse
+// @Failure     404 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects/{id}/full [get]
 func (h *Handler) GetFullProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -98,20 +128,47 @@ func (h *Handler) GetFullProject(c *gin.Context) {
 		resp.AllowUnmatched = settings.AllowUnmatched
 	}
 
+	if resp.OwnerUserID != nil {
+		if user, err := h.q.GetUser(c.Request.Context(), *resp.OwnerUserID); err == nil {
+			resp.OwnerUsername = user.Username
+		}
+	}
+
 	c.JSON(http.StatusOK, resp)
 }
 
 type createProjectRequest struct {
-	OwnerUserID     uuid.UUID `json:"owner_user_id" binding:"required"`
-	Name            string    `json:"name" binding:"required"`
-	Slug            string    `json:"slug" binding:"required"`
-	BaseURL         string    `json:"base_url" binding:"required"`
-	AuthHeaderName  *string   `json:"auth_header_name"`
-	AuthHeaderValue *string   `json:"auth_header_value"`
-	AllowUnmatched  bool      `json:"allow_unmatched"`
+	Name            string  `json:"name" binding:"required"`
+	Slug            string  `json:"slug" binding:"required"`
+	BaseURL         string  `json:"base_url" binding:"required"`
+	AuthHeaderName  *string `json:"auth_header_name"`
+	AuthHeaderValue *string `json:"auth_header_value"`
+	AllowUnmatched  bool    `json:"allow_unmatched"`
 }
 
+// CreateProject creates a new project with route settings.
+// @Summary     Create project
+// @Tags        projects
+// @Accept      json
+// @Produce     json
+// @Param       body body createProjectRequest true "Project data"
+// @Success     201 {object} fullProjectResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects [post]
 func (h *Handler) CreateProject(c *gin.Context) {
+	callerID, ok := c.Get("user_id")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing user_id in token"})
+		return
+	}
+	ownerID, ok := callerID.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "invalid user_id type"})
+		return
+	}
+
 	var req createProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -120,7 +177,7 @@ func (h *Handler) CreateProject(c *gin.Context) {
 
 	project, err := h.q.CreateProject(c.Request.Context(), postgres.CreateProjectParams{
 		ID:          uuid.New(),
-		OwnerUserID: req.OwnerUserID,
+		OwnerUserID: &ownerID,
 		Name:        req.Name,
 		Slug:        req.Slug,
 	})
@@ -162,10 +219,26 @@ type updateProjectRequest struct {
 	AllowUnmatched  bool    `json:"allow_unmatched"`
 }
 
+// UpdateProject updates a project and its route settings.
+// @Summary     Update project
+// @Tags        projects
+// @Accept      json
+// @Produce     json
+// @Param       id path string true "Project ID (UUID)"
+// @Param       body body updateProjectRequest true "Fields to update"
+// @Success     200 {object} fullProjectResponse
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects/{id} [put]
 func (h *Handler) UpdateProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	if !h.requireProjectOwner(c, id) {
 		return
 	}
 
@@ -206,13 +279,27 @@ func (h *Handler) UpdateProject(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
+// DeleteProject archives a project by ID. Archived projects are hidden from
+// listings and stop resolving in xgateway, but their referenced rows
+// (request_logs, project_daily_stats, routes) remain intact.
+// @Summary     Delete (archive) project
+// @Tags        projects
+// @Param       id path string true "Project ID (UUID)"
+// @Success     204 "No Content"
+// @Failure     400 {object} errorResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects/{id} [delete]
 func (h *Handler) DeleteProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	if err := h.q.DeleteProject(c.Request.Context(), id); err != nil {
+	if !h.requireProjectOwner(c, id) {
+		return
+	}
+	if err := h.q.ArchiveProject(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -220,18 +307,26 @@ func (h *Handler) DeleteProject(c *gin.Context) {
 }
 
 type projectWithConfigResponse struct {
-	ID             uuid.UUID `json:"id"`
-	OwnerUserID    uuid.UUID `json:"owner_user_id"`
-	OwnerUsername  string    `json:"owner_username"`
-	Name           string    `json:"name"`
-	Slug           string    `json:"slug"`
-	Enabled        bool      `json:"enabled"`
-	BaseURL        *string   `json:"base_url"`
-	PaymentMethods []string  `json:"payment_methods"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             uuid.UUID  `json:"id"`
+	OwnerUserID    *uuid.UUID `json:"owner_user_id"`
+	OwnerUsername  string     `json:"owner_username"`
+	Name           string     `json:"name"`
+	Slug           string     `json:"slug"`
+	Enabled        bool       `json:"enabled"`
+	BaseURL        *string    `json:"base_url"`
+	PaymentMethods []string   `json:"payment_methods"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
+// ListProjectsWithConfig returns all projects with their payment configuration.
+// @Summary     List projects with config
+// @Tags        projects
+// @Produce     json
+// @Success     200 {array} projectWithConfigResponse
+// @Failure     500 {object} errorResponse
+// @Security    BearerAuth
+// @Router      /api/v1/projects/with-config [get]
 func (h *Handler) ListProjectsWithConfig(c *gin.Context) {
 	projects, err := h.q.ListProjectsWithConfig(c.Request.Context())
 	if err != nil {
@@ -248,9 +343,14 @@ func (h *Handler) ListProjectsWithConfig(c *gin.Context) {
 	result := make([]projectWithConfigResponse, len(projects))
 	for i, p := range projects {
 		result[i] = projectWithConfigResponse{
-			ID:             p.ID,
-			OwnerUserID:    p.OwnerUserID,
-			OwnerUsername:  usernames[p.OwnerUserID],
+			ID:          p.ID,
+			OwnerUserID: p.OwnerUserID,
+			OwnerUsername: func() string {
+				if p.OwnerUserID != nil {
+					return usernames[*p.OwnerUserID]
+				}
+				return ""
+			}(),
 			Name:           p.Name,
 			Slug:           p.Slug,
 			Enabled:        p.Enabled,
@@ -280,5 +380,23 @@ func toStringSlice(v any) []string {
 	return result
 }
 
-func (h *Handler) GetProjectSettings(c *gin.Context)    {}
+// GetProjectSettings returns project settings (not yet implemented).
+// @Summary     Get project settings
+// @Tags        projects
+// @Produce     json
+// @Param       projectId path string true "Project ID (UUID)"
+// @Success     200 {object} object
+// @Security    BearerAuth
+// @Router      /api/v1/project-settings/{projectId} [get]
+func (h *Handler) GetProjectSettings(c *gin.Context) {}
+
+// UpdateProjectSettings updates project settings (not yet implemented).
+// @Summary     Update project settings
+// @Tags        projects
+// @Accept      json
+// @Produce     json
+// @Param       projectId path string true "Project ID (UUID)"
+// @Success     200 {object} object
+// @Security    BearerAuth
+// @Router      /api/v1/project-settings/{projectId} [put]
 func (h *Handler) UpdateProjectSettings(c *gin.Context) {}

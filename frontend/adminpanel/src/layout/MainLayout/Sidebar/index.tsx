@@ -5,6 +5,8 @@ import { Theme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import Drawer from '@mui/material/Drawer';
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
+import Typography from '@mui/material/Typography';
 
 // project imports
 import MenuCard from './MenuCard';
@@ -37,17 +39,73 @@ function Sidebar() {
     let drawerSX = { paddingLeft: '0px', paddingRight: '0px' };
     if (drawerOpen) drawerSX = { paddingLeft: '16px', paddingRight: '16px' };
 
+    const versionBadge = isVerticalOpen ? (
+      <Box sx={{ px: 2, pb: 2, pt: 1 }}>
+        <Chip
+              label="BETA"
+              size="small"
+              sx={{
+                  height: 18,
+                  fontSize: '0.6rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.05em',
+                  bgcolor: 'warning.main',
+                  color: 'warning.contrastText',
+                  '& .MuiChip-label': { px: 0.75 }
+              }}
+          />
+        {/*<Box*/}
+        {/*  sx={{*/}
+        {/*    display: 'flex',*/}
+        {/*    alignItems: 'center',*/}
+        {/*    gap: 1,*/}
+        {/*    px: 1.5,*/}
+        {/*    py: 0.75,*/}
+        {/*    borderRadius: 2,*/}
+        {/*    bgcolor: 'primary.light',*/}
+        {/*    border: '1px solid',*/}
+        {/*    borderColor: 'primary.200'*/}
+        {/*  }}*/}
+        {/*>*/}
+        {/*  /!*<Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>*!/*/}
+        {/*  /!*  v0.1.0*!/*/}
+        {/*  /!*</Typography>*!/*/}
+        {/*  <Chip*/}
+        {/*    label="BETA"*/}
+        {/*    size="small"*/}
+        {/*    sx={{*/}
+        {/*      height: 18,*/}
+        {/*      fontSize: '0.6rem',*/}
+        {/*      fontWeight: 700,*/}
+        {/*      letterSpacing: '0.05em',*/}
+        {/*      bgcolor: 'warning.main',*/}
+        {/*      color: 'warning.contrastText',*/}
+        {/*      '& .MuiChip-label': { px: 0.75 }*/}
+        {/*    }}*/}
+        {/*  />*/}
+        {/*</Box>*/}
+      </Box>
+    ) : null;
+
     return (
       <>
         {downMD ? (
-          <Box sx={drawerSX}>
-            <MenuList />
-            {isVerticalOpen && drawerContent}
+          <Box sx={{ ...drawerSX, display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <Box sx={{ flexGrow: 1 }}>
+              <MenuList />
+              {isVerticalOpen && drawerContent}
+            </Box>
+            {versionBadge}
           </Box>
         ) : (
           <SimpleBar sx={{ height: 'calc(100vh - 56px)', ...drawerSX }}>
-            <MenuList />
-            {isVerticalOpen && drawerContent}
+            <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 88px)' }}>
+              <Box sx={{ flexGrow: 1 }}>
+                <MenuList />
+                {isVerticalOpen && drawerContent}
+              </Box>
+              {versionBadge}
+            </Box>
           </SimpleBar>
         )}
       </>
