@@ -47,6 +47,7 @@ type Project struct {
 	Enabled     bool
 	CreatedAt   pgtype.Timestamp
 	UpdatedAt   pgtype.Timestamp
+	ArchivedAt  pgtype.Timestamp
 }
 
 type ProjectDailyStat struct {

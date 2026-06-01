@@ -12,10 +12,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const archiveProject = `-- name: ArchiveProject :exec
+UPDATE projects
+SET archived_at = CURRENT_TIMESTAMP,
+    updated_at  = CURRENT_TIMESTAMP
+WHERE id = $1 AND archived_at IS NULL
+`
+
+func (q *Queries) ArchiveProject(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, archiveProject, id)
+	return err
+}
+
 const createProject = `-- name: CreateProject :one
 INSERT INTO projects (id, owner_user_id, name, slug)
 VALUES ($1, $2, $3, $4)
-RETURNING id, owner_user_id, name, slug, enabled, created_at, updated_at
+RETURNING id, owner_user_id, name, slug, enabled, created_at, updated_at, archived_at
 `
 
 type CreateProjectParams struct {
@@ -41,23 +53,14 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
 
-const deleteProject = `-- name: DeleteProject :exec
-DELETE FROM projects
-WHERE id = $1
-`
-
-func (q *Queries) DeleteProject(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.Exec(ctx, deleteProject, id)
-	return err
-}
-
 const getProject = `-- name: GetProject :one
-SELECT id, owner_user_id, name, slug, enabled, created_at, updated_at FROM projects
-WHERE id = $1
+SELECT id, owner_user_id, name, slug, enabled, created_at, updated_at, archived_at FROM projects
+WHERE id = $1 AND archived_at IS NULL
 `
 
 func (q *Queries) GetProject(ctx context.Context, id uuid.UUID) (Project, error) {
@@ -71,13 +74,14 @@ func (q *Queries) GetProject(ctx context.Context, id uuid.UUID) (Project, error)
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
 
 const getProjectBySlug = `-- name: GetProjectBySlug :one
-SELECT id, owner_user_id, name, slug, enabled, created_at, updated_at FROM projects
-WHERE slug = $1
+SELECT id, owner_user_id, name, slug, enabled, created_at, updated_at, archived_at FROM projects
+WHERE slug = $1 AND archived_at IS NULL
 `
 
 func (q *Queries) GetProjectBySlug(ctx context.Context, slug string) (Project, error) {
@@ -91,12 +95,14 @@ func (q *Queries) GetProjectBySlug(ctx context.Context, slug string) (Project, e
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, owner_user_id, name, slug, enabled, created_at, updated_at FROM projects
+SELECT id, owner_user_id, name, slug, enabled, created_at, updated_at, archived_at FROM projects
+WHERE archived_at IS NULL
 Order BY name
 `
 
@@ -117,6 +123,7 @@ func (q *Queries) ListProjects(ctx context.Context) ([]Project, error) {
 			&i.Enabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ArchivedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -129,8 +136,8 @@ func (q *Queries) ListProjects(ctx context.Context) ([]Project, error) {
 }
 
 const listProjectsByOwner = `-- name: ListProjectsByOwner :many
-SELECT id, owner_user_id, name, slug, enabled, created_at, updated_at FROM projects
-WHERE owner_user_id = $1
+SELECT id, owner_user_id, name, slug, enabled, created_at, updated_at, archived_at FROM projects
+WHERE owner_user_id = $1 AND archived_at IS NULL
 ORDER BY name
 `
 
@@ -151,6 +158,7 @@ func (q *Queries) ListProjectsByOwner(ctx context.Context, ownerUserID *uuid.UUI
 			&i.Enabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ArchivedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -164,7 +172,7 @@ func (q *Queries) ListProjectsByOwner(ctx context.Context, ownerUserID *uuid.UUI
 
 const listProjectsWithConfig = `-- name: ListProjectsWithConfig :many
 SELECT
-    p.id, p.owner_user_id, p.name, p.slug, p.enabled, p.created_at, p.updated_at,
+    p.id, p.owner_user_id, p.name, p.slug, p.enabled, p.created_at, p.updated_at, p.archived_at,
     prs.base_url,
     COALESCE(
         ARRAY_AGG(DISTINCT pm.protocol) FILTER (WHERE pm.protocol IS NOT NULL),
@@ -179,6 +187,7 @@ FROM projects p
          LEFT JOIN payment_methods pm
                    ON pm.id = ppm.payment_method_id
                        AND pm.enabled = TRUE
+WHERE p.archived_at IS NULL
 GROUP BY
     p.id,
     prs.base_url
@@ -193,6 +202,7 @@ type ListProjectsWithConfigRow struct {
 	Enabled        bool
 	CreatedAt      pgtype.Timestamp
 	UpdatedAt      pgtype.Timestamp
+	ArchivedAt     pgtype.Timestamp
 	BaseUrl        pgtype.Text
 	PaymentMethods interface{}
 }
@@ -214,6 +224,7 @@ func (q *Queries) ListProjectsWithConfig(ctx context.Context) ([]ListProjectsWit
 			&i.Enabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ArchivedAt,
 			&i.BaseUrl,
 			&i.PaymentMethods,
 		); err != nil {
@@ -232,8 +243,8 @@ UPDATE projects
 SET name       = COALESCE($2, name),
     slug       = COALESCE($3, slug),
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
-RETURNING id, owner_user_id, name, slug, enabled, created_at, updated_at
+WHERE id = $1 AND archived_at IS NULL
+RETURNING id, owner_user_id, name, slug, enabled, created_at, updated_at, archived_at
 `
 
 type UpdateProjectParams struct {
@@ -253,6 +264,7 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ArchivedAt,
 	)
 	return i, err
 }

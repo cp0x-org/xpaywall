@@ -3,25 +3,20 @@ networks:
     driver: bridge
 
 services:
-  adminpanel:
+  xpaywall-landing:
     build:
-      context: ./frontend/adminpanel
+      context: .
       dockerfile: Dockerfile
-      args:
-        VITE_APP_BASE_NAME: /
-    image: cp0x/xpaywall-adminpanel:0.1.0
-    container_name: xpaywall-adminpanel
-    restart: unless-stopped
-    networks:
-      - xpaywall-net
-    depends_on:
-      - control-api
-    environment:
-      API_URL: http://127.0.0.1:3101/
-      PROXY_URL: http://127.0.0.1:3102/
+    image: cp0x/xpaywall-landing:0.1.0
+    container_name: xpaywall-landing
+    restart: always
+    volumes:
+      - ./public/config.js:/usr/share/nginx/html/config.js:ro
     ports:
       - "3100:80"
-
+    tty: true
+    networks:
+      - xpaywall-net
   control-api:
     build:
       context: ./control-api
@@ -81,6 +76,24 @@ services:
     ports:
       - "3103:4021"
 
+  adminpanel:
+    build:
+      context: ./frontend/adminpanel
+      dockerfile: Dockerfile
+      args:
+        VITE_APP_BASE_NAME: /
+    image: cp0x/xpaywall-adminpanel:0.1.0
+    container_name: xpaywall-adminpanel
+    restart: unless-stopped
+    networks:
+      - xpaywall-net
+    depends_on:
+      - control-api
+    environment:
+      API_URL: http://127.0.0.1:3101/
+      PROXY_URL: http://127.0.0.1:3102/
+    ports:
+      - "3104:80"
   postgres:
     image: postgres:16
     container_name: xpaywall-postgres

@@ -1,5 +1,6 @@
 -- name: ListProjects :many
 SELECT * FROM projects
+WHERE archived_at IS NULL
 Order BY name;
 
 -- name: ListProjectsWithConfig :many
@@ -19,6 +20,7 @@ FROM projects p
          LEFT JOIN payment_methods pm
                    ON pm.id = ppm.payment_method_id
                        AND pm.enabled = TRUE
+WHERE p.archived_at IS NULL
 GROUP BY
     p.id,
     prs.base_url
@@ -26,15 +28,15 @@ ORDER BY p.name;
 
 -- name: GetProject :one
 SELECT * FROM projects
-WHERE id = $1;
+WHERE id = $1 AND archived_at IS NULL;
 
 -- name: GetProjectBySlug :one
 SELECT * FROM projects
-WHERE slug = $1;
+WHERE slug = $1 AND archived_at IS NULL;
 
 -- name: ListProjectsByOwner :many
 SELECT * FROM projects
-WHERE owner_user_id = $1
+WHERE owner_user_id = $1 AND archived_at IS NULL
 ORDER BY name;
 
 -- name: CreateProject :one
@@ -47,9 +49,11 @@ UPDATE projects
 SET name       = COALESCE(sqlc.narg(name), name),
     slug       = COALESCE(sqlc.narg(slug), slug),
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
+WHERE id = $1 AND archived_at IS NULL
 RETURNING *;
 
--- name: DeleteProject :exec
-DELETE FROM projects
-WHERE id = $1;
+-- name: ArchiveProject :exec
+UPDATE projects
+SET archived_at = CURRENT_TIMESTAMP,
+    updated_at  = CURRENT_TIMESTAMP
+WHERE id = $1 AND archived_at IS NULL;

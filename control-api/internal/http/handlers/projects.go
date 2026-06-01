@@ -279,8 +279,10 @@ func (h *Handler) UpdateProject(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// DeleteProject deletes a project by ID.
-// @Summary     Delete project
+// DeleteProject archives a project by ID. Archived projects are hidden from
+// listings and stop resolving in xgateway, but their referenced rows
+// (request_logs, project_daily_stats, routes) remain intact.
+// @Summary     Delete (archive) project
 // @Tags        projects
 // @Param       id path string true "Project ID (UUID)"
 // @Success     204 "No Content"
@@ -297,7 +299,7 @@ func (h *Handler) DeleteProject(c *gin.Context) {
 	if !h.requireProjectOwner(c, id) {
 		return
 	}
-	if err := h.q.DeleteProject(c.Request.Context(), id); err != nil {
+	if err := h.q.ArchiveProject(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

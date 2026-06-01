@@ -33,6 +33,7 @@ JOIN payment_method_assets pma ON pma.id = ppm.asset_id
 JOIN facilitators f ON f.id = ppm.facilitator_id
 JOIN projects p ON p.id = ppm.project_id
 WHERE p.slug = $1
+  AND p.archived_at IS NULL
   AND ppm.enabled = $2
   AND pm.enabled = $3
 `
@@ -111,6 +112,7 @@ FROM routes oroute
 JOIN projects p ON p.id = oroute.project_id
 JOIN project_routes_settings prs ON prs.project_id = oroute.project_id
 WHERE p.slug = $1
+  AND p.archived_at IS NULL
   AND $2::text LIKE REPLACE(oroute.path_pattern, '*', '%')
 ORDER BY
     CASE WHEN oroute.path_pattern = $2 THEN 0 ELSE 1 END,
