@@ -64,6 +64,8 @@ services:
       INTERNAL_API_KEY: change-me-internal-secret-key
       JWT_SECRET: change-me-jwt-secret-key
       PROXY_URL: http://127.0.0.1:8081
+      SUPERADMIN_USERNAME: admin
+      SUPERADMIN_PASSWORD: admin123
       MODE: release
       DEBUG: false
     restart: "no"
