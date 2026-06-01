@@ -50,15 +50,15 @@ Open `http://localhost:3104` in your browser.
 
 You will see a login page. The default credentials are taken from `docker-compose.yml`:
 
-- **Username:** `superadmin`
-- **Password:** `superadmin`
+- **Username:** `admin`
+- **Password:** `admin123`
 
 Log in.
 ![Login page](./images/login.png "small")
  You should land on the Dashboard — an empty one, because you have not configured anything yet.
 
 
-> **Important:** the default `superadmin / superadmin` credentials are good for the first login only. Change them right away by editing `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` in `docker-compose.yml` and restarting the `control-api` container. See [09 — Security](./09-security.md) for the production checklist.
+> **Important:** the default `admin / admin123` credentials are good for the first login only. Change them right away by editing `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` in `docker-compose.yml` and restarting the `control-api` container. See [09 — Security](./09-security.md) for the production checklist.
 >
 > Need additional login accounts? The admin panel does not yet have a Users screen — create them with `docker compose run --rm control-api install user`. See [12 — control-api CLI](./12-cli.md).
 

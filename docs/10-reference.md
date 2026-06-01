@@ -32,16 +32,16 @@ These are the host ports the official `docker-compose.yml` binds. If you changed
 
 ### control-api
 
-| Var | Required | Default | Notes |
-|---|---|---|---|
-| `CONTROL_DB_DSN` | yes | — | PostgreSQL DSN: `postgres://user:pass@host:port/db`. |
-| `INTERNAL_API_KEY` | yes | — | Must match xgateway. |
-| `JWT_SECRET` | yes | — | Signs admin panel sessions. |
-| `PROXY_URL` | yes | — | Public xgateway URL — shown in the admin panel. |
-| `SUPERADMIN_USERNAME` | bootstrap | `admin` | Bootstrap login. Used on first start. |
-| `SUPERADMIN_PASSWORD` | bootstrap | `admin` | Change immediately after first login. |
-| `PORT` | no | `9091` | HTTP listen port. |
-| `MODE` | no | `release` | `debug` for verbose Gin logs. |
+| Var | Required | Default    | Notes |
+|---|---|------------|---|
+| `CONTROL_DB_DSN` | yes | —          | PostgreSQL DSN: `postgres://user:pass@host:port/db`. |
+| `INTERNAL_API_KEY` | yes | —          | Must match xgateway. |
+| `JWT_SECRET` | yes | —          | Signs admin panel sessions. |
+| `PROXY_URL` | yes | —          | Public xgateway URL — shown in the admin panel. |
+| `SUPERADMIN_USERNAME` | bootstrap | `admin`    | Bootstrap login. Used on first start. |
+| `SUPERADMIN_PASSWORD` | bootstrap | `admin123` | Change immediately after first login. |
+| `PORT` | no | `9091`     | HTTP listen port. |
+| `MODE` | no | `release`  | `debug` for verbose Gin logs. |
 
 ### Admin panel
 

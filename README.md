@@ -76,7 +76,7 @@ docker compose up -d
 | Admin Panel | http://localhost:3104 |
 | PostgreSQL | localhost:5482 |
 
-Default superadmin credentials: `superadmin` / `superadmin` (change in `docker-compose.yml`). Host ports are mapped in `docker-compose.yml` — adjust them there if you need different externals.
+Default superadmin credentials: `admin` / `admin123` (change in `docker-compose.yml`). Host ports are mapped in `docker-compose.yml` — adjust them there if you need different externals.
 
 ### Local Development
 
