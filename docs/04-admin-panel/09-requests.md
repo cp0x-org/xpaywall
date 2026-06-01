@@ -2,7 +2,7 @@
 
 The **Requests** page is a log of every request that has gone through the gateway. Use it to debug payment problems, audit traffic, and confirm that a paid endpoint is actually being paid for.
 
-> **Screenshot placeholder:** ![Requests list](./../images/requests-list.png)
+![Requests list](./../images/requests-list.png)
 
 ## The table
 
@@ -29,7 +29,7 @@ Sort, filter and paginate from the column headers. Use filters to narrow by stat
 
 Click any row to open the request detail page.
 
-> **Screenshot placeholder:** ![Request details](./../images/requests-detail.png)
+![Request details](./../images/requests-detail.png)
 
 The detail page shows everything the gateway recorded:
 
@@ -43,7 +43,7 @@ The detail page shows everything the gateway recorded:
 
 A single request can pass through several middleware steps inside the gateway. The detail page shows them in order.
 
-> **Screenshot placeholder:** ![Request events](./../images/requests-events.png)
+![Request events](./../images/requests-events.png)
 
 Typical sequence for a paid request:
 

@@ -1,4 +1,4 @@
-# Guide 02 — Wildcard routes
+﻿# Guide 02 — Wildcard routes
 
 A wildcard route is one rule that covers many paths. Useful for REST APIs where many sub-paths should all carry the same price.
 
@@ -27,7 +27,7 @@ To cover deeper paths you have to add more rules, or use a longer pattern like `
 
 Open **Routes** and click **Create Route**.
 
-> **Screenshot placeholder:** ![Route form — wildcard](./../images/routes-form-wildcard.png)
+![Route form — wildcard](./../images/routes-form-wildcard.png "medium")
 
 - **Project:** pick yours.
 - **Route Name:** `API v1 wildcard`

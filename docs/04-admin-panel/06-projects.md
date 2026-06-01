@@ -1,4 +1,4 @@
-# Admin Panel — Projects
+﻿# Admin Panel — Projects
 
 A **project** groups everything related to one API you want to monetise:
 
@@ -9,13 +9,13 @@ A **project** groups everything related to one API you want to monetise:
 
 Most installations have one project per API. You can have several projects on the same gateway — each lives at its own URL prefix.
 
-> **Screenshot placeholder:** ![Projects list](./../images/projects-list.png)
+![Projects list](./../images/projects-list.png)
 
 ## Creating a project
 
 Open **Projects → Project List** and click **Create Project**. The form has two columns.
 
-> **Screenshot placeholder:** ![Project form](./../images/projects-form.png)
+![Project form](./../images/projects-form.png "medium")
 
 ### Project Settings
 

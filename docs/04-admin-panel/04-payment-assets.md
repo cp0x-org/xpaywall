@@ -1,16 +1,16 @@
-# Admin Panel — Payment Assets
+﻿# Admin Panel — Payment Assets
 
 A **payment asset** is the currency the client pays in. Typically a stablecoin like USDC on a specific blockchain network.
 
 Each asset is attached to a payment method (you create the payment method first, then add assets for it). The same payment method can have several assets — for example USDC on Base Mainnet and USDC on Base Sepolia — and you pick which one a project accepts when you link a payment method to a project.
 
-> **Screenshot placeholder:** ![Payment assets list](./../images/payment-assets-list.png)
+![Payment assets list](./../images/payment-assets-list.png)
 
 ## Fields
 
 Open **Payments → Payment Assets** and click **Create Payment Asset**.
 
-> **Screenshot placeholder:** ![Payment asset form](./../images/payment-assets-form.png)
+![Payment asset form](./../images/payment-assets-form.png "medium")
 
 | Field | What to put |
 |---|---|

@@ -1,4 +1,4 @@
-# Guide 01 — Add your first paid route
+﻿# Guide 01 — Add your first paid route
 
 This guide goes from an empty admin panel to a working paid endpoint, end-to-end. It assumes:
 
@@ -16,7 +16,7 @@ A facilitator verifies x402 payment proofs. You can use a public one for testing
 
 Open **Payments → Facilitators (x402)** and click **Create Facilitator**.
 
-> **Screenshot placeholder:** ![Facilitator form](./../images/facilitators-form.png)
+![Facilitator form](./../images/facilitators-form.png "medium")
 
 Fill in:
 
@@ -32,7 +32,7 @@ A payment method defines the protocol + network. You will use x402 on Base Sepol
 
 Open **Payments → Payment Methods** and click **Create Payment Method**.
 
-> **Screenshot placeholder:** ![Payment method form](./../images/payment-methods-form-x402.png)
+![Payment method form](./../images/payment-methods-form-x402.png "medium")
 
 - **Code:** `x402-base-sepolia`
 - **Protocol:** `x402`
@@ -47,7 +47,7 @@ The asset is USDC on Base Sepolia.
 
 Open **Payments → Payment Assets** and click **Create Payment Asset**.
 
-> **Screenshot placeholder:** ![Payment asset form](./../images/payment-assets-form.png)
+![Payment asset form](./../images/payment-assets-form.png "medium")
 
 - **Payment Method:** pick the method from Step 2 (`x402-base-sepolia`).
 - **Symbol:** `USDC`
@@ -60,7 +60,7 @@ Save.
 
 Open **Projects → Project List** and click **Create Project**.
 
-> **Screenshot placeholder:** ![Project form](./../images/projects-form.png)
+![Project form](./../images/projects-form.png "medium")
 
 - **Project Name:** `Demo`
 - **Slug:** `demo` (auto-suggested)
@@ -76,7 +76,7 @@ Save. The project appears in the list.
 
 Open the **Demo** project, switch to the **Payment Methods** tab, and click **Add Payment Method**.
 
-> **Screenshot placeholder:** ![Project payment method form](./../images/project-payment-methods-form.png)
+![Project payment method form](./../images/project-payment-methods-form.png "medium")
 
 - **Payment Method:** `x402-base-sepolia`
 - **Asset:** `USDC`
@@ -91,7 +91,7 @@ Save.
 
 Open **Routes** in the sidebar and click **Create Route**.
 
-> **Screenshot placeholder:** ![Route form](./../images/routes-form-paid.png)
+![Route form](./../images/routes-form-paid.png "medium")
 
 - **Project:** `Demo`
 - **Route Name:** `Weather`
@@ -117,7 +117,7 @@ curl -i http://localhost:3102/demo/weather
 
 You should see an HTTP `402 Payment Required` response with a JSON body containing payment requirements: network `eip155:84532`, asset USDC, payout address (yours), amount `1000` (= `0.001` USDC at six decimals), facilitator URL.
 
-> **Screenshot placeholder:** ![curl 402 response](./../images/curl-402-response.png)
+![curl 402 response](./../images/curl-402-response.png)
 
 Now pay with an x402-aware client. Options:
 
@@ -132,7 +132,7 @@ Open **Requests** in the sidebar. You should see one row for the 402 and another
 
 Click into the paid row to see the events: `route_resolved` → `payment_required` (the first attempt) → `payment_completed` (the second attempt's verified proof) → `proxying` → `upstream_result`.
 
-> **Screenshot placeholder:** ![Request details](./../images/requests-detail.png)
+![Request details](./../images/requests-detail.png)
 
 The Dashboard now shows non-zero counters.
 

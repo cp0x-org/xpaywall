@@ -52,7 +52,7 @@ The interesting fields:
 - `maxAmountRequired` — the on-chain amount in the asset's base unit. For USDC at 6 decimals, `1000` = `0.001` USDC.
 - `resource` — the full URL the client is paying for.
 
-> **Screenshot placeholder:** ![curl 402 response](./../images/curl-402-response.png)
+![curl 402 response](./../images/curl-402-response.png)
 
 ## See a free route succeed
 

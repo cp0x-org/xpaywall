@@ -72,7 +72,7 @@ Steps:
 
 If a route is marked **free**, steps 3–6 are skipped and the gateway proxies the call directly.
 
-> **Screenshot placeholder:** ![Architecture overview](./images/arch-overview.png)
+![Architecture overview](./images/arch-overview.png)
 
 ---
 
@@ -109,7 +109,7 @@ Use HTTP mode when:
 - You want a log of every request stored and searchable.
 - You want to give other people (with their own logins) the ability to manage their own projects.
 
-> **Screenshot placeholder:** ![HTTP mode architecture](./images/arch-http-mode.png)
+![HTTP mode architecture](./images/arch-http-mode.png)
 
 ### File mode
 
@@ -121,7 +121,7 @@ Use file mode when:
 - You do not need a UI and do not care about persistent request logs.
 - You are deploying to a constrained environment (one container, no database).
 
-> **Screenshot placeholder:** ![File mode architecture](./images/arch-file-mode.png)
+![File mode architecture](./images/arch-file-mode.png)
 
 ### Quick comparison
 

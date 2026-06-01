@@ -16,7 +16,7 @@ Common causes:
 
 Open the request in the **Requests** page and look at the events. The `route_resolved` event has the matched rule (or absence thereof).
 
-> **Screenshot placeholder:** ![Requests detail showing 403](./images/requests-detail-403.png)
+![Requests detail showing 403](./images/requests-detail-403.png)
 
 ## "I get 402 every time — even after paying"
 

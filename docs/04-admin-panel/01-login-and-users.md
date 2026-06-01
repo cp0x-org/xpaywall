@@ -1,4 +1,4 @@
-# Admin Panel — Login & Users
+﻿# Admin Panel — Login & Users
 
 The admin panel is a small web app at `http://<your-host>:3104` (port `3104` by default). All settings — projects, payment methods, routes — are managed here.
 
@@ -8,11 +8,11 @@ When the stack starts for the first time, control-api creates a single **superad
 
 Open the login page, enter the credentials, and submit.
 
-> **Screenshot placeholder:** ![Login page](./../images/login.png)
+![Login page](./../images/login.png "small")
 
 After login you land on the Dashboard. The left sidebar gives you access to every other section.
 
-> **Screenshot placeholder:** ![Sidebar menu](./../images/sidebar-menu.png)
+![Sidebar menu](./../images/sidebar-menu.png "small")
 
 > **Important.** Change the default password before exposing the panel to the internet. You can do it in two ways:
 > - Edit `SUPERADMIN_PASSWORD` in `docker-compose.yml` and restart `control-api`. This works only for the bootstrap account.
@@ -33,7 +33,7 @@ The **Users** section is visible only to superadmins.
 
 Only superadmins can create users. Open **Users** in the sidebar and click **Create User**.
 
-> **Screenshot placeholder:** ![Users list](./../images/users-list.png)
+![Users list](./../images/users-list.png)
 
 Fill in:
 
@@ -41,7 +41,7 @@ Fill in:
 - **Password** — set an initial password. The user can change it later from their own profile.
 - **Role** — `superadmin` or `user`.
 
-> **Screenshot placeholder:** ![User form](./../images/users-form.png)
+![User form](./../images/users-form.png "medium")
 
 Save. The user can now log in with the credentials you set.
 

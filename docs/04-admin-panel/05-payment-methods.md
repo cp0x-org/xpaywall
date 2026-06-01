@@ -1,16 +1,16 @@
-# Admin Panel — Payment Methods
+﻿# Admin Panel — Payment Methods
 
 A **payment method** is a template for "this protocol on this network". It says, for example, "x402 on Base Mainnet". It does not yet say which asset, which facilitator or which wallet receives the money — those come from assets and from the per-project link.
 
 You define payment methods once, then reuse them across many projects.
 
-> **Screenshot placeholder:** ![Payment methods list](./../images/payment-methods-list.png)
+![Payment methods list](./../images/payment-methods-list.png)
 
 ## Fields
 
 Open **Payments → Payment Methods** and click **Create Payment Method**.
 
-> **Screenshot placeholder:** ![Payment method form — x402](./../images/payment-methods-form-x402.png)
+![Payment method form — x402](./../images/payment-methods-form-x402.png "medium")
 
 | Field | What to put |
 |---|---|

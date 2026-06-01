@@ -1,8 +1,8 @@
-# Admin Panel — Dashboard
+﻿# Admin Panel — Dashboard
 
 The Dashboard is the first page you see after logging in. It is a read-only summary of the activity going through the gateway.
 
-> **Screenshot placeholder:** ![Dashboard](./../images/dashboard-main.png)
+![Dashboard](./../images/dashboard-main.png)
 
 ## Summary cards
 
@@ -17,13 +17,13 @@ The top of the page shows aggregate counters. Typical cards:
 
 A list of the most-hit routes in the selected period, with revenue and call counts. Useful for spotting your most profitable endpoints and your highest-traffic ones.
 
-> **Screenshot placeholder:** ![Top routes card](./../images/dashboard-top-routes.png)
+![Top routes card](./../images/dashboard-top-routes.png "medium")
 
 ## Recent requests
 
 A timeline of the latest individual requests. Click through to open the **Requests** page filtered to that request for full details.
 
-> **Screenshot placeholder:** ![Recent requests card](./../images/dashboard-recent-requests.png)
+![Recent requests card](./../images/dashboard-recent-requests.png "medium")
 
 ## What if it's empty?
 

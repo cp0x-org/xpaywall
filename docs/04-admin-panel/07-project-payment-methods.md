@@ -1,10 +1,10 @@
-# Admin Panel — Project Payment Methods
+﻿# Admin Panel — Project Payment Methods
 
 This is the page where the global pieces (facilitator, payment method, asset) get attached to a specific project, with a **payout address** — the wallet that actually receives the money.
 
 Until you create at least one Project Payment Method, paid routes on that project cannot work: the gateway has no idea where to send the funds. Free routes still work without it.
 
-> **Screenshot placeholder:** ![Project payment methods list](./../images/project-payment-methods-list.png)
+![Project payment methods list](./../images/project-payment-methods-list.png)
 
 ## Two ways to open the form
 
@@ -13,7 +13,7 @@ Until you create at least one Project Payment Method, paid routes on that projec
 
 Click **Add Payment Method** to open the dialog.
 
-> **Screenshot placeholder:** ![Add project payment method](./../images/project-payment-methods-form.png)
+![Add project payment method](./../images/project-payment-methods-form.png "medium")
 
 ## Fields
 

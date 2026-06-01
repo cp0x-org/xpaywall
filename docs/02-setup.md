@@ -39,8 +39,6 @@ docker compose up -d
 
 The first run downloads images and builds the containers — expect a few minutes. When the command returns, run `docker compose ps` to confirm all containers say `running` or `healthy`.
 
-> **Screenshot placeholder:** ![Terminal after docker compose up](./images/docker-compose-up.png)
-
 ---
 
 ## Step 2 — Open the admin panel
@@ -49,32 +47,21 @@ Open `http://localhost:3104` in your browser.
 
 You will see a login page. The default credentials are:
 
-- **Username:** `superadmin`
-- **Password:** `superadmin`
+- **Username:** `admin`
+- **Password:** `admin123`
 
-Log in. You should land on the Dashboard — an empty one, because you have not configured anything yet.
+Log in.
+![Login page](./images/login.png "small")
+ You should land on the Dashboard — an empty one, because you have not configured anything yet.
 
-> **Screenshot placeholder:** ![Login page](./images/login.png)
->
-> **Screenshot placeholder:** ![Empty dashboard](./images/dashboard-main.png)
 
-> **Important:** the default `superadmin / superadmin` credentials are good for the first login only. Change them right away by editing `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` in `docker-compose.yml` and restarting the `control-api` container. See [09 — Security](./09-security.md) for the production checklist.
+> **Important:** the default `admin / admin123` credentials are good for the first login only. Change them right away by editing `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` in `docker-compose.yml` and restarting the `control-api` container. See [09 — Security](./09-security.md) for the production checklist.
 
 ---
 
 ## Step 3 — Sanity check
 
-Three quick checks that confirm everything is wired up correctly.
-
-### control-api responds
-
-```bash
-curl http://localhost:3101/swagger/index.html -o /dev/null -s -w "%{http_code}\n"
-```
-
-Should print `200`. You can also open `http://localhost:3101/swagger/index.html` in a browser to see the Swagger UI.
-
-> **Screenshot placeholder:** ![Swagger UI](./images/swagger-ui.png)
+Couple quick checks that confirm everything is wired up correctly.
 
 ### xgateway responds
 
@@ -121,10 +108,8 @@ docker compose start
 To wipe everything and start fresh (this deletes the database too):
 
 ```bash
-docker compose down -v
+docker compose down
 ```
-
-> The `-v` flag removes the named volumes, including PostgreSQL data. Omit it if you only want to remove containers but keep your configuration.
 
 ---
 

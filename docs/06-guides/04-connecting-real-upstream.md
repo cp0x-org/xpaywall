@@ -1,4 +1,4 @@
-# Guide 04 — Connecting a real upstream
+﻿# Guide 04 — Connecting a real upstream
 
 The example server inside the repo is fine for trying things out, but it does not match what you actually want to monetise. This guide replaces the example with your real API.
 
@@ -20,7 +20,7 @@ So if the project's base URL is `https://api.example.com` and a route's path is 
 
 Open **Projects → Project List**, edit your project, and change **Server Base URL** to your real API's URL. Save.
 
-> **Screenshot placeholder:** ![Project form](./../images/projects-form.png)
+![Project form](./../images/projects-form.png "medium")
 
 Common values:
 

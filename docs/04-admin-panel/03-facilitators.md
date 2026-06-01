@@ -1,10 +1,10 @@
-# Admin Panel — Facilitators
+﻿# Admin Panel — Facilitators
 
 A **facilitator** is an external service that verifies x402 payment proofs and settles them on-chain on behalf of the gateway. The gateway itself never needs a hot wallet or signing keys — it forwards each proof to the facilitator and trusts the facilitator's verdict.
 
 If you have never seen the word before, it is the easiest mental model: *facilitator = the verifier*.
 
-> **Screenshot placeholder:** ![Facilitators list](./../images/facilitators-list.png)
+![Facilitators list](./../images/facilitators-list.png)
 
 ## Why facilitators exist
 
@@ -22,7 +22,7 @@ You do not need to run your own facilitator. Several public ones are available; 
 
 From the sidebar, open **Payments → Facilitators (x402)** and click **Create Facilitator**.
 
-> **Screenshot placeholder:** ![Facilitator form](./../images/facilitators-form.png)
+![Facilitator form](./../images/facilitators-form.png "medium")
 
 Fill in:
 

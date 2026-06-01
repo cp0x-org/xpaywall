@@ -6,10 +6,10 @@ If you have not booted xpaywall yet, start with [02 — Setup](./02-setup.md).
 
 ## Where configuration lives
 
-All service configuration is set in `docker-compose.yml` (or `docker-compose.prod.yml` for production). After editing it, apply changes with:
+All service configuration is set in `docker-compose.yml`. After editing it, apply changes with:
 
 ```bash
-docker compose up -d
+docker compose down && docker compose up -d
 ```
 
 Docker Compose restarts only the services whose configuration changed.
@@ -150,4 +150,4 @@ For more on what to expose and what to keep internal, see [09 — Security](./09
 
 - Understand the architecture before customising further: [01 — Overview](./01-overview.md).
 - Start configuring projects, payments and routes: [04 — Admin panel](./04-admin-panel/01-login-and-users.md).
-- Hardening checklist: [09 — Security](./09-security.md).
+

@@ -1,4 +1,4 @@
-# Admin Panel — Routes
+﻿# Admin Panel — Routes
 
 A **route** is one path (or path pattern) on a project. It tells the gateway:
 
@@ -8,13 +8,13 @@ A **route** is one path (or path pattern) on a project. It tells the gateway:
 
 Routes are where you actually monetise paths. A project with no routes does nothing useful.
 
-> **Screenshot placeholder:** ![Routes list](./../images/routes-list.png)
+![Routes list](./../images/routes-list.png)
 
 ## Creating a route
 
 Open **Routes** in the sidebar and click **Create Route**.
 
-> **Screenshot placeholder:** ![Route form — paid](./../images/routes-form-paid.png)
+![Route form — paid](./../images/routes-form-paid.png "medium")
 
 At the top of the form you will see two live previews:
 
@@ -51,7 +51,7 @@ Use exact paths for endpoints with a fixed URL. They are the most predictable an
 
 The `*` is the same kind of glob you see in `path.Match` in Go: it matches one path segment by default, so `/api/v1/*` matches `/api/v1/foo` but not `/api/v1/foo/bar`. To match deeper, use a deeper pattern or several routes.
 
-> **Screenshot placeholder:** ![Route form — wildcard](./../images/routes-form-wildcard.png)
+![Route form — wildcard](./../images/routes-form-wildcard.png "medium")
 
 ### Which wins when both match?
 
@@ -63,7 +63,7 @@ For the full rules and edge cases see [Concepts → Route resolution](./../05-co
 
 Tick **Free** to make a route free. The price field disappears and the gateway skips the 402 step for that path — every request is forwarded straight to the upstream.
 
-> **Screenshot placeholder:** ![Route form — free](./../images/routes-form-free.png)
+![Route form — free](./../images/routes-form-free.png "medium")
 
 Use free routes for:
 - Health checks (`/health`, `/ping`).
@@ -80,7 +80,7 @@ You do not have to fill it in. When you leave **Bazaar** empty the gateway auto-
 
 If you want to publish a real schema, click **Insert Template** for a starter, or use **Auto-generate from a sample request** to let the form fetch a real example response and infer the JSON schema for you.
 
-> **Screenshot placeholder:** ![Route form — Bazaar](./../images/routes-form-bazaar.png)
+![Route form — Bazaar](./../images/routes-form-bazaar.png)
 
 Fields inside the Bazaar JSON:
 
