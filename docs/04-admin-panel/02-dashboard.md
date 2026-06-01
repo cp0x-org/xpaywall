@@ -8,10 +8,10 @@ The Dashboard is the first page you see after logging in. It is a read-only summ
 
 The top of the page shows aggregate counters. Typical cards:
 
+- **Revenue** — how much the gateway has earned from successful payments.
 - **Total requests** — every request the gateway has handled.
-- **Paid requests** — requests that completed successfully after a verified payment.
-- **402 responses** — requests that triggered a payment-required response. A high number relative to paid requests means many clients are starting the payment flow but not finishing it.
-- **Errors** — upstream errors (5xx) and gateway errors.
+- **Success Rate** — the percentage of requests that got a successful payment proof and were proxied to the upstream. A low success rate means many clients are starting the payment flow but not finishing it.
+- **Active Routes** — how many routes are enabled. 
 
 ## Top routes
 

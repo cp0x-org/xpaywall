@@ -41,7 +41,6 @@ The gateway tells every paying client where to send the money. That address is t
 - Best case: clients see a malformed 402 response and cannot pay.
 - Worst case: you accept payments to a wallet you do not control.
 
-Triple-check it on first setup. Send a small test payment from a wallet you own before relying on the route. The address format must match the network of the payment method — an EVM address (`0x...`) for an EVM chain.
 
 ## Multiple methods per project
 

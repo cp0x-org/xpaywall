@@ -14,9 +14,9 @@ x402 payments can be made on different networks (Base, Base Sepolia, etc.) and w
 2. Check that the payment is real and final.
 3. Optionally execute the settlement transaction.
 
-That something is a facilitator. You point xpaywall at one or more facilitators, and the system picks the right one for each payment channel.
+That something is a facilitator. 
 
-You do not need to run your own facilitator. Several public ones are available; pick one that supports the network you want to accept payments on.
+There are public ones available, and you can use them as long as they support the network and asset you want to accept. You can also run your own if you want to — the x402 reference implementation is open source.
 
 ## Adding a facilitator
 
@@ -39,7 +39,6 @@ Save. The facilitator is now available to attach to payment methods.
 You will typically use one of these for starters:
 
 - `https://x402.org/facilitator` — the reference facilitator from the x402 community. Supports Base Sepolia (testnet) and several mainnet networks. Good for development.
-- A hosted Coinbase x402 facilitator, when available.
 - `https://x402.dexter.cash` — another public option.
 
 Always re-check current URLs against the facilitator operator's own documentation before going to production. Network support and rate limits change over time.

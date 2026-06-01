@@ -62,10 +62,6 @@ Each project has an owner (the user who created it). Superadmins can manage any 
 
 The owner field is shown on the project view but cannot be reassigned from the UI in this version. To transfer ownership, either delete and recreate the project, or contact a superadmin.
 
-## Edit / delete
-
-Most fields can be edited. Deleting a project deletes its routes and project payment methods too — make sure you do not need them anymore.
-
 ## What's next?
 
 - Attach a payment method to the project so paid routes can collect money: [Project Payment Methods](./07-project-payment-methods.md).
