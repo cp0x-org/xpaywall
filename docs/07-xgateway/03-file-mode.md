@@ -12,8 +12,6 @@ It is less convenient when:
 - You want request logs in a UI.
 - Multiple operators need to manage routes without touching files.
 
-The migration path to HTTP mode is in [Guide 05](./../06-guides/05-migrating-file-to-http.md).
-
 ## Enabling file mode
 
 ```bash

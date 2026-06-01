@@ -4,19 +4,13 @@ xgateway is the proxy that sits in front of your API. It receives every request,
 
 This page describes what xgateway does internally — middleware, providers, caches. The next two pages describe the two ways it gets its rules: from a YAML file or from control-api over HTTP.
 
-## What xgateway is and isn't
+## What xgateway is
 
 xgateway **is**:
 
 - A reverse proxy with payment logic.
 - A standalone Go service that runs in a container.
 - The thing your clients actually call.
-
-xgateway **is not**:
-
-- The database. It has no persistent storage of its own.
-- The admin panel. The admin panel is a separate React app talking to control-api.
-- A payment processor. It does not touch chains directly — it asks a facilitator to verify proofs.
 
 ## Where it sits
 
@@ -92,7 +86,7 @@ Switching providers does not change any application behaviour. The 402 response 
 
 ## Caches
 
-xgateway keeps three small in-memory caches. None of them touch disk. All are best-effort and reset on restart.
+xgateway keeps small in-memory caches. None of them touch disk. All are best-effort and reset on restart.
 
 ### Route cache
 
@@ -101,16 +95,6 @@ The first time a path is requested, the provider does its lookup (either reading
 The cache lives for a short TTL (minutes), not hours. This is intentional: in HTTP mode, you want admin-panel edits to apply quickly without bouncing the gateway. In file mode the cache is redundant — the rules in memory never change — but the same code path is used.
 
 A consequence: an admin-panel edit takes effect on the next request to that path **after the TTL expires**. For an immediate effect, restart xgateway.
-
-### Facilitator cache
-
-When the payment middleware needs to call a facilitator, it reuses an HTTP client per facilitator URL — connections, TLS, etc. This is just a connection pool, not a result cache: every payment verification is a fresh request.
-
-### Pending logs cache
-
-A 402 followed by a paid retry is the same logical interaction split across two HTTP calls. To group them in the request log, xgateway holds the in-flight 402 metadata in a small in-memory map keyed by a correlation hash. The retry — if it arrives within the TTL — picks up the original context and emits a combined log entry. After the TTL (~10 minutes) the pending row is flushed as a standalone 402 record.
-
-If you see two separate rows for what feels like one request, that usually means the retry came too late.
 
 ## What runs at startup
 

@@ -15,8 +15,6 @@ The flow looks like this:
 5. **Gateway verifies.** The gateway forwards the proof to the configured facilitator. The facilitator confirms it on-chain (or rejects it).
 6. **Forward to upstream.** If the proof is valid, the gateway forwards the original request to your upstream API and streams the response back to the client.
 
-![Payment flow sequence](./images/payment-flow-sequence.png)
-
 From the client's point of view, the magic is: one request → 402 with instructions → pay → retry → success. From the gateway's point of view: every paid request is a "verify then forward" pipeline.
 
 ## x402
@@ -132,13 +130,5 @@ Facilitator        Payment Method            Payment Asset
                                           └── Route ── Route ── Route
 ```
 
-Without all five layers, a paid route cannot collect money:
-
-- Missing **facilitator** → nothing to verify the proof.
-- Missing **payment method** → no protocol/network to advertise.
-- Missing **asset** → no currency to denominate the price in.
-- Missing **project payment method** → no payout address.
-- Missing **project** → nowhere to attach routes.
-- Missing **route** → no path to monetise.
 
 The next page — [Guide 01](./06-guides/01-first-paid-route.md) — walks through building these layers in order.

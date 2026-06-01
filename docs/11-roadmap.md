@@ -36,24 +36,6 @@ OKX has published an agentic payment standard intended for autonomous AI agents 
 - **Why it matters:** broadens the set of clients that can transact with your API.
 - **Status:** scoping. Not yet started.
 
-## Integrations
-
-### Stripe
-
-For fiat-priced endpoints where the client is a human, not an agent:
-
-- **Idea:** Stripe Checkout for paid routes — the 402 response includes a Stripe Checkout URL; the upstream is served after webhook confirmation.
-- **Why it matters:** bridges xpaywall into traditional consumer billing without forcing wallets on the client.
-- **Status:** design phase.
-
-### Bazaar discovery improvements
-
-The Bazaar field on routes is already accepted but underused. Planned improvements:
-
-- Auto-generation of richer Bazaar metadata from OpenAPI specs.
-- A public catalog endpoint on control-api that facilitators can poll.
-- Admin-panel UI for editing Bazaar metadata (currently raw JSON).
-
 ## Gateway
 
 ### Configurable rate limits
@@ -62,71 +44,6 @@ Today xgateway has no per-route or per-client rate limiting. The expectation is 
 
 - Per-route concurrency limits (don't let a single expensive route saturate the gateway).
 - Per-client soft limits backed by a counter store.
-
-### WebSocket and SSE proxying
-
-The current proxy is HTTP request/response only. Long-lived connections (WebSockets, server-sent events) are not paywalled or proxied. Future:
-
-- Free WS/SSE proxying when the project allows it.
-- Paid WS connections settled per duration via the eventual `upto` scheme.
-
-### Multi-region resilience
-
-Today xgateway is a single process per deployment. There is no clustering, no shared cache, no leader election. Future:
-
-- Optional Redis-backed shared cache to coordinate route resolution and pending-log correlation across replicas.
-- Active/active deployments without per-replica state drift.
-
-## Admin panel
-
-### Audit log UX
-
-Activity logs exist but the UI is sparse. Future:
-
-- Diff view between previous and new state of any entity.
-- Filtering by user / entity type / time range.
-- Export to CSV.
-
-### Multi-tenant operator scoping
-
-Today every operator with a non-superadmin role can see every project. Future:
-
-- Project membership: an operator only sees projects they are explicitly assigned to.
-- Per-project roles (read-only, editor, owner).
-
-### Bulk operations
-
-- Import routes from OpenAPI specs.
-- Bulk price updates (e.g. apply +10% to all routes on a project).
-- CSV import/export for routes.
-
-## Tooling
-
-### Production Docker Compose
-
-The repo currently ships `docker-compose.yml` tuned for development. A separate `docker-compose.prod.yml` with security defaults (bind localhost, real secrets via env file, sensible logging) is planned.
-
-### Helm chart
-
-For Kubernetes operators. xpaywall as a Helm chart with sensible defaults, ingress, and a values schema. Planned but not started.
-
-### CLI
-
-A `xpaywallctl` CLI for scripting common admin operations: create-route, list-projects, rotate-keys, etc. Planned as a thin wrapper over the existing admin API.
-
-## How to influence the roadmap
-
-- File an issue with your use case — the project prioritises features tied to concrete needs over speculative ones.
-- If you build a workaround or a custom integration, share the design. It is a useful signal that the feature should be official.
-- Backwards-compatibility is taken seriously. Changes to the gateway 402 response shape or the internal API contract are flagged as breaking and will get migration notes.
-
-## Out of scope
-
-A few things xpaywall deliberately does **not** plan to add:
-
-- **An on-chain settlement service.** That is the facilitator's job. xpaywall stays a gateway and dispatcher.
-- **A built-in wallet for clients.** Clients use their own wallets / SDKs.
-- **A general-purpose API management product.** xpaywall focuses on the payment layer. Schema versioning, request transformation, traffic shaping etc. belong upstream or in a separate API gateway.
 
 ## What's next?
 

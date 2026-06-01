@@ -42,6 +42,32 @@ services:
     ports:
       - "3101:9091"
 
+  # One-shot CLI runner for migrations, user creation and demo data seeding.
+  # Gated behind the `cli` profile so it never starts with `docker compose up`.
+  # Usage:
+  #   docker compose --profile cli run --rm control-api-cli migrate
+  #   docker compose --profile cli run --rm control-api-cli install user --username alice --password 'secret'
+  #   docker compose --profile cli run --rm control-api-cli install demo
+  control-api-cli:
+    image: cp0x/xpaywall-control-api:0.1.0
+    build:
+      context: ./control-api
+      dockerfile: Dockerfile
+    profiles: ["cli"]
+    networks:
+      - xpaywall-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      CONTROL_DB_DSN: postgres://user:password@xpaywall-postgres:5432/xpaywalldb?sslmode=disable
+      INTERNAL_API_KEY: change-me-internal-secret-key
+      JWT_SECRET: change-me-jwt-secret-key
+      PROXY_URL: http://127.0.0.1:8081
+      MODE: release
+      DEBUG: false
+    restart: "no"
+
   xgateway:
     build:
       context: ./xgateway

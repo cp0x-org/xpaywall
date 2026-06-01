@@ -145,7 +145,6 @@ This will fail every request — xgateway returns a 500 to the client. If you se
 xgateway also writes request logs back to control-api via two endpoints:
 
 - `POST /api/v1/request-logs` — one record per request (final state).
-- `POST /api/v1/request-events` — granular per-stage events (route resolved, payment required, payment completed, etc.).
 
 Both require the same `X-Api-Key` header. They are write-only from xgateway's perspective — it never reads back.
 

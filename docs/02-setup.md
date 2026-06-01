@@ -32,10 +32,13 @@ About **ports**: by default xpaywall exposes the services on these host ports. M
 From a terminal:
 
 ```bash
-git clone https://github.com/your-org/xpaywall.git
+git clone https://github.com/cp0x-org/xpaywall.git
 cd xpaywall
+git submodule update --init --recursive
 docker compose up -d
 ```
+
+> `xgateway/` is a Git submodule — don't skip the `submodule update` step or the build fails.
 
 The first run downloads images and builds the containers — expect a few minutes. When the command returns, run `docker compose ps` to confirm all containers say `running` or `healthy`.
 
@@ -45,17 +48,19 @@ The first run downloads images and builds the containers — expect a few minute
 
 Open `http://localhost:3104` in your browser.
 
-You will see a login page. The default credentials are:
+You will see a login page. The default credentials are taken from `docker-compose.yml`:
 
-- **Username:** `admin`
-- **Password:** `admin123`
+- **Username:** `superadmin`
+- **Password:** `superadmin`
 
 Log in.
 ![Login page](./images/login.png "small")
  You should land on the Dashboard — an empty one, because you have not configured anything yet.
 
 
-> **Important:** the default `admin / admin123` credentials are good for the first login only. Change them right away by editing `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` in `docker-compose.yml` and restarting the `control-api` container. See [09 — Security](./09-security.md) for the production checklist.
+> **Important:** the default `superadmin / superadmin` credentials are good for the first login only. Change them right away by editing `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` in `docker-compose.yml` and restarting the `control-api` container. See [09 — Security](./09-security.md) for the production checklist.
+>
+> Need additional login accounts? The admin panel does not yet have a Users screen — create them with `docker compose run --rm control-api install user`. See [12 — control-api CLI](./12-cli.md).
 
 ---
 
@@ -85,9 +90,23 @@ Should return a sample weather payload. The example server has no payment enforc
 
 ---
 
-## Step 4 — Add your first paid route
+## Step 4 — (Optional) seed demo data
 
-The stack is up but nothing is monetised yet. Continue to the step-by-step tutorial: [Guide 01 — Add your first paid route](./06-guides/01-first-paid-route.md). It walks through creating a facilitator, an asset, a payment method, a project, attaching the method to the project, creating a route, and verifying the result with curl.
+If you want a stack that already has a project, payment method, routes and a few hundred fake request logs to explore — instead of building everything from scratch — run the demo seeder once:
+
+```bash
+docker compose run --rm control-api install demo
+```
+
+That creates an `admin` / `admin` account, a **Default Project**, six routes against the bundled example-server, and 75 randomised entries in `request_logs`. The seed is idempotent, so re-running it is safe.
+
+Full flag reference and the dedicated `control-api-cli` profile are documented in [12 — control-api CLI](./12-cli.md).
+
+---
+
+## Step 5 — Add your first paid route
+
+The stack is up but nothing is monetised yet (unless you ran the demo seed in Step 4). Continue to the step-by-step tutorial: [Guide 01 — Add your first paid route](./06-guides/01-first-paid-route.md). It walks through creating a facilitator, an asset, a payment method, a project, attaching the method to the project, creating a route, and verifying the result with curl.
 
 ---
 
@@ -118,3 +137,4 @@ docker compose down
 - Configure ports, secrets and production-readiness: [03 — Configuration](./03-configuration.md).
 - Walk through your first paid route end-to-end: [Guide 01](./06-guides/01-first-paid-route.md).
 - Understand what each piece of the admin panel does: [04 — Admin panel](./04-admin-panel/01-login-and-users.md).
+- Add additional users, migrate schema, seed demo data: [12 — control-api CLI](./12-cli.md).

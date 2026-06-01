@@ -44,6 +44,7 @@ This documentation is organised so you can read it top-to-bottom on your first v
 - [09 — Security](./09-security.md)
 - [10 — Reference](./10-reference.md)
 - [11 — Roadmap](./11-roadmap.md)
+- [12 — control-api CLI](./12-cli.md) — migrations, user management, demo seed
 
 ---
 

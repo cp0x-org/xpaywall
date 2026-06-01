@@ -64,13 +64,11 @@ Open **Projects → Project List** and click **Create Project**.
 
 - **Project Name:** `Demo`
 - **Slug:** `demo` (auto-suggested)
-- **Server Base URL:** `http://xpaywall-example-server:4021` (the example server reachable inside the Docker network).
+- **Server Base URL:** the upstream server url.
 - Leave **Auth Header Name / Value** empty.
 - Leave **Allow Unmatched Routes** unchecked.
 
 Save. The project appears in the list.
-
-> **Why the internal URL?** xgateway and the example server share the same Docker network. They reach each other by container name (`xpaywall-example-server`), not by `localhost`. If you point a real production project at an upstream outside Docker, use the public URL of that upstream instead.
 
 ## Step 5 — Attach a project payment method
 
@@ -117,8 +115,6 @@ curl -i http://localhost:3102/demo/weather
 
 You should see an HTTP `402 Payment Required` response with a JSON body containing payment requirements: network `eip155:84532`, asset USDC, payout address (yours), amount `1000` (= `0.001` USDC at six decimals), facilitator URL.
 
-![curl 402 response](./../images/curl-402-response.png)
-
 Now pay with an x402-aware client. Options:
 
 - The `x402` Python or TypeScript SDK from the x402 ecosystem.
@@ -126,13 +122,11 @@ Now pay with an x402-aware client. Options:
 
 Once the client has paid, the same `GET /demo/weather` with the `X-PAYMENT` header attached returns the upstream weather JSON.
 
+> **Note:** You can open proxy url in browser and test it manually. x402 server shows you the payment form and after payment you will see the upstream server data.
+> 
 ## Step 8 — See it in the admin panel
 
 Open **Requests** in the sidebar. You should see one row for the 402 and another for the paid retry (or a single combined row if both arrived within the 10-minute correlation window).
-
-Click into the paid row to see the events: `route_resolved` → `payment_required` (the first attempt) → `payment_completed` (the second attempt's verified proof) → `proxying` → `upstream_result`.
-
-![Request details](./../images/requests-detail.png)
 
 The Dashboard now shows non-zero counters.
 
