@@ -1,6 +1,6 @@
 # xpaywall
 
-**xpaywall** is a self-hosted HTTP 402 payment gateway that enforces micropayments in front of any API. It sits between clients and your upstream services — no API keys, no billing accounts, no subscriptions. Clients pay per request using crypto (x402, MPP/Tempo) or Stripe, and the gateway proxies the request only after verifying payment proof.
+**xpaywall** is a self-hosted HTTP 402 payment gateway that enforces micropayments in front of any API. It sits between clients and your upstream services — no API keys, no billing accounts, no subscriptions. Clients pay per request using the [x402](https://www.x402.org/) protocol, and the gateway proxies the request only after verifying payment proof.
 
 ---
 
@@ -47,7 +47,7 @@ Client Request
 
 | Service | Directory | Container Port | Role |
 |---|---|---|---|
-| **xgateway** | `xgateway/` | 8081 | Reverse proxy that enforces payment rules |
+| **xgateway** | `xgateway/` (submodule) | 8081 | Reverse proxy that enforces payment rules |
 | **control-api** | `control-api/` | 9091 | REST control plane — projects, routes, users, logs |
 | **adminpanel** | `frontend/adminpanel/` | 80 (3000 in dev) | React dashboard for managing everything |
 | **example-server** | `examples/server/` | 4021 | Sample upstream API for testing |
@@ -59,17 +59,21 @@ Client Request
 ### With Docker Compose
 
 ```bash
-git clone https://github.com/your-org/xpaywall.git
+git clone https://github.com/cp0x-org/xpaywall.git
 cd xpaywall
+git submodule update --init --recursive
 docker compose up -d
 ```
 
+> `xgateway/` is a Git submodule from [`cp0x-org/xgateway`](https://github.com/cp0x-org/xgateway) — don't skip the `submodule update` step or the build will fail.
+
 | Service | URL |
 |---|---|
-| Admin Panel | http://localhost:3100 |
+| Landing | http://localhost:3100 |
 | Control API | http://localhost:3101 |
 | Gateway | http://localhost:3102 |
 | Example upstream | http://localhost:3103 |
+| Admin Panel | http://localhost:3104 |
 | PostgreSQL | localhost:5482 |
 
 Default superadmin credentials: `superadmin` / `superadmin` (change in `docker-compose.yml`). Host ports are mapped in `docker-compose.yml` — adjust them there if you need different externals.
@@ -171,14 +175,6 @@ x402:
     merchant: "0xYourAddress"        # pay_to address
     asset: "0xUSDCAddress"           # CAIP-19 asset
 
-mpp:
-  - name: tempo-charge
-    method: tempo
-    rpc_url: http://localhost:4022
-    scheme: charge
-    merchant: "0xYourAddress"        # pay_to address
-    asset: "0xUSDCAddress"           # CAIP-19 asset
-
 outbound:
   target: http://your-upstream:4021
   allow_unmatched: false        # 403 for paths with no rule
@@ -193,15 +189,17 @@ outbound:
       free: true                # no payment required
 ```
 
+See [`xgateway/config.example.yaml`](xgateway/config.example.yaml) for the full schema.
+
 ---
 
 ## Payment Methods
 
-| Protocol | Description | Networks |
-|---|---|---|
-| **x402** | EVM-based micropayments | Base, Base Sepolia |
-| **MPP / Tempo** | Machine Payments Protocol | Tempo blockchain |
-| **Stripe** | Traditional card payments | — |
+| Protocol | Status | Description | Networks |
+|---|---|---|---|
+| **x402** | Shipped | EVM-based micropayments (`exact` and `upto` schemes) | Base, Base Sepolia, any EVM chain with an x402 facilitator |
+| **MPP / Tempo** | Roadmap | Machine Payments Protocol — code is scaffolded but disabled in the current build | Tempo blockchain |
+| **Stripe** | Roadmap | Traditional card payments | — |
 
 ---
 
@@ -304,6 +302,10 @@ xpaywall/
 
 ---
 
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the dev setup, PR checklist, and contribution rules. Changes scoped to the gateway go through the [xgateway](https://github.com/cp0x-org/xgateway) repository — see [`xgateway/CONTRIBUTING.md`](xgateway/CONTRIBUTING.md).
+
 ## License
 
-MIT
+Released under the [MIT License](LICENSE).
