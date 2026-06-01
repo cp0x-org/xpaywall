@@ -135,8 +135,6 @@ Use file mode when:
 | Multi-user management | Yes (JWT auth) | No |
 | Setup complexity | Medium | Low |
 
-You can also **start in file mode and migrate to HTTP mode** later — see [Guide 05](./06-guides/05-migrating-file-to-http.md).
-
 ---
 
 ## What's next?

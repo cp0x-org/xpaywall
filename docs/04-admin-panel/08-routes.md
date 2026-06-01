@@ -110,6 +110,5 @@ Deleting a route is instant. Existing in-flight requests finish, then new reques
 
 ## What's next?
 
-- See the result on the wire: [Guide 03 — Testing with curl](./../06-guides/03-testing-with-curl.md).
 - Inspect what happened on the gateway: [Requests](./09-requests.md).
 - Full step-by-step setup: [Guide 01 — Add your first paid route](./../06-guides/01-first-paid-route.md).

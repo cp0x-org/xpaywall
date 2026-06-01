@@ -261,5 +261,4 @@ There is no project slug in file mode — paths map directly. A client request t
 
 ## What's next?
 
-- Move to HTTP mode when you outgrow YAML: [Guide 05 — Migrating from file to HTTP mode](./../06-guides/05-migrating-file-to-http.md).
 - Background on how matching decisions are made: [05 — Concepts](./../05-concepts.md#route-resolution).

@@ -146,5 +146,4 @@ Every paid route in xpaywall is built the same way.
 ## What's next?
 
 - Charge by URL pattern instead of one path at a time: [Guide 02 — Wildcard routes](./02-wildcard-routes.md).
-- Drop the example server and point at your real API: [Guide 04 — Connecting a real upstream](./04-connecting-real-upstream.md).
 - Hardening for production: [09 — Security](./../09-security.md).

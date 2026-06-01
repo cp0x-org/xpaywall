@@ -6,7 +6,7 @@ The admin panel is a small web app at `http://<your-host>:3104` (port `3104` by 
 
 ## First login
 
-When the stack starts for the first time, control-api creates a single **superadmin** account using the `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` environment variables. In a fresh `docker-compose.yml` both are set to `superadmin`.
+When the stack starts for the first time, control-api creates a single **superadmin** account using the `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` environment variables. In a fresh `docker-compose.yml`, set to `admin/admin123`.
 
 Open the login page, enter the credentials, and submit.
 

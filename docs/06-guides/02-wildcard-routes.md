@@ -90,5 +90,4 @@ For paid APIs, leave **Allow Unmatched** off and rely on explicit rules.
 
 ## What's next?
 
-- Probe a wildcard with curl to confirm it matches what you think it does: [Guide 03 — Testing with curl](./03-testing-with-curl.md).
 - Background on how matching decisions are made: [Concepts → Route resolution](./../05-concepts.md#route-resolution).

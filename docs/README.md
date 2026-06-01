@@ -30,9 +30,6 @@ This documentation is organised so you can read it top-to-bottom on your first v
 ### Step-by-step guides
 - [01 — Add your first paid route](./06-guides/01-first-paid-route.md)
 - [02 — Wildcard routes](./06-guides/02-wildcard-routes.md)
-- [03 — Testing with curl](./06-guides/03-testing-with-curl.md)
-- [04 — Connecting a real upstream](./06-guides/04-connecting-real-upstream.md)
-- [05 — Migrating from file mode to HTTP mode](./06-guides/05-migrating-file-to-http.md)
 
 ### xgateway (the proxy)
 - [01 — Overview](./07-xgateway/01-overview.md) — architecture, middleware chain, caching, providers.
