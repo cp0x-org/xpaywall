@@ -5,8 +5,8 @@ SELECT * FROM payment_methods ORDER BY protocol, name;
 SELECT * FROM payment_methods WHERE id = $1;
 
 -- name: CreatePaymentMethod :one
-INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, enabled)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, method, scheme, enabled)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: UpdatePaymentMethod :one
@@ -15,6 +15,8 @@ SET code           = COALESCE(sqlc.narg(code), code),
     protocol       = COALESCE(sqlc.narg(protocol), protocol),
     name           = COALESCE(sqlc.narg(name), name),
     caip2_chain_id = COALESCE(sqlc.narg(caip2_chain_id), caip2_chain_id),
+    method         = COALESCE(sqlc.narg(method), method),
+    scheme         = COALESCE(sqlc.narg(scheme), scheme),
     enabled        = COALESCE(sqlc.narg(enabled), enabled),
     updated_at     = CURRENT_TIMESTAMP
 WHERE id = $1
@@ -110,7 +112,7 @@ FROM project_payment_methods ppm
 JOIN projects              p  ON p.id  = ppm.project_id
 JOIN payment_methods       pm ON pm.id = ppm.payment_method_id
 JOIN payment_method_assets a  ON a.id  = ppm.asset_id
-JOIN facilitators          f  ON f.id  = ppm.facilitator_id
+LEFT JOIN facilitators     f  ON f.id  = ppm.facilitator_id
 ORDER BY p.name, ppm.created_at DESC;
 
 -- name: GetProjectPaymentMethod :one

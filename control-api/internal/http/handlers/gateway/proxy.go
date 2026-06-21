@@ -34,24 +34,26 @@ type resolveRouteResponse struct {
 	Free            bool            `json:"free"`
 	MimeType        string          `json:"mime_type,omitempty"`
 	Description     string          `json:"description,omitempty"`
-	Bazaar          json.RawMessage `json:"bazaar,omitempty"`
+	Bazaar          json.RawMessage `json:"bazaar,omitempty" swaggertype:"object"`
 	PaymentChannels []channelDTO    `json:"payment_channels"`
 }
 
 type channelDTO struct {
-	Protocol        string    `json:"protocol"`
-	Code            string    `json:"code"`
-	Scheme          string    `json:"scheme"`
-	CaIP2ChainID    string    `json:"caip2_chain_id,omitempty"`
-	FacilitatorURL  string    `json:"facilitator_url"`
-	PayoutAddress   string    `json:"payout_address,omitempty"`
-	AssetSymbol     string    `json:"asset_symbol"`
-	ContractAddress string    `json:"contract_address,omitempty"`
-	Amount          string    `json:"amount,omitempty"`
-	Decimals        int32     `json:"decimals"`
-	Enabled         bool      `json:"enabled"`
-	PaymentMethodID uuid.UUID `json:"payment_method_id"`
-	AssetID         uuid.UUID `json:"asset_id"`
+	Protocol        string            `json:"protocol"`
+	Method          string            `json:"method,omitempty"`
+	Code            string            `json:"code"`
+	Scheme          string            `json:"scheme"`
+	CaIP2ChainID    string            `json:"caip2_chain_id,omitempty"`
+	FacilitatorURL  string            `json:"facilitator_url"`
+	PayoutAddress   string            `json:"payout_address,omitempty"`
+	AssetSymbol     string            `json:"asset_symbol"`
+	ContractAddress string            `json:"contract_address,omitempty"`
+	Amount          string            `json:"amount,omitempty"`
+	Decimals        int32             `json:"decimals"`
+	Enabled         bool              `json:"enabled"`
+	PaymentMethodID uuid.UUID         `json:"payment_method_id"`
+	AssetID         uuid.UUID         `json:"asset_id"`
+	ChannelConfig   map[string]string `json:"channel_config,omitempty"`
 }
 
 type errorResponse struct {
@@ -127,11 +129,16 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 				Protocol:        m.Protocol,
 				Code:            m.Code,
 				Scheme:          m.Scheme,
-				FacilitatorURL:  m.FacilitatorUrl,
+				FacilitatorURL:  m.FacilitatorUrl.String,
 				AssetSymbol:     m.Symbol,
+				Decimals:        m.Decimals,
+				Amount:          computeRawAmount(priceUSD, m.Decimals),
 				Enabled:         m.Enabled,
 				PaymentMethodID: m.PaymentMethodID,
 				AssetID:         m.AssetID,
+			}
+			if m.Method.Valid {
+				dto.Method = m.Method.String
 			}
 			if m.Caip2ChainID.Valid {
 				dto.CaIP2ChainID = m.Caip2ChainID.String
@@ -141,14 +148,38 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 			}
 			if m.ContractAddress.Valid {
 				dto.ContractAddress = m.ContractAddress.String
-				dto.Amount = computeRawAmount(priceUSD, m.Decimals)
-				dto.Decimals = m.Decimals
+			}
+			// MPP (Tempo charge) has no facilitator: instead xgateway's HTTP
+			// provider builds the charge server from a flat channel_config.
+			// rpc_url / secret_key live in the per-project config JSONB; merchant
+			// is the payout address and asset is the token contract.
+			if m.Protocol == "mpp" {
+				dto.ChannelConfig = buildMPPChannelConfig(m.Config, dto.PayoutAddress, dto.ContractAddress)
 			}
 			resp.PaymentChannels = append(resp.PaymentChannels, dto)
 		}
 	}
 
 	c.JSON(nethttp.StatusOK, resp)
+}
+
+// buildMPPChannelConfig assembles the flat key/value map xgateway's MPP charge
+// server expects (rpc_url, secret_key, merchant, asset). rpc_url and secret_key
+// are stored in the project_payment_methods.config JSONB; merchant is the payout
+// address and asset is the token contract (omitted -> Tempo defaults to the
+// chain's stablecoin).
+func buildMPPChannelConfig(rawConfig []byte, merchant, asset string) map[string]string {
+	cfg := map[string]string{}
+	if len(rawConfig) > 0 {
+		_ = json.Unmarshal(rawConfig, &cfg)
+	}
+	if merchant != "" {
+		cfg["merchant"] = merchant
+	}
+	if asset != "" {
+		cfg["asset"] = asset
+	}
+	return cfg
 }
 
 // computeRawAmount converts a USD price string (e.g. "0.001") to a raw blockchain

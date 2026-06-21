@@ -15,6 +15,224 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/facilitators": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "facilitators"
+                ],
+                "summary": "List facilitators",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/handlers.facilitatorResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "facilitators"
+                ],
+                "summary": "Create facilitator",
+                "parameters": [
+                    {
+                        "description": "Facilitator data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.createFacilitatorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.facilitatorResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/facilitators/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "facilitators"
+                ],
+                "summary": "Get facilitator",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Facilitator ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.facilitatorResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "facilitators"
+                ],
+                "summary": "Update facilitator",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Facilitator ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.updateFacilitatorRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.facilitatorResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "facilitators"
+                ],
+                "summary": "Delete facilitator",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Facilitator ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/outbound-routes": {
             "get": {
                 "security": [
@@ -247,7 +465,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/payment-channel-assets": {
+        "/api/v1/payment-method-assets": {
             "get": {
                 "security": [
                     {
@@ -258,16 +476,16 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payment-channel-assets"
+                    "payment-method-assets"
                 ],
-                "summary": "List payment channel assets",
+                "summary": "List payment method assets",
                 "responses": {
                     "200": {
-                        "description": "Array of payment channel asset objects",
+                        "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "type": "object"
+                                "$ref": "#/definitions/handlers.paymentMethodAssetResponse"
                             }
                         }
                     },
@@ -292,9 +510,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payment-channel-assets"
+                    "payment-method-assets"
                 ],
-                "summary": "Create payment channel asset",
+                "summary": "Create payment method asset",
                 "parameters": [
                     {
                         "description": "Asset data",
@@ -302,15 +520,15 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.createPaymentChannelAssetRequest"
+                            "$ref": "#/definitions/handlers.createPaymentMethodAssetRequest"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created asset object",
+                        "description": "Created",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.paymentMethodAssetResponse"
                         }
                     },
                     "400": {
@@ -328,7 +546,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/payment-channel-assets/{id}": {
+        "/api/v1/payment-method-assets/{id}": {
             "get": {
                 "security": [
                     {
@@ -339,9 +557,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payment-channel-assets"
+                    "payment-method-assets"
                 ],
-                "summary": "Get payment channel asset",
+                "summary": "Get payment method asset",
                 "parameters": [
                     {
                         "type": "string",
@@ -353,9 +571,9 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Payment channel asset object",
+                        "description": "OK",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.paymentMethodAssetResponse"
                         }
                     },
                     "400": {
@@ -385,9 +603,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payment-channel-assets"
+                    "payment-method-assets"
                 ],
-                "summary": "Update payment channel asset",
+                "summary": "Update payment method asset",
                 "parameters": [
                     {
                         "type": "string",
@@ -402,15 +620,15 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.updatePaymentChannelAssetRequest"
+                            "$ref": "#/definitions/handlers.updatePaymentMethodAssetRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Updated asset object",
+                        "description": "OK",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.paymentMethodAssetResponse"
                         }
                     },
                     "400": {
@@ -434,9 +652,9 @@ const docTemplate = `{
                     }
                 ],
                 "tags": [
-                    "payment-channel-assets"
+                    "payment-method-assets"
                 ],
-                "summary": "Delete payment channel asset",
+                "summary": "Delete payment method asset",
                 "parameters": [
                     {
                         "type": "string",
@@ -465,7 +683,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/payment-channels": {
+        "/api/v1/payment-methods": {
             "get": {
                 "security": [
                     {
@@ -476,16 +694,16 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payment-channels"
+                    "payment-methods"
                 ],
-                "summary": "List payment channels",
+                "summary": "List payment methods",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/handlers.paymentChannelResponse"
+                                "$ref": "#/definitions/handlers.paymentMethodResponse"
                             }
                         }
                     },
@@ -510,17 +728,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payment-channels"
+                    "payment-methods"
                 ],
-                "summary": "Create payment channel",
+                "summary": "Create payment method",
                 "parameters": [
                     {
-                        "description": "Payment channel data",
+                        "description": "Payment method data",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.createPaymentChannelRequest"
+                            "$ref": "#/definitions/handlers.createPaymentMethodRequest"
                         }
                     }
                 ],
@@ -528,7 +746,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/handlers.paymentChannelResponse"
+                            "$ref": "#/definitions/handlers.paymentMethodResponse"
                         }
                     },
                     "400": {
@@ -546,7 +764,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/payment-channels/{id}": {
+        "/api/v1/payment-methods/{id}": {
             "get": {
                 "security": [
                     {
@@ -557,13 +775,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payment-channels"
+                    "payment-methods"
                 ],
-                "summary": "Get payment channel",
+                "summary": "Get payment method",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Payment Channel ID (UUID)",
+                        "description": "Payment Method ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -573,7 +791,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.paymentChannelResponse"
+                            "$ref": "#/definitions/handlers.paymentMethodResponse"
                         }
                     },
                     "400": {
@@ -603,13 +821,13 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "payment-channels"
+                    "payment-methods"
                 ],
-                "summary": "Update payment channel",
+                "summary": "Update payment method",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Payment Channel ID (UUID)",
+                        "description": "Payment Method ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -620,7 +838,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handlers.updatePaymentChannelRequest"
+                            "$ref": "#/definitions/handlers.updatePaymentMethodRequest"
                         }
                     }
                 ],
@@ -628,7 +846,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/handlers.paymentChannelResponse"
+                            "$ref": "#/definitions/handlers.paymentMethodResponse"
                         }
                     },
                     "400": {
@@ -652,13 +870,13 @@ const docTemplate = `{
                     }
                 ],
                 "tags": [
-                    "payment-channels"
+                    "payment-methods"
                 ],
-                "summary": "Delete payment channel",
+                "summary": "Delete payment method",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Payment Channel ID (UUID)",
+                        "description": "Payment Method ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -683,7 +901,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/project-payment-configs": {
+        "/api/v1/project-payment-methods": {
             "get": {
                 "security": [
                     {
@@ -694,17 +912,38 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "project-payment-configs"
+                    "project-payment-methods"
                 ],
-                "summary": "List project payment configs",
+                "summary": "List project payment methods",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Project ID (UUID)",
+                        "name": "project_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "type": "object"
+                                "$ref": "#/definitions/handlers.projectPaymentMethodResponse"
                             }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
                         }
                     }
                 }
@@ -722,20 +961,43 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "project-payment-configs"
+                    "project-payment-methods"
                 ],
-                "summary": "Create project payment config",
+                "summary": "Create project payment method",
+                "parameters": [
+                    {
+                        "description": "Project payment method data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.createProjectPaymentMethodRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.projectPaymentMethodResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
                         }
                     }
                 }
             }
         },
-        "/api/v1/project-payment-configs/{id}": {
+        "/api/v1/project-payment-methods/all": {
             "get": {
                 "security": [
                     {
@@ -746,13 +1008,46 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "project-payment-configs"
+                    "project-payment-methods"
                 ],
-                "summary": "Get project payment config",
+                "summary": "List all project payment methods",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/handlers.projectPaymentMethodFullResponse"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/project-payment-methods/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "project-payment-methods"
+                ],
+                "summary": "Get project payment method",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Config ID (UUID)",
+                        "description": "Project Payment Method ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -762,7 +1057,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.projectPaymentMethodResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
                         }
                     }
                 }
@@ -780,23 +1087,44 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "project-payment-configs"
+                    "project-payment-methods"
                 ],
-                "summary": "Update project payment config",
+                "summary": "Update project payment method",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Config ID (UUID)",
+                        "description": "Project Payment Method ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handlers.updateProjectPaymentMethodRequest"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/handlers.projectPaymentMethodResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
                         }
                     }
                 }
@@ -808,13 +1136,13 @@ const docTemplate = `{
                     }
                 ],
                 "tags": [
-                    "project-payment-configs"
+                    "project-payment-methods"
                 ],
-                "summary": "Delete project payment config",
+                "summary": "Delete project payment method",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Config ID (UUID)",
+                        "description": "Project Payment Method ID (UUID)",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -823,6 +1151,18 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/handlers.errorResponse"
+                        }
                     }
                 }
             }
@@ -1116,7 +1456,7 @@ const docTemplate = `{
                 "tags": [
                     "projects"
                 ],
-                "summary": "Delete project",
+                "summary": "Delete (archive) project",
                 "parameters": [
                     {
                         "type": "string",
@@ -2149,7 +2489,16 @@ const docTemplate = `{
         "gateway.channelDTO": {
             "type": "object",
             "properties": {
+                "amount": {
+                    "type": "string"
+                },
                 "asset_id": {
+                    "type": "string"
+                },
+                "asset_symbol": {
+                    "type": "string"
+                },
+                "caip2_chain_id": {
                     "type": "string"
                 },
                 "channel_config": {
@@ -2158,16 +2507,28 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
-                "channel_id": {
+                "code": {
                     "type": "string"
+                },
+                "contract_address": {
+                    "type": "string"
+                },
+                "decimals": {
+                    "type": "integer"
                 },
                 "enabled": {
                     "type": "boolean"
                 },
+                "facilitator_url": {
+                    "type": "string"
+                },
                 "method": {
                     "type": "string"
                 },
-                "price": {
+                "payment_method_id": {
+                    "type": "string"
+                },
+                "payout_address": {
                     "type": "string"
                 },
                 "protocol": {
@@ -2197,6 +2558,9 @@ const docTemplate = `{
                 },
                 "auth_header_value": {
                     "type": "string"
+                },
+                "bazaar": {
+                    "type": "object"
                 },
                 "description": {
                     "type": "string"
@@ -2247,6 +2611,24 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.createFacilitatorRequest": {
+            "type": "object",
+            "required": [
+                "name",
+                "url"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.createOutboundRouteRequest": {
             "type": "object",
             "required": [
@@ -2255,6 +2637,9 @@ const docTemplate = `{
                 "project_id"
             ],
             "properties": {
+                "bazaar": {
+                    "type": "object"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -2267,9 +2652,6 @@ const docTemplate = `{
                 "path_pattern": {
                     "type": "string"
                 },
-                "price_amount": {
-                    "type": "integer"
-                },
                 "price_usd": {
                     "type": "string"
                 },
@@ -2278,48 +2660,90 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.createPaymentChannelAssetRequest": {
+        "handlers.createPaymentMethodAssetRequest": {
             "type": "object",
             "required": [
-                "asset_symbol",
-                "payment_channel_id"
+                "decimals",
+                "payment_method_id",
+                "symbol"
             ],
             "properties": {
-                "asset_address": {
-                    "type": "string"
-                },
-                "asset_symbol": {
+                "contract_address": {
                     "type": "string"
                 },
                 "decimals": {
                     "type": "integer"
                 },
-                "metadata": {
-                    "type": "object"
+                "payment_method_id": {
+                    "type": "string"
                 },
-                "payment_channel_id": {
+                "symbol": {
                     "type": "string"
                 }
             }
         },
-        "handlers.createPaymentChannelRequest": {
+        "handlers.createPaymentMethodRequest": {
             "type": "object",
             "required": [
-                "method",
-                "protocol",
-                "scheme"
+                "code",
+                "name",
+                "protocol"
             ],
             "properties": {
+                "caip2_chain_id": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
                 "enabled": {
                     "type": "boolean"
-                },
-                "metadata": {
-                    "type": "object"
                 },
                 "method": {
                     "type": "string"
                 },
+                "name": {
+                    "type": "string"
+                },
                 "protocol": {
+                    "type": "string"
+                },
+                "scheme": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.createProjectPaymentMethodRequest": {
+            "type": "object",
+            "required": [
+                "asset_id",
+                "payment_method_id",
+                "project_id",
+                "scheme"
+            ],
+            "properties": {
+                "asset_id": {
+                    "type": "string"
+                },
+                "config": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "facilitator_id": {
+                    "type": "string"
+                },
+                "payment_method_id": {
+                    "type": "string"
+                },
+                "payout_address": {
+                    "type": "string"
+                },
+                "project_id": {
                     "type": "string"
                 },
                 "scheme": {
@@ -2332,7 +2756,6 @@ const docTemplate = `{
             "required": [
                 "base_url",
                 "name",
-                "owner_user_id",
                 "slug"
             ],
             "properties": {
@@ -2349,9 +2772,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
-                    "type": "string"
-                },
-                "owner_user_id": {
                     "type": "string"
                 },
                 "slug": {
@@ -2387,9 +2807,6 @@ const docTemplate = `{
                 "status"
             ],
             "properties": {
-                "amount_paid": {
-                    "type": "integer"
-                },
                 "amount_usd": {
                     "type": "string"
                 },
@@ -2507,6 +2924,29 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.facilitatorResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.fullProjectResponse": {
             "type": "object",
             "properties": {
@@ -2551,6 +2991,9 @@ const docTemplate = `{
         "handlers.outboundRouteResponse": {
             "type": "object",
             "properties": {
+                "bazaar": {
+                    "type": "object"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2569,9 +3012,6 @@ const docTemplate = `{
                 "path_pattern": {
                     "type": "string"
                 },
-                "price_amount": {
-                    "type": "integer"
-                },
                 "price_usd": {
                     "type": "string"
                 },
@@ -2589,9 +3029,47 @@ const docTemplate = `{
                 }
             }
         },
-        "handlers.paymentChannelResponse": {
+        "handlers.paymentMethodAssetResponse": {
             "type": "object",
             "properties": {
+                "contract_address": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "decimals": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payment_method_chain": {
+                    "type": "string"
+                },
+                "payment_method_id": {
+                    "type": "string"
+                },
+                "payment_method_name": {
+                    "type": "string"
+                },
+                "symbol": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.paymentMethodResponse": {
+            "type": "object",
+            "properties": {
+                "caip2_chain_id": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2601,10 +3079,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "metadata": {
-                    "type": "object"
-                },
                 "method": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 },
                 "protocol": {
@@ -2649,6 +3127,94 @@ const docTemplate = `{
                 },
                 "total_routes": {
                     "type": "integer"
+                }
+            }
+        },
+        "handlers.projectPaymentMethodFullResponse": {
+            "type": "object",
+            "properties": {
+                "asset_id": {
+                    "type": "string"
+                },
+                "asset_symbol": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "facilitator_id": {
+                    "type": "string"
+                },
+                "facilitator_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payment_method_id": {
+                    "type": "string"
+                },
+                "payment_method_name": {
+                    "type": "string"
+                },
+                "payout_address": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "project_name": {
+                    "type": "string"
+                },
+                "scheme": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.projectPaymentMethodResponse": {
+            "type": "object",
+            "properties": {
+                "asset_id": {
+                    "type": "string"
+                },
+                "config": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "facilitator_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "payment_method_id": {
+                    "type": "string"
+                },
+                "payout_address": {
+                    "type": "string"
+                },
+                "project_id": {
+                    "type": "string"
+                },
+                "scheme": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         },
@@ -2773,9 +3339,6 @@ const docTemplate = `{
         "handlers.requestLogResponse": {
             "type": "object",
             "properties": {
-                "amount_paid": {
-                    "type": "integer"
-                },
                 "amount_usd": {
                     "type": "string"
                 },
@@ -2867,9 +3430,26 @@ const docTemplate = `{
                 }
             }
         },
+        "handlers.updateFacilitatorRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "handlers.updateOutboundRouteRequest": {
             "type": "object",
             "properties": {
+                "bazaar": {
+                    "type": "object"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -2882,44 +3462,70 @@ const docTemplate = `{
                 "path_pattern": {
                     "type": "string"
                 },
-                "price_amount": {
-                    "type": "integer"
-                },
                 "price_usd": {
+                    "type": "string"
+                },
+                "project_id": {
                     "type": "string"
                 }
             }
         },
-        "handlers.updatePaymentChannelAssetRequest": {
+        "handlers.updatePaymentMethodAssetRequest": {
             "type": "object",
             "properties": {
-                "asset_address": {
-                    "type": "string"
-                },
-                "asset_symbol": {
+                "contract_address": {
                     "type": "string"
                 },
                 "decimals": {
                     "type": "integer"
                 },
-                "metadata": {
-                    "type": "object"
+                "symbol": {
+                    "type": "string"
                 }
             }
         },
-        "handlers.updatePaymentChannelRequest": {
+        "handlers.updatePaymentMethodRequest": {
             "type": "object",
             "properties": {
+                "caip2_chain_id": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
                 "enabled": {
                     "type": "boolean"
-                },
-                "metadata": {
-                    "type": "object"
                 },
                 "method": {
                     "type": "string"
                 },
+                "name": {
+                    "type": "string"
+                },
                 "protocol": {
+                    "type": "string"
+                },
+                "scheme": {
+                    "type": "string"
+                }
+            }
+        },
+        "handlers.updateProjectPaymentMethodRequest": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "facilitator_id": {
+                    "type": "string"
+                },
+                "payout_address": {
                     "type": "string"
                 },
                 "scheme": {
@@ -2959,9 +3565,6 @@ const docTemplate = `{
                 "status"
             ],
             "properties": {
-                "amount_paid": {
-                    "type": "integer"
-                },
                 "amount_usd": {
                     "type": "string"
                 },

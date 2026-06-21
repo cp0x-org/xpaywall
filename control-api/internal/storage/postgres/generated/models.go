@@ -27,6 +27,8 @@ type PaymentMethod struct {
 	Enabled      bool
 	CreatedAt    pgtype.Timestamp
 	UpdatedAt    pgtype.Timestamp
+	Method       pgtype.Text
+	Scheme       pgtype.Text
 }
 
 type PaymentMethodAsset struct {
@@ -69,7 +71,7 @@ type ProjectPaymentMethod struct {
 	PaymentMethodID uuid.UUID
 	AssetID         uuid.UUID
 	Scheme          string
-	FacilitatorID   uuid.UUID
+	FacilitatorID   *uuid.UUID
 	PayoutAddress   pgtype.Text
 	Config          []byte
 	Enabled         bool
