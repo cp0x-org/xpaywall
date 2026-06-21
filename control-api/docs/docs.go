@@ -2726,10 +2726,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "config": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "object"
                 },
                 "enabled": {
                     "type": "boolean"
@@ -3184,10 +3181,8 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "config": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "description": "MPP config (rpc_url/secret_key/method). RawMessage so it round-trips as a\nJSON object instead of a base64 string ([]byte would do the latter).",
+                    "type": "object"
                 },
                 "created_at": {
                     "type": "string"
@@ -3514,10 +3509,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "config": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
+                    "type": "object"
                 },
                 "enabled": {
                     "type": "boolean"

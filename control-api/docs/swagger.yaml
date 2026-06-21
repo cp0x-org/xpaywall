@@ -185,9 +185,7 @@ definitions:
       asset_id:
         type: string
       config:
-        items:
-          type: integer
-        type: array
+        type: object
       enabled:
         type: boolean
       facilitator_id:
@@ -493,9 +491,10 @@ definitions:
       asset_id:
         type: string
       config:
-        items:
-          type: integer
-        type: array
+        description: |-
+          MPP config (rpc_url/secret_key/method). RawMessage so it round-trips as a
+          JSON object instead of a base64 string ([]byte would do the latter).
+        type: object
       created_at:
         type: string
       enabled:
@@ -709,9 +708,7 @@ definitions:
   handlers.updateProjectPaymentMethodRequest:
     properties:
       config:
-        items:
-          type: integer
-        type: array
+        type: object
       enabled:
         type: boolean
       facilitator_id:
