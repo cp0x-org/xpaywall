@@ -31,19 +31,33 @@ definitions:
     type: object
   gateway.channelDTO:
     properties:
+      amount:
+        type: string
       asset_id:
+        type: string
+      asset_symbol:
+        type: string
+      caip2_chain_id:
         type: string
       channel_config:
         additionalProperties:
           type: string
         type: object
-      channel_id:
+      code:
         type: string
+      contract_address:
+        type: string
+      decimals:
+        type: integer
       enabled:
         type: boolean
+      facilitator_url:
+        type: string
       method:
         type: string
-      price:
+      payment_method_id:
+        type: string
+      payout_address:
         type: string
       protocol:
         type: string
@@ -63,6 +77,8 @@ definitions:
         type: string
       auth_header_value:
         type: string
+      bazaar:
+        type: object
       description:
         type: string
       free:
@@ -95,8 +111,22 @@ definitions:
           $ref: '#/definitions/handlers.dailyStatPoint'
         type: array
     type: object
+  handlers.createFacilitatorRequest:
+    properties:
+      enabled:
+        type: boolean
+      name:
+        type: string
+      url:
+        type: string
+    required:
+    - name
+    - url
+    type: object
   handlers.createOutboundRouteRequest:
     properties:
+      bazaar:
+        type: object
       description:
         type: string
       free:
@@ -105,8 +135,6 @@ definitions:
         type: string
       path_pattern:
         type: string
-      price_amount:
-        type: integer
       price_usd:
         type: string
       project_id:
@@ -116,37 +144,64 @@ definitions:
     - path_pattern
     - project_id
     type: object
-  handlers.createPaymentChannelAssetRequest:
+  handlers.createPaymentMethodAssetRequest:
     properties:
-      asset_address:
-        type: string
-      asset_symbol:
+      contract_address:
         type: string
       decimals:
         type: integer
-      metadata:
-        type: object
-      payment_channel_id:
+      payment_method_id:
+        type: string
+      symbol:
         type: string
     required:
-    - asset_symbol
-    - payment_channel_id
+    - decimals
+    - payment_method_id
+    - symbol
     type: object
-  handlers.createPaymentChannelRequest:
+  handlers.createPaymentMethodRequest:
     properties:
+      caip2_chain_id:
+        type: string
+      code:
+        type: string
       enabled:
         type: boolean
-      metadata:
-        type: object
       method:
+        type: string
+      name:
         type: string
       protocol:
         type: string
       scheme:
         type: string
     required:
-    - method
+    - code
+    - name
     - protocol
+    type: object
+  handlers.createProjectPaymentMethodRequest:
+    properties:
+      asset_id:
+        type: string
+      config:
+        type: object
+      enabled:
+        type: boolean
+      facilitator_id:
+        type: string
+      payment_method_id:
+        type: string
+      payout_address:
+        type: string
+      project_id:
+        type: string
+      scheme:
+        type: string
+    required:
+    - asset_id
+    - payment_method_id
+    - project_id
     - scheme
     type: object
   handlers.createProjectRequest:
@@ -161,14 +216,11 @@ definitions:
         type: string
       name:
         type: string
-      owner_user_id:
-        type: string
       slug:
         type: string
     required:
     - base_url
     - name
-    - owner_user_id
     - slug
     type: object
   handlers.createRequestEventRequest:
@@ -185,8 +237,6 @@ definitions:
     type: object
   handlers.createRequestLogRequest:
     properties:
-      amount_paid:
-        type: integer
       amount_usd:
         type: string
       client_ip:
@@ -270,6 +320,21 @@ definitions:
       error:
         type: string
     type: object
+  handlers.facilitatorResponse:
+    properties:
+      created_at:
+        type: string
+      enabled:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+      url:
+        type: string
+    type: object
   handlers.fullProjectResponse:
     properties:
       allow_unmatched:
@@ -299,6 +364,8 @@ definitions:
     type: object
   handlers.outboundRouteResponse:
     properties:
+      bazaar:
+        type: object
       created_at:
         type: string
       description:
@@ -311,8 +378,6 @@ definitions:
         type: string
       path_pattern:
         type: string
-      price_amount:
-        type: integer
       price_usd:
         type: string
       project_id:
@@ -324,17 +389,42 @@ definitions:
       updated_at:
         type: string
     type: object
-  handlers.paymentChannelResponse:
+  handlers.paymentMethodAssetResponse:
     properties:
+      contract_address:
+        type: string
+      created_at:
+        type: string
+      decimals:
+        type: integer
+      id:
+        type: string
+      payment_method_chain:
+        type: string
+      payment_method_id:
+        type: string
+      payment_method_name:
+        type: string
+      symbol:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.paymentMethodResponse:
+    properties:
+      caip2_chain_id:
+        type: string
+      code:
+        type: string
       created_at:
         type: string
       enabled:
         type: boolean
       id:
         type: string
-      metadata:
-        type: object
       method:
+        type: string
+      name:
         type: string
       protocol:
         type: string
@@ -364,6 +454,65 @@ definitions:
         type: integer
       total_routes:
         type: integer
+    type: object
+  handlers.projectPaymentMethodFullResponse:
+    properties:
+      asset_id:
+        type: string
+      asset_symbol:
+        type: string
+      created_at:
+        type: string
+      enabled:
+        type: boolean
+      facilitator_id:
+        type: string
+      facilitator_name:
+        type: string
+      id:
+        type: string
+      payment_method_id:
+        type: string
+      payment_method_name:
+        type: string
+      payout_address:
+        type: string
+      project_id:
+        type: string
+      project_name:
+        type: string
+      scheme:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  handlers.projectPaymentMethodResponse:
+    properties:
+      asset_id:
+        type: string
+      config:
+        description: |-
+          MPP config (rpc_url/secret_key/method). RawMessage so it round-trips as a
+          JSON object instead of a base64 string ([]byte would do the latter).
+        type: object
+      created_at:
+        type: string
+      enabled:
+        type: boolean
+      facilitator_id:
+        type: string
+      id:
+        type: string
+      payment_method_id:
+        type: string
+      payout_address:
+        type: string
+      project_id:
+        type: string
+      scheme:
+        type: string
+      updated_at:
+        type: string
     type: object
   handlers.projectResponse:
     properties:
@@ -444,8 +593,6 @@ definitions:
     type: object
   handlers.requestLogResponse:
     properties:
-      amount_paid:
-        type: integer
       amount_usd:
         type: string
       client_ip:
@@ -506,8 +653,19 @@ definitions:
       total_requests:
         type: integer
     type: object
+  handlers.updateFacilitatorRequest:
+    properties:
+      enabled:
+        type: boolean
+      name:
+        type: string
+      url:
+        type: string
+    type: object
   handlers.updateOutboundRouteRequest:
     properties:
+      bazaar:
+        type: object
       description:
         type: string
       free:
@@ -516,31 +674,46 @@ definitions:
         type: string
       path_pattern:
         type: string
-      price_amount:
-        type: integer
       price_usd:
         type: string
-    type: object
-  handlers.updatePaymentChannelAssetRequest:
-    properties:
-      asset_address:
+      project_id:
         type: string
-      asset_symbol:
+    type: object
+  handlers.updatePaymentMethodAssetRequest:
+    properties:
+      contract_address:
         type: string
       decimals:
         type: integer
-      metadata:
-        type: object
+      symbol:
+        type: string
     type: object
-  handlers.updatePaymentChannelRequest:
+  handlers.updatePaymentMethodRequest:
     properties:
+      caip2_chain_id:
+        type: string
+      code:
+        type: string
       enabled:
         type: boolean
-      metadata:
-        type: object
       method:
         type: string
+      name:
+        type: string
       protocol:
+        type: string
+      scheme:
+        type: string
+    type: object
+  handlers.updateProjectPaymentMethodRequest:
+    properties:
+      config:
+        type: object
+      enabled:
+        type: boolean
+      facilitator_id:
+        type: string
+      payout_address:
         type: string
       scheme:
         type: string
@@ -564,8 +737,6 @@ definitions:
     type: object
   handlers.updateRequestLogRequest:
     properties:
-      amount_paid:
-        type: integer
       amount_usd:
         type: string
       error_message:
@@ -612,6 +783,142 @@ info:
   title: xpaywall Control API
   version: "1.0"
 paths:
+  /api/v1/facilitators:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.facilitatorResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List facilitators
+      tags:
+      - facilitators
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Facilitator data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createFacilitatorRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.facilitatorResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create facilitator
+      tags:
+      - facilitators
+  /api/v1/facilitators/{id}:
+    delete:
+      parameters:
+      - description: Facilitator ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete facilitator
+      tags:
+      - facilitators
+    get:
+      parameters:
+      - description: Facilitator ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.facilitatorResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get facilitator
+      tags:
+      - facilitators
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Facilitator ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.updateFacilitatorRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.facilitatorResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update facilitator
+      tags:
+      - facilitators
   /api/v1/outbound-routes:
     get:
       parameters:
@@ -757,16 +1064,16 @@ paths:
       summary: Update outbound route
       tags:
       - outbound-routes
-  /api/v1/payment-channel-assets:
+  /api/v1/payment-method-assets:
     get:
       produces:
       - application/json
       responses:
         "200":
-          description: Array of payment channel asset objects
+          description: OK
           schema:
             items:
-              type: object
+              $ref: '#/definitions/handlers.paymentMethodAssetResponse'
             type: array
         "500":
           description: Internal Server Error
@@ -774,9 +1081,9 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: List payment channel assets
+      summary: List payment method assets
       tags:
-      - payment-channel-assets
+      - payment-method-assets
     post:
       consumes:
       - application/json
@@ -786,14 +1093,14 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/handlers.createPaymentChannelAssetRequest'
+          $ref: '#/definitions/handlers.createPaymentMethodAssetRequest'
       produces:
       - application/json
       responses:
         "201":
-          description: Created asset object
+          description: Created
           schema:
-            type: object
+            $ref: '#/definitions/handlers.paymentMethodAssetResponse'
         "400":
           description: Bad Request
           schema:
@@ -804,10 +1111,10 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: Create payment channel asset
+      summary: Create payment method asset
       tags:
-      - payment-channel-assets
-  /api/v1/payment-channel-assets/{id}:
+      - payment-method-assets
+  /api/v1/payment-method-assets/{id}:
     delete:
       parameters:
       - description: Asset ID (UUID)
@@ -828,9 +1135,9 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: Delete payment channel asset
+      summary: Delete payment method asset
       tags:
-      - payment-channel-assets
+      - payment-method-assets
     get:
       parameters:
       - description: Asset ID (UUID)
@@ -842,9 +1149,9 @@ paths:
       - application/json
       responses:
         "200":
-          description: Payment channel asset object
+          description: OK
           schema:
-            type: object
+            $ref: '#/definitions/handlers.paymentMethodAssetResponse'
         "400":
           description: Bad Request
           schema:
@@ -855,9 +1162,9 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: Get payment channel asset
+      summary: Get payment method asset
       tags:
-      - payment-channel-assets
+      - payment-method-assets
     put:
       consumes:
       - application/json
@@ -872,14 +1179,14 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/handlers.updatePaymentChannelAssetRequest'
+          $ref: '#/definitions/handlers.updatePaymentMethodAssetRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Updated asset object
+          description: OK
           schema:
-            type: object
+            $ref: '#/definitions/handlers.paymentMethodAssetResponse'
         "400":
           description: Bad Request
           schema:
@@ -890,10 +1197,10 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: Update payment channel asset
+      summary: Update payment method asset
       tags:
-      - payment-channel-assets
-  /api/v1/payment-channels:
+      - payment-method-assets
+  /api/v1/payment-methods:
     get:
       produces:
       - application/json
@@ -902,7 +1209,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/handlers.paymentChannelResponse'
+              $ref: '#/definitions/handlers.paymentMethodResponse'
             type: array
         "500":
           description: Internal Server Error
@@ -910,26 +1217,26 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: List payment channels
+      summary: List payment methods
       tags:
-      - payment-channels
+      - payment-methods
     post:
       consumes:
       - application/json
       parameters:
-      - description: Payment channel data
+      - description: Payment method data
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/handlers.createPaymentChannelRequest'
+          $ref: '#/definitions/handlers.createPaymentMethodRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/handlers.paymentChannelResponse'
+            $ref: '#/definitions/handlers.paymentMethodResponse'
         "400":
           description: Bad Request
           schema:
@@ -940,13 +1247,13 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: Create payment channel
+      summary: Create payment method
       tags:
-      - payment-channels
-  /api/v1/payment-channels/{id}:
+      - payment-methods
+  /api/v1/payment-methods/{id}:
     delete:
       parameters:
-      - description: Payment Channel ID (UUID)
+      - description: Payment Method ID (UUID)
         in: path
         name: id
         required: true
@@ -964,12 +1271,12 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: Delete payment channel
+      summary: Delete payment method
       tags:
-      - payment-channels
+      - payment-methods
     get:
       parameters:
-      - description: Payment Channel ID (UUID)
+      - description: Payment Method ID (UUID)
         in: path
         name: id
         required: true
@@ -980,7 +1287,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.paymentChannelResponse'
+            $ref: '#/definitions/handlers.paymentMethodResponse'
         "400":
           description: Bad Request
           schema:
@@ -991,14 +1298,14 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: Get payment channel
+      summary: Get payment method
       tags:
-      - payment-channels
+      - payment-methods
     put:
       consumes:
       - application/json
       parameters:
-      - description: Payment Channel ID (UUID)
+      - description: Payment Method ID (UUID)
         in: path
         name: id
         required: true
@@ -1008,14 +1315,14 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/handlers.updatePaymentChannelRequest'
+          $ref: '#/definitions/handlers.updatePaymentMethodRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/handlers.paymentChannelResponse'
+            $ref: '#/definitions/handlers.paymentMethodResponse'
         "400":
           description: Bad Request
           schema:
@@ -1026,10 +1333,156 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: Update payment channel
+      summary: Update payment method
       tags:
-      - payment-channels
-  /api/v1/project-payment-configs:
+      - payment-methods
+  /api/v1/project-payment-methods:
+    get:
+      parameters:
+      - description: Project ID (UUID)
+        in: query
+        name: project_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/handlers.projectPaymentMethodResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: List project payment methods
+      tags:
+      - project-payment-methods
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project payment method data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.createProjectPaymentMethodRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/handlers.projectPaymentMethodResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Create project payment method
+      tags:
+      - project-payment-methods
+  /api/v1/project-payment-methods/{id}:
+    delete:
+      parameters:
+      - description: Project Payment Method ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete project payment method
+      tags:
+      - project-payment-methods
+    get:
+      parameters:
+      - description: Project Payment Method ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.projectPaymentMethodResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get project payment method
+      tags:
+      - project-payment-methods
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Project Payment Method ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.updateProjectPaymentMethodRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.projectPaymentMethodResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/handlers.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Update project payment method
+      tags:
+      - project-payment-methods
+  /api/v1/project-payment-methods/all:
     get:
       produces:
       - application/json
@@ -1038,84 +1491,17 @@ paths:
           description: OK
           schema:
             items:
-              type: object
+              $ref: '#/definitions/handlers.projectPaymentMethodFullResponse'
             type: array
-      security:
-      - BearerAuth: []
-      summary: List project payment configs
-      tags:
-      - project-payment-configs
-    post:
-      consumes:
-      - application/json
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
+        "500":
+          description: Internal Server Error
           schema:
-            type: object
+            $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: Create project payment config
+      summary: List all project payment methods
       tags:
-      - project-payment-configs
-  /api/v1/project-payment-configs/{id}:
-    delete:
-      parameters:
-      - description: Config ID (UUID)
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-      security:
-      - BearerAuth: []
-      summary: Delete project payment config
-      tags:
-      - project-payment-configs
-    get:
-      parameters:
-      - description: Config ID (UUID)
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get project payment config
-      tags:
-      - project-payment-configs
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: Config ID (UUID)
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Update project payment config
-      tags:
-      - project-payment-configs
+      - project-payment-methods
   /api/v1/project-settings/{projectId}:
     get:
       parameters:
@@ -1228,7 +1614,7 @@ paths:
             $ref: '#/definitions/handlers.errorResponse'
       security:
       - BearerAuth: []
-      summary: Delete project
+      summary: Delete (archive) project
       tags:
       - projects
     get:

@@ -42,18 +42,18 @@ function Sidebar() {
     const versionBadge = isVerticalOpen ? (
       <Box sx={{ px: 2, pb: 2, pt: 1 }}>
         <Chip
-              label="BETA"
-              size="small"
-              sx={{
-                  height: 18,
-                  fontSize: '0.6rem',
-                  fontWeight: 700,
-                  letterSpacing: '0.05em',
-                  bgcolor: 'warning.main',
-                  color: 'warning.contrastText',
-                  '& .MuiChip-label': { px: 0.75 }
-              }}
-          />
+          label="BETA"
+          size="small"
+          sx={{
+            height: 18,
+            fontSize: '0.6rem',
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+            bgcolor: 'warning.main',
+            color: 'warning.contrastText',
+            '& .MuiChip-label': { px: 0.75 }
+          }}
+        />
         {/*<Box*/}
         {/*  sx={{*/}
         {/*    display: 'flex',*/}

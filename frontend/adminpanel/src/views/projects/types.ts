@@ -25,14 +25,25 @@ export interface ProxyUrl {
   proxy_url?: string;
 }
 
+// MPP project links carry rpc_url/secret_key (and method) in a config JSONB
+// instead of a facilitator. x402 links leave config unset.
+export interface ProjectPaymentMethodConfig {
+  method?: string;
+  rpc_url?: string;
+  secret_key?: string;
+  [key: string]: unknown;
+}
+
 export interface ProjectPaymentMethod {
   id: string;
   project_id: string;
   payment_method_id: string;
   asset_id: string;
   scheme: string;
-  facilitator_id: string;
+  // x402 only: settlement facilitator. Omitted/null for MPP.
+  facilitator_id?: string | null;
   payout_address?: string | null;
+  config?: ProjectPaymentMethodConfig | null;
   enabled: boolean;
   created_at: string;
   updated_at: string;

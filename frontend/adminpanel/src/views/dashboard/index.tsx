@@ -101,7 +101,6 @@ const MOCK_PROXY_STATUS: ProxyStatusInfo = {
   uptime: '15d 4h 42m'
 };
 
-
 function timeAgo(iso: string): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (diff < 60) return `${diff}s ago`;
@@ -186,11 +185,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, delta }: StatCardProps) {
   const theme = useTheme();
-  const deltaColor = delta.neutral
-    ? theme.palette.text.secondary
-    : delta.positive
-      ? theme.palette.success.main
-      : theme.palette.error.main;
+  const deltaColor = delta.neutral ? theme.palette.text.secondary : delta.positive ? theme.palette.success.main : theme.palette.error.main;
 
   return (
     <Box
@@ -254,14 +249,24 @@ interface PeriodSwitcherProps {
   periodLabel: string | null;
 }
 
-function PeriodSwitcher({ mode, customFrom, customTo, onModeChange, onCustomFromChange, onCustomToChange, periodLabel }: PeriodSwitcherProps) {
+function PeriodSwitcher({
+  mode,
+  customFrom,
+  customTo,
+  onModeChange,
+  onCustomFromChange,
+  onCustomToChange,
+  periodLabel
+}: PeriodSwitcherProps) {
   return (
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'flex-start', sm: 'center' }} flexWrap="wrap">
       <ToggleButtonGroup
         value={mode}
         exclusive
         size="small"
-        onChange={(_, v) => { if (v) onModeChange(v as PeriodMode); }}
+        onChange={(_, v) => {
+          if (v) onModeChange(v as PeriodMode);
+        }}
         sx={{ '& .MuiToggleButton-root': { px: 2, py: 0.5, fontSize: 12, fontWeight: 600, textTransform: 'none' } }}
       >
         <ToggleButton value="day">Day</ToggleButton>
@@ -280,7 +285,9 @@ function PeriodSwitcher({ mode, customFrom, customTo, onModeChange, onCustomFrom
             slotProps={{ htmlInput: { max: customTo || undefined } }}
             sx={{ width: 150, '& .MuiInputBase-input': { fontSize: 12, py: 0.75 } }}
           />
-          <Typography variant="caption" color="text.secondary">—</Typography>
+          <Typography variant="caption" color="text.secondary">
+            —
+          </Typography>
           <TextField
             type="date"
             size="small"
@@ -309,12 +316,12 @@ interface GatewayHealth {
 }
 
 export default function DashboardPage() {
-  const [stats, setStats]               = useState<DashboardStats | null>(null);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [gatewayHealth, setGatewayHealth] = useState<GatewayHealth | null>(null);
-  const [periodMode, setPeriodMode]     = useState<PeriodMode>('week');
-  const [customFrom, setCustomFrom]     = useState('');
-  const [customTo, setCustomTo]         = useState('');
-  const [projects, setProjects]         = useState<ProjectOption[]>([]);
+  const [periodMode, setPeriodMode] = useState<PeriodMode>('week');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
   const [topRoutes, setTopRoutes] = useState<TopRoute[]>([]);
@@ -362,40 +369,53 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const p  = stats?.period;
+  const p = stats?.period;
   const pp = stats?.previous_period;
 
   const earningsFormatted = `$${(p?.total_earnings_usd ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const periodLabel       = p ? fmtDateRange(p.range.from, p.range.to) : null;
+  const periodLabel = p ? fmtDateRange(p.range.from, p.range.to) : null;
 
-  const revenueD  = p && pp ? currencyDelta(p.total_earnings_usd, pp.total_earnings_usd) : { text: '—', positive: true, neutral: true };
-  const requestsD = p && pp ? percentChangeDelta(p.total_requests, pp.total_requests)    : { text: '—', positive: true, neutral: true };
-  const successD  = p && pp ? pointsDelta(p.success_rate, pp.success_rate)               : { text: '—', positive: true, neutral: true };
-  const routesD   = p && pp ? countDelta(p.total_routes, pp.total_routes)                : { text: '—', positive: true, neutral: true };
+  const revenueD = p && pp ? currencyDelta(p.total_earnings_usd, pp.total_earnings_usd) : { text: '—', positive: true, neutral: true };
+  const requestsD = p && pp ? percentChangeDelta(p.total_requests, pp.total_requests) : { text: '—', positive: true, neutral: true };
+  const successD = p && pp ? pointsDelta(p.success_rate, pp.success_rate) : { text: '—', positive: true, neutral: true };
+  const routesD = p && pp ? countDelta(p.total_routes, pp.total_routes) : { text: '—', positive: true, neutral: true };
 
   return (
     <Grid container spacing={gridSpacing}>
-
       {/* ── Page header ── */}
       <Grid size={{ xs: 12 }}>
         <MainCard border boxShadow sx={{ py: 0.5 }}>
           <Stack spacing={2}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2}>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              justifyContent="space-between"
+              alignItems={{ xs: 'flex-start', sm: 'center' }}
+              spacing={2}
+            >
               <Box>
-                <Typography variant="h2" sx={{ mb: 0.25 }}>Dashboard</Typography>
+                <Typography variant="h2" sx={{ mb: 0.25 }}>
+                  Dashboard
+                </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Monitor your protected API routes, payments and proxy traffic.
                 </Typography>
               </Box>
               <Stack direction="row" spacing={1.5} alignItems="center" flexShrink={0}>
                 <Chip
-                  icon={<FiberManualRecordIcon sx={{ fontSize: '10px !important', color: gatewayHealth === null ? 'text.disabled' : gatewayHealth.online ? 'success.main' : 'error.main' }} />}
+                  icon={
+                    <FiberManualRecordIcon
+                      sx={{
+                        fontSize: '10px !important',
+                        color: gatewayHealth === null ? 'text.disabled' : gatewayHealth.online ? 'success.main' : 'error.main'
+                      }}
+                    />
+                  }
                   label={gatewayHealth === null ? 'Checking…' : gatewayHealth.online ? 'Live' : 'Offline'}
                   size="small"
                   variant="outlined"
                   sx={{
                     borderColor: gatewayHealth === null ? 'divider' : gatewayHealth.online ? 'success.main' : 'error.main',
-                    color:       gatewayHealth === null ? 'text.disabled' : gatewayHealth.online ? 'success.main' : 'error.main',
+                    color: gatewayHealth === null ? 'text.disabled' : gatewayHealth.online ? 'success.main' : 'error.main',
                     fontWeight: 600
                   }}
                 />
@@ -417,7 +437,9 @@ export default function DashboardPage() {
               >
                 <MenuItem value="">All Projects</MenuItem>
                 {projects.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                  <MenuItem key={p.id} value={p.id}>
+                    {p.name}
+                  </MenuItem>
                 ))}
               </Select>
 
@@ -437,20 +459,16 @@ export default function DashboardPage() {
 
       {/* ── Stat cards ── */}
       <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-        <StatCard label="Revenue"        value={earningsFormatted}         delta={revenueD}  />
+        <StatCard label="Revenue" value={earningsFormatted} delta={revenueD} />
       </Grid>
       <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-        <StatCard label="Total Requests" value={p?.total_requests ?? 0}    delta={requestsD} />
+        <StatCard label="Total Requests" value={p?.total_requests ?? 0} delta={requestsD} />
       </Grid>
       <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-        <StatCard
-          label="Success Rate"
-          value={p ? `${p.success_rate.toFixed(1)}%` : '—'}
-          delta={successD}
-        />
+        <StatCard label="Success Rate" value={p ? `${p.success_rate.toFixed(1)}%` : '—'} delta={successD} />
       </Grid>
       <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
-        <StatCard label="Active Routes"  value={p?.total_routes ?? 0}      delta={routesD}   />
+        <StatCard label="Active Routes" value={p?.total_routes ?? 0} delta={routesD} />
       </Grid>
 
       {/* ── Chart + Proxy Status ── */}
@@ -515,7 +533,9 @@ export default function DashboardPage() {
                     <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>{row.path_pattern}</TableCell>
                     <TableCell align="right">{row.price_usd ? `$${row.price_usd}` : '—'}</TableCell>
                     <TableCell align="right">{row.total_requests.toLocaleString()}</TableCell>
-                    <TableCell align="right">${row.revenue_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                    <TableCell align="right">
+                      ${row.revenue_usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -553,7 +573,12 @@ export default function DashboardPage() {
                     <TableCell sx={{ color: 'text.secondary', fontSize: 12, whiteSpace: 'nowrap' }}>{timeAgo(row.created_at)}</TableCell>
                     <TableCell sx={{ fontFamily: 'monospace', fontSize: 12 }}>{row.path}</TableCell>
                     <TableCell>
-                      <Chip label={row.status_code} size="small" color={row.status_code === 200 ? 'success' : 'warning'} sx={{ fontWeight: 700, fontSize: 11, height: 20 }} />
+                      <Chip
+                        label={row.status_code}
+                        size="small"
+                        color={row.status_code === 200 ? 'success' : 'warning'}
+                        sx={{ fontWeight: 700, fontSize: 11, height: 20 }}
+                      />
                     </TableCell>
                     <TableCell sx={{ fontSize: 12 }}>{row.payment_channel ?? '—'}</TableCell>
                     <TableCell align="right" sx={{ fontFamily: 'monospace', fontSize: 12 }}>
@@ -566,7 +591,6 @@ export default function DashboardPage() {
           </TableContainer>
         </MainCard>
       </Grid>
-
     </Grid>
   );
 }

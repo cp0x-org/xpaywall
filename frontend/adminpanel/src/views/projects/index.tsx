@@ -39,9 +39,7 @@ export default function ProjectsPage() {
   const rows = useMemo(() => {
     if (!search.trim()) return projects;
     const query = search.toLowerCase();
-    return projects.filter(
-      (p) => p.name.toLowerCase().includes(query) || p.slug.toLowerCase().includes(query) || p.id.includes(query)
-    );
+    return projects.filter((p) => p.name.toLowerCase().includes(query) || p.slug.toLowerCase().includes(query) || p.id.includes(query));
   }, [search, projects]);
 
   return (

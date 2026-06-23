@@ -45,15 +45,7 @@ function UrlLinkCell({ url }: { url: string }) {
   if (!url) return <span>—</span>;
   return (
     <Tooltip title={url}>
-      <IconButton
-        size="small"
-        component="a"
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        color="primary"
-        aria-label={url}
-      >
+      <IconButton size="small" component="a" href={url} target="_blank" rel="noopener noreferrer" color="primary" aria-label={url}>
         <OpenInNewTwoToneIcon sx={{ fontSize: '1.1rem' }} />
       </IconButton>
     </Tooltip>
@@ -127,59 +119,68 @@ export default function RoutesTable({
     <MainCard content={false}>
       <TableContainer>
         <Table sx={{ minWidth: 880 }} aria-labelledby="tableTitle">
-          <RoutesTableHeader
-            order={order}
-            orderBy={orderBy}
-            onRequestSort={handleRequestSort}
-            rowCount={rows.length}
-          />
+          <RoutesTableHeader order={order} orderBy={orderBy} onRequestSort={handleRequestSort} rowCount={rows.length} />
           <TableBody>
             {stableSort(rows, getComparator(order, orderBy))
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((row) => {
                 const isOwner = canManage(currentUserId, projectOwnerIds[row.project_id]);
                 return (
-                <TableRow hover tabIndex={-1} key={row.id}>
-                  <TableCell>
-                    <Typography variant="subtitle1">{row.name}</Typography>
-                  </TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.path_pattern}</TableCell>
-                  <TableCell>
-                    <Chip label={row.free ? 'Free' : 'Paid'} size="small" color={row.free ? 'success' : 'default'} />
-                  </TableCell>
-                  <TableCell>{row.free ? '—' : row.price_usd ? `$${row.price_usd}` : '—'}</TableCell>
-                  <TableCell>{row.project_name || row.project_id.slice(0, 8)}</TableCell>
-                  <TableCell align="center">
-                    <UrlLinkCell url={buildUrl(proxyUrl, `${row.project_slug}${row.path_pattern}`)} />
-                  </TableCell>
-                  <TableCell align="center">
-                    <UrlLinkCell url={buildUrl(projectBaseUrls[row.project_id] ?? '', row.path_pattern)} />
-                  </TableCell>
-                  <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell align="center" sx={{ pr: 3 }}>
-                    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                      <Tooltip title="View">
-                        <IconButton color="primary" component={Link} to="/routes/view" state={{ id: row.id }} size="small" aria-label="View">
-                          <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
-                      {isOwner && (
-                        <Tooltip title="Edit">
-                          <IconButton color="secondary" component={Link} to="/routes/edit" state={{ id: row.id }} size="small" aria-label="Edit">
-                            <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                  <TableRow hover tabIndex={-1} key={row.id}>
+                    <TableCell>
+                      <Typography variant="subtitle1">{row.name}</Typography>
+                    </TableCell>
+                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.path_pattern}</TableCell>
+                    <TableCell>
+                      <Chip label={row.free ? 'Free' : 'Paid'} size="small" color={row.free ? 'success' : 'default'} />
+                    </TableCell>
+                    <TableCell>{row.free ? '—' : row.price_usd ? `$${row.price_usd}` : '—'}</TableCell>
+                    <TableCell>{row.project_name || row.project_id.slice(0, 8)}</TableCell>
+                    <TableCell align="center">
+                      <UrlLinkCell url={buildUrl(proxyUrl, `${row.project_slug}${row.path_pattern}`)} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <UrlLinkCell url={buildUrl(projectBaseUrls[row.project_id] ?? '', row.path_pattern)} />
+                    </TableCell>
+                    <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell align="center" sx={{ pr: 3 }}>
+                      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                        <Tooltip title="View">
+                          <IconButton
+                            color="primary"
+                            component={Link}
+                            to="/routes/view"
+                            state={{ id: row.id }}
+                            size="small"
+                            aria-label="View"
+                          >
+                            <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                           </IconButton>
                         </Tooltip>
-                      )}
-                      {isOwner && (
-                        <Tooltip title="Delete">
-                          <IconButton color="error" size="small" aria-label="Delete" onClick={() => setDeletingRow(row)}>
-                            <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </Stack>
-                  </TableCell>
-                </TableRow>
+                        {isOwner && (
+                          <Tooltip title="Edit">
+                            <IconButton
+                              color="secondary"
+                              component={Link}
+                              to="/routes/edit"
+                              state={{ id: row.id }}
+                              size="small"
+                              aria-label="Edit"
+                            >
+                              <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {isOwner && (
+                          <Tooltip title="Delete">
+                            <IconButton color="error" size="small" aria-label="Delete" onClick={() => setDeletingRow(row)}>
+                              <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
             {emptyRows > 0 && (

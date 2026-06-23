@@ -78,12 +78,7 @@ export default function PaymentChannelsTable({ rows, onDelete }: { rows: Payment
     <MainCard content={false}>
       <TableContainer>
         <Table sx={{ minWidth: 760 }} aria-labelledby="tableTitle">
-          <PaymentChannelsTableHeader
-            order={order}
-            orderBy={orderBy}
-            onRequestSort={handleRequestSort}
-            rowCount={rows.length}
-          />
+          <PaymentChannelsTableHeader order={order} orderBy={orderBy} onRequestSort={handleRequestSort} rowCount={rows.length} />
           <TableBody>
             {stableSort(rows, getComparator(order, orderBy))
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
@@ -94,6 +89,8 @@ export default function PaymentChannelsTable({ rows, onDelete }: { rows: Payment
                     <Typography variant="subtitle1">{row.protocol}</Typography>
                   </TableCell>
                   <TableCell>{row.name}</TableCell>
+                  <TableCell>{row.method ?? '—'}</TableCell>
+                  <TableCell>{row.scheme ?? '—'}</TableCell>
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.caip2_chain_id ?? '—'}</TableCell>
                   <TableCell>
                     <Chip label={row.enabled ? 'Enabled' : 'Disabled'} size="small" color={row.enabled ? 'success' : 'default'} />
@@ -136,7 +133,7 @@ export default function PaymentChannelsTable({ rows, onDelete }: { rows: Payment
               ))}
             {emptyRows > 0 && (
               <TableRow sx={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={7} />
+                <TableCell colSpan={9} />
               </TableRow>
             )}
           </TableBody>

@@ -36,7 +36,11 @@ import { PaymentMethodAsset } from '../payment-assets/types';
 import { Facilitator } from '../facilitators/types';
 import { ProjectPaymentMethod } from './types';
 
-const SCHEMES = ['exact', 'upto', 'batch-payment'] as const;
+// Scheme options are protocol-specific: x402 settles "exact"/"upto"/batched,
+// MPP (Tempo) does a one-time "charge".
+const X402_SCHEMES = ['exact', 'upto', 'batch-payment'] as const;
+const MPP_SCHEMES = ['charge'] as const;
+const MPP_METHODS = ['tempo', 'stripe'] as const;
 
 interface Props {
   projectId: string;
@@ -47,10 +51,15 @@ interface Props {
 const emptyForm = {
   payment_method_id: '',
   asset_id: '',
+  protocol: '' as string,
   scheme: 'exact' as string,
   facilitator_id: '',
+  // MPP-only config fields (stored in the link's config JSONB).
+  method: 'tempo' as string,
+  rpc_url: '',
+  secret_key: '',
   payout_address: '',
-  enabled: true,
+  enabled: true
 };
 
 export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Props) {
@@ -71,9 +80,9 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
   React.useEffect(() => {
     Promise.all([
       loadMethods(),
-      axios.get<PaymentMethod[]>('/api/v1/payment-methods').then(r => setPaymentMethods(r.data)),
-      axios.get<PaymentMethodAsset[]>('/api/v1/payment-method-assets').then(r => setAssets(r.data)),
-      axios.get<Facilitator[]>('/api/v1/facilitators').then(r => setFacilitators(r.data)),
+      axios.get<PaymentMethod[]>('/api/v1/payment-methods').then((r) => setPaymentMethods(r.data)),
+      axios.get<PaymentMethodAsset[]>('/api/v1/payment-method-assets').then((r) => setAssets(r.data)),
+      axios.get<Facilitator[]>('/api/v1/facilitators').then((r) => setFacilitators(r.data))
     ]).finally(() => setLoading(false));
   }, [loadMethods]);
 
@@ -101,9 +110,16 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
     );
   }
 
-  const getMethodName = (id: string) => paymentMethods.find(x => x.id === id)?.name ?? id;
-  const getAssetLabel = (id: string) => assets.find(x => x.id === id)?.symbol ?? id;
-  const getFacilitatorName = (id: string) => facilitators.find(x => x.id === id)?.name ?? id;
+  const getMethodName = (id: string) => paymentMethods.find((x) => x.id === id)?.name ?? id;
+  const getAssetLabel = (id: string) => assets.find((x) => x.id === id)?.symbol ?? id;
+  const getFacilitatorName = (id: string) => facilitators.find((x) => x.id === id)?.name ?? id;
+  const getProtocol = (paymentMethodId: string) => paymentMethods.find((x) => x.id === paymentMethodId)?.protocol ?? '';
+
+  // A project may use only one protocol. Once any method is configured, lock new
+  // additions to that same protocol (multiple methods of one protocol are allowed,
+  // e.g. several x402 assets/chains, but x402 and mpp cannot be mixed).
+  const lockedProtocol = methods.length > 0 ? getProtocol(methods[0].payment_method_id) : '';
+  const selectablePaymentMethods = lockedProtocol ? paymentMethods.filter((pm) => pm.protocol === lockedProtocol) : paymentMethods;
 
   return (
     <Box>
@@ -127,7 +143,7 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
                 <TableCell>Method</TableCell>
                 <TableCell>Asset</TableCell>
                 <TableCell>Scheme</TableCell>
-                <TableCell>Facilitator</TableCell>
+                <TableCell>Facilitator / RPC</TableCell>
                 <TableCell>Payout Address</TableCell>
                 <TableCell>Status</TableCell>
                 {showActions && <TableCell align="right">Actions</TableCell>}
@@ -141,16 +157,14 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
                   <TableCell>
                     <Chip label={m.scheme} size="small" variant="outlined" />
                   </TableCell>
-                  <TableCell>{getFacilitatorName(m.facilitator_id)}</TableCell>
+                  <TableCell sx={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {m.facilitator_id ? getFacilitatorName(m.facilitator_id) : (m.config?.rpc_url ?? '—')}
+                  </TableCell>
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.payout_address ?? '—'}
                   </TableCell>
                   <TableCell>
-                    <Chip
-                      label={m.enabled ? 'Enabled' : 'Disabled'}
-                      size="small"
-                      color={m.enabled ? 'success' : 'default'}
-                    />
+                    <Chip label={m.enabled ? 'Enabled' : 'Disabled'} size="small" color={m.enabled ? 'success' : 'default'} />
                   </TableCell>
                   {showActions && (
                     <TableCell align="right">
@@ -177,10 +191,14 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
               ? {
                   payment_method_id: editing.payment_method_id,
                   asset_id: editing.asset_id,
+                  protocol: getProtocol(editing.payment_method_id),
                   scheme: editing.scheme,
-                  facilitator_id: editing.facilitator_id,
+                  facilitator_id: editing.facilitator_id ?? '',
+                  method: editing.config?.method ?? 'tempo',
+                  rpc_url: editing.config?.rpc_url ?? '',
+                  secret_key: editing.config?.secret_key ?? '',
                   payout_address: editing.payout_address ?? '',
-                  enabled: editing.enabled,
+                  enabled: editing.enabled
                 }
               : emptyForm
           }
@@ -188,16 +206,38 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
             payment_method_id: Yup.string().required('Payment method is required'),
             asset_id: Yup.string().required('Asset is required'),
             scheme: Yup.string().required('Scheme is required'),
-            facilitator_id: Yup.string().required('Facilitator is required'),
+            // x402 requires a facilitator; MPP requires a method (no facilitator).
+            facilitator_id: Yup.string().when('protocol', {
+              is: 'x402',
+              then: (s) => s.required('Facilitator is required')
+            }),
+            method: Yup.string().when('protocol', {
+              is: 'mpp',
+              then: (s) => s.required('Method is required')
+            })
           })}
           onSubmit={async (values, { setErrors, setSubmitting }) => {
             try {
+              const isMPP = values.protocol === 'mpp';
+              // MPP carries method/rpc_url/secret_key in config and has no facilitator;
+              // x402 carries a facilitator_id and no config.
+              const config = isMPP
+                ? {
+                    ...(editing?.config ?? {}),
+                    method: values.method,
+                    rpc_url: values.rpc_url || undefined,
+                    secret_key: values.secret_key || undefined
+                  }
+                : undefined;
+              const facilitator_id = isMPP ? null : values.facilitator_id;
+
               if (editing) {
                 await axios.put(`/api/v1/project-payment-methods/${editing.id}`, {
                   scheme: values.scheme,
-                  facilitator_id: values.facilitator_id,
+                  facilitator_id,
                   payout_address: values.payout_address || null,
-                  enabled: values.enabled,
+                  config,
+                  enabled: values.enabled
                 });
               } else {
                 await axios.post('/api/v1/project-payment-methods', {
@@ -205,9 +245,10 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
                   payment_method_id: values.payment_method_id,
                   asset_id: values.asset_id,
                   scheme: values.scheme,
-                  facilitator_id: values.facilitator_id,
+                  facilitator_id,
                   payout_address: values.payout_address || null,
-                  enabled: values.enabled,
+                  config,
+                  enabled: values.enabled
                 });
               }
               await loadMethods();
@@ -236,17 +277,28 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
                         onChange={(e) => {
                           handleChange(e);
                           setFieldValue('asset_id', '');
+                          // Track the method's protocol and reset scheme to a valid default.
+                          const proto = getProtocol(e.target.value as string);
+                          setFieldValue('protocol', proto);
+                          setFieldValue('scheme', proto === 'mpp' ? 'charge' : 'exact');
                         }}
                         onBlur={handleBlur}
                       >
-                        {paymentMethods.map((pm) => (
+                        {selectablePaymentMethods.map((pm) => (
                           <MenuItem key={pm.id} value={pm.id}>
                             {pm.name} ({pm.protocol})
                           </MenuItem>
                         ))}
                       </Select>
-                      {touched.payment_method_id && errors.payment_method_id && (
+                      {touched.payment_method_id && errors.payment_method_id ? (
                         <FormHelperText>{errors.payment_method_id}</FormHelperText>
+                      ) : (
+                        !editing &&
+                        lockedProtocol && (
+                          <FormHelperText>
+                            This project uses the {lockedProtocol} protocol; only {lockedProtocol} methods can be added.
+                          </FormHelperText>
+                        )
                       )}
                     </FormControl>
 
@@ -266,21 +318,13 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
                           </MenuItem>
                         ))}
                       </Select>
-                      {touched.asset_id && errors.asset_id && (
-                        <FormHelperText>{errors.asset_id}</FormHelperText>
-                      )}
+                      {touched.asset_id && errors.asset_id && <FormHelperText>{errors.asset_id}</FormHelperText>}
                     </FormControl>
 
                     <FormControl fullWidth>
                       <InputLabel>Scheme</InputLabel>
-                      <Select
-                        name="scheme"
-                        value={values.scheme}
-                        label="Scheme"
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                      >
-                        {SCHEMES.map((s) => (
+                      <Select name="scheme" value={values.scheme} label="Scheme" onChange={handleChange} onBlur={handleBlur}>
+                        {(values.protocol === 'mpp' ? MPP_SCHEMES : X402_SCHEMES).map((s) => (
                           <MenuItem key={s} value={s}>
                             {s}
                           </MenuItem>
@@ -288,25 +332,63 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
                       </Select>
                     </FormControl>
 
-                    <FormControl fullWidth error={Boolean(touched.facilitator_id && errors.facilitator_id)}>
-                      <InputLabel>Facilitator</InputLabel>
-                      <Select
-                        name="facilitator_id"
-                        value={values.facilitator_id}
-                        label="Facilitator"
-                        onChange={handleChange}
-                        onBlur={handleBlur}
-                      >
-                        {facilitators.map((f) => (
-                          <MenuItem key={f.id} value={f.id}>
-                            {f.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                      {touched.facilitator_id && errors.facilitator_id && (
-                        <FormHelperText>{errors.facilitator_id}</FormHelperText>
-                      )}
-                    </FormControl>
+                    {/* x402: settlement facilitator. */}
+                    {values.protocol !== 'mpp' && (
+                      <FormControl fullWidth error={Boolean(touched.facilitator_id && errors.facilitator_id)}>
+                        <InputLabel>Facilitator</InputLabel>
+                        <Select
+                          name="facilitator_id"
+                          value={values.facilitator_id}
+                          label="Facilitator"
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                        >
+                          {facilitators.map((f) => (
+                            <MenuItem key={f.id} value={f.id}>
+                              {f.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        {touched.facilitator_id && errors.facilitator_id && <FormHelperText>{errors.facilitator_id}</FormHelperText>}
+                      </FormControl>
+                    )}
+
+                    {/* MPP: method + Tempo RPC/secret stored in the link's config JSONB. */}
+                    {values.protocol === 'mpp' && (
+                      <>
+                        <FormControl fullWidth error={Boolean(touched.method && errors.method)}>
+                          <InputLabel>Method</InputLabel>
+                          <Select name="method" value={values.method} label="Method" onChange={handleChange} onBlur={handleBlur}>
+                            {MPP_METHODS.map((m) => (
+                              <MenuItem key={m} value={m}>
+                                {m}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                          {touched.method && errors.method && <FormHelperText>{errors.method}</FormHelperText>}
+                        </FormControl>
+
+                        <TextField
+                          fullWidth
+                          label="RPC URL"
+                          name="rpc_url"
+                          value={values.rpc_url}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          helperText="Optional. RPC endpoint for this charge, e.g. https://rpc.moderato.tempo.xyz"
+                        />
+
+                        <TextField
+                          fullWidth
+                          label="Secret Key"
+                          name="secret_key"
+                          value={values.secret_key}
+                          onChange={handleChange}
+                          onBlur={handleBlur}
+                          helperText="HMAC key signing the 402 charge challenges."
+                        />
+                      </>
+                    )}
 
                     <TextField
                       fullWidth
@@ -319,14 +401,7 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
                     />
 
                     <FormControlLabel
-                      control={
-                        <Checkbox
-                          name="enabled"
-                          checked={values.enabled}
-                          onChange={handleChange}
-                          color="primary"
-                        />
-                      }
+                      control={<Checkbox name="enabled" checked={values.enabled} onChange={handleChange} color="primary" />}
                       label="Enabled"
                       sx={{ ml: 0 }}
                     />

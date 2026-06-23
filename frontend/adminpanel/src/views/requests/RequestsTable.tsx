@@ -47,12 +47,18 @@ function formatTime(iso: string): string {
 
 function methodColor(method: string): 'default' | 'primary' | 'warning' | 'error' | 'success' | 'info' {
   switch (method.toUpperCase()) {
-    case 'GET': return 'success';
-    case 'POST': return 'primary';
-    case 'PUT': return 'warning';
-    case 'PATCH': return 'info';
-    case 'DELETE': return 'error';
-    default: return 'default';
+    case 'GET':
+      return 'success';
+    case 'POST':
+      return 'primary';
+    case 'PUT':
+      return 'warning';
+    case 'PATCH':
+      return 'info';
+    case 'DELETE':
+      return 'error';
+    default:
+      return 'default';
   }
 }
 
@@ -132,7 +138,9 @@ export default function RequestsTable({ rows }: { rows: RequestLog[] }) {
                         sx={{ fontWeight: 700, fontSize: 11 }}
                       />
                     ) : (
-                      <Typography variant="caption" color="text.disabled">—</Typography>
+                      <Typography variant="caption" color="text.disabled">
+                        —
+                      </Typography>
                     )}
                   </TableCell>
 
@@ -142,18 +150,30 @@ export default function RequestsTable({ rows }: { rows: RequestLog[] }) {
                     ) : row.payment_required ? (
                       <Chip label="Required" size="small" color="warning" sx={{ fontWeight: 600, fontSize: 11 }} />
                     ) : (
-                      <Typography variant="caption" color="text.disabled">—</Typography>
+                      <Typography variant="caption" color="text.disabled">
+                        —
+                      </Typography>
                     )}
                   </TableCell>
 
                   <TableCell align="right" sx={{ fontFamily: 'monospace', fontSize: '0.82rem' }}>
-                    {row.amount_usd ? `$${parseFloat(row.amount_usd).toFixed(4)}` : <Typography variant="caption" color="text.disabled">—</Typography>}
+                    {row.amount_usd ? (
+                      `$${parseFloat(row.amount_usd).toFixed(4)}`
+                    ) : (
+                      <Typography variant="caption" color="text.disabled">
+                        —
+                      </Typography>
+                    )}
                   </TableCell>
 
                   <TableCell align="right" sx={{ fontSize: '0.82rem' }}>
-                    {row.upstream_response_time_ms != null
-                      ? `${row.upstream_response_time_ms} ms`
-                      : <Typography variant="caption" color="text.disabled">—</Typography>}
+                    {row.upstream_response_time_ms != null ? (
+                      `${row.upstream_response_time_ms} ms`
+                    ) : (
+                      <Typography variant="caption" color="text.disabled">
+                        —
+                      </Typography>
+                    )}
                   </TableCell>
 
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'text.secondary' }}>

@@ -45,9 +45,9 @@ func (q *Queries) CreateFacilitator(ctx context.Context, arg CreateFacilitatorPa
 }
 
 const createPaymentMethod = `-- name: CreatePaymentMethod :one
-INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, enabled)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at
+INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, method, scheme, enabled)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme
 `
 
 type CreatePaymentMethodParams struct {
@@ -56,6 +56,8 @@ type CreatePaymentMethodParams struct {
 	Protocol     string
 	Name         string
 	Caip2ChainID pgtype.Text
+	Method       pgtype.Text
+	Scheme       pgtype.Text
 	Enabled      bool
 }
 
@@ -66,6 +68,8 @@ func (q *Queries) CreatePaymentMethod(ctx context.Context, arg CreatePaymentMeth
 		arg.Protocol,
 		arg.Name,
 		arg.Caip2ChainID,
+		arg.Method,
+		arg.Scheme,
 		arg.Enabled,
 	)
 	var i PaymentMethod
@@ -78,6 +82,8 @@ func (q *Queries) CreatePaymentMethod(ctx context.Context, arg CreatePaymentMeth
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Method,
+		&i.Scheme,
 	)
 	return i, err
 }
@@ -129,7 +135,7 @@ type CreateProjectPaymentMethodParams struct {
 	PaymentMethodID uuid.UUID
 	AssetID         uuid.UUID
 	Scheme          string
-	FacilitatorID   uuid.UUID
+	FacilitatorID   *uuid.UUID
 	PayoutAddress   pgtype.Text
 	Config          []byte
 	Enabled         bool
@@ -219,7 +225,7 @@ func (q *Queries) GetFacilitator(ctx context.Context, id uuid.UUID) (Facilitator
 }
 
 const getPaymentMethod = `-- name: GetPaymentMethod :one
-SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at FROM payment_methods WHERE id = $1
+SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme FROM payment_methods WHERE id = $1
 `
 
 func (q *Queries) GetPaymentMethod(ctx context.Context, id uuid.UUID) (PaymentMethod, error) {
@@ -234,6 +240,8 @@ func (q *Queries) GetPaymentMethod(ctx context.Context, id uuid.UUID) (PaymentMe
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Method,
+		&i.Scheme,
 	)
 	return i, err
 }
@@ -316,7 +324,7 @@ FROM project_payment_methods ppm
 JOIN projects              p  ON p.id  = ppm.project_id
 JOIN payment_methods       pm ON pm.id = ppm.payment_method_id
 JOIN payment_method_assets a  ON a.id  = ppm.asset_id
-JOIN facilitators          f  ON f.id  = ppm.facilitator_id
+LEFT JOIN facilitators     f  ON f.id  = ppm.facilitator_id
 ORDER BY p.name, ppm.created_at DESC
 `
 
@@ -329,8 +337,8 @@ type ListAllProjectPaymentMethodsRow struct {
 	AssetID           uuid.UUID
 	AssetSymbol       string
 	Scheme            string
-	FacilitatorID     uuid.UUID
-	FacilitatorName   string
+	FacilitatorID     *uuid.UUID
+	FacilitatorName   pgtype.Text
 	PayoutAddress     pgtype.Text
 	Enabled           bool
 	CreatedAt         pgtype.Timestamp
@@ -509,7 +517,7 @@ func (q *Queries) ListPaymentMethodAssetsByMethod(ctx context.Context, paymentMe
 }
 
 const listPaymentMethods = `-- name: ListPaymentMethods :many
-SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at FROM payment_methods ORDER BY protocol, name
+SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme FROM payment_methods ORDER BY protocol, name
 `
 
 func (q *Queries) ListPaymentMethods(ctx context.Context) ([]PaymentMethod, error) {
@@ -530,6 +538,8 @@ func (q *Queries) ListPaymentMethods(ctx context.Context) ([]PaymentMethod, erro
 			&i.Enabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Method,
+			&i.Scheme,
 		); err != nil {
 			return nil, err
 		}
@@ -570,6 +580,33 @@ func (q *Queries) ListProjectPaymentMethods(ctx context.Context, projectID uuid.
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjectPaymentProtocols = `-- name: ListProjectPaymentProtocols :many
+SELECT DISTINCT pm.protocol
+FROM project_payment_methods ppm
+JOIN payment_methods pm ON pm.id = ppm.payment_method_id
+WHERE ppm.project_id = $1
+`
+
+func (q *Queries) ListProjectPaymentProtocols(ctx context.Context, projectID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listProjectPaymentProtocols, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var protocol string
+		if err := rows.Scan(&protocol); err != nil {
+			return nil, err
+		}
+		items = append(items, protocol)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -619,10 +656,12 @@ SET code           = COALESCE($2, code),
     protocol       = COALESCE($3, protocol),
     name           = COALESCE($4, name),
     caip2_chain_id = COALESCE($5, caip2_chain_id),
-    enabled        = COALESCE($6, enabled),
+    method         = COALESCE($6, method),
+    scheme         = COALESCE($7, scheme),
+    enabled        = COALESCE($8, enabled),
     updated_at     = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at
+RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme
 `
 
 type UpdatePaymentMethodParams struct {
@@ -631,6 +670,8 @@ type UpdatePaymentMethodParams struct {
 	Protocol     pgtype.Text
 	Name         pgtype.Text
 	Caip2ChainID pgtype.Text
+	Method       pgtype.Text
+	Scheme       pgtype.Text
 	Enabled      pgtype.Bool
 }
 
@@ -641,6 +682,8 @@ func (q *Queries) UpdatePaymentMethod(ctx context.Context, arg UpdatePaymentMeth
 		arg.Protocol,
 		arg.Name,
 		arg.Caip2ChainID,
+		arg.Method,
+		arg.Scheme,
 		arg.Enabled,
 	)
 	var i PaymentMethod
@@ -653,6 +696,8 @@ func (q *Queries) UpdatePaymentMethod(ctx context.Context, arg UpdatePaymentMeth
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Method,
+		&i.Scheme,
 	)
 	return i, err
 }

@@ -63,7 +63,7 @@ type outboundRouteResponse struct {
 	PriceUSD    string          `json:"price_usd"`
 	Description string          `json:"description"`
 	Free        bool            `json:"free"`
-	Bazaar      json.RawMessage `json:"bazaar,omitempty"`
+	Bazaar      json.RawMessage `json:"bazaar,omitempty" swaggertype:"object"`
 	CreatedAt   time.Time       `json:"created_at"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 }
@@ -201,7 +201,7 @@ type createOutboundRouteRequest struct {
 	PriceUSD    string          `json:"price_usd"`
 	Description string          `json:"description"`
 	Free        bool            `json:"free"`
-	Bazaar      json.RawMessage `json:"bazaar,omitempty"`
+	Bazaar      json.RawMessage `json:"bazaar,omitempty" swaggertype:"object"`
 }
 
 // CreateOutboundRoute creates a new outbound route.
@@ -258,7 +258,7 @@ type updateOutboundRouteRequest struct {
 	PriceUSD    *string         `json:"price_usd"`
 	Description *string         `json:"description"`
 	Free        *bool           `json:"free"`
-	Bazaar      json.RawMessage `json:"bazaar,omitempty"`
+	Bazaar      json.RawMessage `json:"bazaar,omitempty" swaggertype:"object"`
 }
 
 // UpdateOutboundRoute updates an outbound route by ID.

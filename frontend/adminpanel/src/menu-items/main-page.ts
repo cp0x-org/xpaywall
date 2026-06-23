@@ -17,8 +17,13 @@ import {
   IconDashboard,
   IconBrandChrome,
   IconRoute2,
-  IconCapProjecting, IconFolderBolt, IconMoneybagEdit, IconMoneybagHeart, IconMoneybagPlus,
-  IconCoins, IconServer,
+  IconCapProjecting,
+  IconFolderBolt,
+  IconMoneybagEdit,
+  IconMoneybagHeart,
+  IconMoneybagPlus,
+  IconCoins,
+  IconServer,
   IconList
 } from '@tabler/icons-react';
 
@@ -45,14 +50,14 @@ const mainPage: NavItemType = {
       type: 'item',
       url: '/dashboard',
       icon: IconDashboard,
-      breadcrumbs: false,
+      breadcrumbs: false
     },
     {
       id: 'routes-item',
       title: 'Routes',
       type: 'item',
       url: '/routes',
-      icon: icons.IconRoute2,
+      icon: icons.IconRoute2
     },
     {
       id: 'projects',
@@ -65,15 +70,15 @@ const mainPage: NavItemType = {
           title: 'Project List',
           type: 'item',
           url: '/projects',
-          icon: IconCapProjecting,
+          icon: IconCapProjecting
         },
         {
           id: 'payment-methods',
           title: 'Payment Methods',
           type: 'item',
           url: '/project-payment-methods',
-          icon: IconMoneybagHeart,
-        },
+          icon: IconMoneybagHeart
+        }
       ]
     },
     {
@@ -88,31 +93,31 @@ const mainPage: NavItemType = {
           title: 'Payment Methods',
           type: 'item',
           url: '/payment-methods',
-          icon: IconMoneybagPlus,
+          icon: IconMoneybagPlus
         },
         {
           id: 'payment-assets-item',
           title: 'Payment Assets',
           type: 'item',
           url: '/payment-assets',
-          icon: IconCoins,
+          icon: IconCoins
         },
         {
           id: 'facilitators',
           title: 'Facilitators (x402)',
           type: 'item',
           url: '/facilitators',
-          icon: IconServer,
-        },
-      ],
+          icon: IconServer
+        }
+      ]
     },
     {
       id: 'requests-item',
       title: 'Requests',
       type: 'item',
       url: '/requests',
-      icon: IconList,
-    },
+      icon: IconList
+    }
     // {
     //   id: 'stats-item',
     //   title: 'Stats',

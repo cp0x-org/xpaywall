@@ -9,10 +9,10 @@ import MainRoutes from './MainRoutes';
 // ==============================|| ROUTING RENDER ||============================== //
 
 const router = createBrowserRouter(
-    [{ path: '/', element: <Navigate to="/dashboard" replace /> }, AuthenticationRoutes, LoginRoutes, MainRoutes],
-    {
-      basename: import.meta.env.VITE_APP_BASE_NAME
-    }
+  [{ path: '/', element: <Navigate to="/dashboard" replace /> }, AuthenticationRoutes, LoginRoutes, MainRoutes],
+  {
+    basename: import.meta.env.VITE_APP_BASE_NAME
+  }
 );
 
 export default router;

@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -18,6 +20,8 @@ type paymentMethodResponse struct {
 	Protocol     string    `json:"protocol"`
 	Name         string    `json:"name"`
 	Caip2ChainID *string   `json:"caip2_chain_id,omitempty"`
+	Method       *string   `json:"method,omitempty"`
+	Scheme       *string   `json:"scheme,omitempty"`
 	Enabled      bool      `json:"enabled"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
@@ -30,6 +34,8 @@ func toPaymentMethodResponse(m postgres.PaymentMethod) paymentMethodResponse {
 		Protocol:     m.Protocol,
 		Name:         m.Name,
 		Caip2ChainID: pgTextPtr(m.Caip2ChainID),
+		Method:       pgTextPtr(m.Method),
+		Scheme:       pgTextPtr(m.Scheme),
 		Enabled:      m.Enabled,
 		CreatedAt:    m.CreatedAt.Time,
 		UpdatedAt:    m.UpdatedAt.Time,
@@ -86,6 +92,8 @@ type createPaymentMethodRequest struct {
 	Protocol     string  `json:"protocol" binding:"required"`
 	Name         string  `json:"name" binding:"required"`
 	Caip2ChainID *string `json:"caip2_chain_id"`
+	Method       *string `json:"method"`
+	Scheme       *string `json:"scheme"`
 	Enabled      bool    `json:"enabled"`
 }
 
@@ -106,12 +114,20 @@ func (h *Handler) CreatePaymentMethod(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// MPP methods are identified by a method (e.g. "tempo") and scheme (e.g.
+	// "charge"); x402 methods have neither (they settle via a facilitator).
+	if req.Protocol == "mpp" && (req.Method == nil || *req.Method == "") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "method is required for mpp payment methods"})
+		return
+	}
 	m, err := h.q.CreatePaymentMethod(c.Request.Context(), postgres.CreatePaymentMethodParams{
 		ID:           uuid.New(),
 		Code:         req.Code,
 		Protocol:     req.Protocol,
 		Name:         req.Name,
 		Caip2ChainID: ptrToPgText(req.Caip2ChainID),
+		Method:       ptrToPgText(req.Method),
+		Scheme:       ptrToPgText(req.Scheme),
 		Enabled:      req.Enabled,
 	})
 	if err != nil {
@@ -126,6 +142,8 @@ type updatePaymentMethodRequest struct {
 	Protocol     *string `json:"protocol"`
 	Name         *string `json:"name"`
 	Caip2ChainID *string `json:"caip2_chain_id"`
+	Method       *string `json:"method"`
+	Scheme       *string `json:"scheme"`
 	Enabled      *bool   `json:"enabled"`
 }
 
@@ -158,6 +176,8 @@ func (h *Handler) UpdatePaymentMethod(c *gin.Context) {
 		Protocol:     ptrToPgText(req.Protocol),
 		Name:         ptrToPgText(req.Name),
 		Caip2ChainID: ptrToPgText(req.Caip2ChainID),
+		Method:       ptrToPgText(req.Method),
+		Scheme:       ptrToPgText(req.Scheme),
 		Enabled:      boolPtrToPgBool(req.Enabled),
 	})
 	if err != nil {
@@ -558,17 +578,19 @@ func (h *Handler) DeleteFacilitator(c *gin.Context) {
 // ─── Project Payment Methods ──────────────────────────────────────────────────
 
 type projectPaymentMethodResponse struct {
-	ID              uuid.UUID `json:"id"`
-	ProjectID       uuid.UUID `json:"project_id"`
-	PaymentMethodID uuid.UUID `json:"payment_method_id"`
-	AssetID         uuid.UUID `json:"asset_id"`
-	Scheme          string    `json:"scheme"`
-	FacilitatorID   uuid.UUID `json:"facilitator_id"`
-	PayoutAddress   *string   `json:"payout_address,omitempty"`
-	Config          []byte    `json:"config,omitempty"`
-	Enabled         bool      `json:"enabled"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID              uuid.UUID  `json:"id"`
+	ProjectID       uuid.UUID  `json:"project_id"`
+	PaymentMethodID uuid.UUID  `json:"payment_method_id"`
+	AssetID         uuid.UUID  `json:"asset_id"`
+	Scheme          string     `json:"scheme"`
+	FacilitatorID   *uuid.UUID `json:"facilitator_id,omitempty"`
+	PayoutAddress   *string    `json:"payout_address,omitempty"`
+	// MPP config (rpc_url/secret_key/method). RawMessage so it round-trips as a
+	// JSON object instead of a base64 string ([]byte would do the latter).
+	Config    json.RawMessage `json:"config,omitempty" swaggertype:"object"`
+	Enabled   bool            `json:"enabled"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
 }
 
 func toProjectPaymentMethodResponse(p postgres.ProjectPaymentMethod) projectPaymentMethodResponse {
@@ -580,7 +602,7 @@ func toProjectPaymentMethodResponse(p postgres.ProjectPaymentMethod) projectPaym
 		Scheme:          p.Scheme,
 		FacilitatorID:   p.FacilitatorID,
 		PayoutAddress:   pgTextPtr(p.PayoutAddress),
-		Config:          p.Config,
+		Config:          json.RawMessage(p.Config),
 		Enabled:         p.Enabled,
 		CreatedAt:       p.CreatedAt.Time,
 		UpdatedAt:       p.UpdatedAt.Time,
@@ -617,20 +639,20 @@ func (h *Handler) ListProjectPaymentMethods(c *gin.Context) {
 }
 
 type projectPaymentMethodFullResponse struct {
-	ID                uuid.UUID `json:"id"`
-	ProjectID         uuid.UUID `json:"project_id"`
-	ProjectName       string    `json:"project_name"`
-	PaymentMethodID   uuid.UUID `json:"payment_method_id"`
-	PaymentMethodName string    `json:"payment_method_name"`
-	AssetID           uuid.UUID `json:"asset_id"`
-	AssetSymbol       string    `json:"asset_symbol"`
-	Scheme            string    `json:"scheme"`
-	FacilitatorID     uuid.UUID `json:"facilitator_id"`
-	FacilitatorName   string    `json:"facilitator_name"`
-	PayoutAddress     *string   `json:"payout_address,omitempty"`
-	Enabled           bool      `json:"enabled"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID                uuid.UUID  `json:"id"`
+	ProjectID         uuid.UUID  `json:"project_id"`
+	ProjectName       string     `json:"project_name"`
+	PaymentMethodID   uuid.UUID  `json:"payment_method_id"`
+	PaymentMethodName string     `json:"payment_method_name"`
+	AssetID           uuid.UUID  `json:"asset_id"`
+	AssetSymbol       string     `json:"asset_symbol"`
+	Scheme            string     `json:"scheme"`
+	FacilitatorID     *uuid.UUID `json:"facilitator_id,omitempty"`
+	FacilitatorName   *string    `json:"facilitator_name,omitempty"`
+	PayoutAddress     *string    `json:"payout_address,omitempty"`
+	Enabled           bool       `json:"enabled"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 func toProjectPaymentMethodFullResponse(r postgres.ListAllProjectPaymentMethodsRow) projectPaymentMethodFullResponse {
@@ -644,7 +666,7 @@ func toProjectPaymentMethodFullResponse(r postgres.ListAllProjectPaymentMethodsR
 		AssetSymbol:       r.AssetSymbol,
 		Scheme:            r.Scheme,
 		FacilitatorID:     r.FacilitatorID,
-		FacilitatorName:   r.FacilitatorName,
+		FacilitatorName:   pgTextPtr(r.FacilitatorName),
 		PayoutAddress:     pgTextPtr(r.PayoutAddress),
 		Enabled:           r.Enabled,
 		CreatedAt:         r.CreatedAt.Time,
@@ -698,14 +720,14 @@ func (h *Handler) GetProjectPaymentMethod(c *gin.Context) {
 }
 
 type createProjectPaymentMethodRequest struct {
-	ProjectID       uuid.UUID `json:"project_id" binding:"required"`
-	PaymentMethodID uuid.UUID `json:"payment_method_id" binding:"required"`
-	AssetID         uuid.UUID `json:"asset_id" binding:"required"`
-	Scheme          string    `json:"scheme" binding:"required"`
-	FacilitatorID   uuid.UUID `json:"facilitator_id" binding:"required"`
-	PayoutAddress   *string   `json:"payout_address"`
-	Config          []byte    `json:"config"`
-	Enabled         bool      `json:"enabled"`
+	ProjectID       uuid.UUID       `json:"project_id" binding:"required"`
+	PaymentMethodID uuid.UUID       `json:"payment_method_id" binding:"required"`
+	AssetID         uuid.UUID       `json:"asset_id" binding:"required"`
+	Scheme          string          `json:"scheme" binding:"required"`
+	FacilitatorID   *uuid.UUID      `json:"facilitator_id"`
+	PayoutAddress   *string         `json:"payout_address"`
+	Config          json.RawMessage `json:"config" swaggertype:"object"`
+	Enabled         bool            `json:"enabled"`
 }
 
 // CreateProjectPaymentMethod creates a project payment method.
@@ -728,6 +750,33 @@ func (h *Handler) CreateProjectPaymentMethod(c *gin.Context) {
 	if !h.requireProjectOwner(c, req.ProjectID) {
 		return
 	}
+	// Protocol-specific requirement: x402 settles through a facilitator, so
+	// facilitator_id is mandatory; MPP (Tempo charge) has none and instead
+	// carries rpc_url/secret_key in config.
+	pm, err := h.q.GetPaymentMethod(c.Request.Context(), req.PaymentMethodID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "payment_method_id not found"})
+		return
+	}
+	if pm.Protocol == "x402" && req.FacilitatorID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "facilitator_id is required for x402 payment methods"})
+		return
+	}
+	// A project may use only one protocol. Multiple methods of the same protocol
+	// are allowed (e.g. several x402 assets/chains), but mixing x402 and mpp is not.
+	protocols, err := h.q.ListProjectPaymentProtocols(c.Request.Context(), req.ProjectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	for _, existing := range protocols {
+		if existing != pm.Protocol {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": fmt.Sprintf("project already uses the %q protocol; a project cannot mix payment protocols", existing),
+			})
+			return
+		}
+	}
 	row, err := h.q.CreateProjectPaymentMethod(c.Request.Context(), postgres.CreateProjectPaymentMethodParams{
 		ID:              uuid.New(),
 		ProjectID:       req.ProjectID,
@@ -736,7 +785,7 @@ func (h *Handler) CreateProjectPaymentMethod(c *gin.Context) {
 		Scheme:          req.Scheme,
 		FacilitatorID:   req.FacilitatorID,
 		PayoutAddress:   ptrToPgText(req.PayoutAddress),
-		Config:          req.Config,
+		Config:          []byte(req.Config),
 		Enabled:         req.Enabled,
 	})
 	if err != nil {
@@ -747,11 +796,11 @@ func (h *Handler) CreateProjectPaymentMethod(c *gin.Context) {
 }
 
 type updateProjectPaymentMethodRequest struct {
-	Scheme        *string    `json:"scheme"`
-	FacilitatorID *uuid.UUID `json:"facilitator_id"`
-	PayoutAddress *string    `json:"payout_address"`
-	Config        []byte     `json:"config"`
-	Enabled       *bool      `json:"enabled"`
+	Scheme        *string         `json:"scheme"`
+	FacilitatorID *uuid.UUID      `json:"facilitator_id"`
+	PayoutAddress *string         `json:"payout_address"`
+	Config        json.RawMessage `json:"config" swaggertype:"object"`
+	Enabled       *bool           `json:"enabled"`
 }
 
 // UpdateProjectPaymentMethod updates a project payment method by ID.
@@ -790,7 +839,7 @@ func (h *Handler) UpdateProjectPaymentMethod(c *gin.Context) {
 		Scheme:        ptrToPgText(req.Scheme),
 		FacilitatorID: req.FacilitatorID,
 		PayoutAddress: ptrToPgText(req.PayoutAddress),
-		Config:        req.Config,
+		Config:        []byte(req.Config),
 		Enabled:       boolPtrToPgBool(req.Enabled),
 	})
 	if err != nil {

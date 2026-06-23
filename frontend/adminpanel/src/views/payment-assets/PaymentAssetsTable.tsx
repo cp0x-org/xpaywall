@@ -82,11 +82,15 @@ export default function PaymentAssetsTable({ rows, onDelete }: { rows: PaymentMe
               .map((row) => (
                 <TableRow hover tabIndex={-1} key={row.id}>
                   <TableCell>
-                    <Typography variant="subtitle1" sx={{ fontFamily: 'monospace' }}>{row.symbol}</Typography>
+                    <Typography variant="subtitle1" sx={{ fontFamily: 'monospace' }}>
+                      {row.symbol}
+                    </Typography>
                   </TableCell>
                   <TableCell>{row.payment_method_name}</TableCell>
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}>{row.payment_method_chain ?? '—'}</TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.8rem', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <TableCell
+                    sx={{ fontFamily: 'monospace', fontSize: '0.8rem', maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                  >
                     {row.contract_address ?? '—'}
                   </TableCell>
                   <TableCell>{row.decimals}</TableCell>
@@ -94,12 +98,26 @@ export default function PaymentAssetsTable({ rows, onDelete }: { rows: PaymentMe
                   <TableCell align="center" sx={{ pr: 3 }}>
                     <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                       <Tooltip title="View">
-                        <IconButton color="primary" component={Link} to="/payment-assets/view" state={{ id: row.id }} size="small" aria-label="View">
+                        <IconButton
+                          color="primary"
+                          component={Link}
+                          to="/payment-assets/view"
+                          state={{ id: row.id }}
+                          size="small"
+                          aria-label="View"
+                        >
                           <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Edit">
-                        <IconButton color="secondary" component={Link} to="/payment-assets/edit" state={{ id: row.id }} size="small" aria-label="Edit">
+                        <IconButton
+                          color="secondary"
+                          component={Link}
+                          to="/payment-assets/edit"
+                          state={{ id: row.id }}
+                          size="small"
+                          aria-label="Edit"
+                        >
                           <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>

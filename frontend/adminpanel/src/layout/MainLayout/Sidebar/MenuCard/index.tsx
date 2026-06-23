@@ -85,8 +85,7 @@ function MenuCard() {
 
         ...theme.applyStyles('dark', { bgcolor: 'dark.main', '&:after': { bgcolor: 'dark.dark' } })
       }}
-    >
-    </Card>
+    ></Card>
   );
 }
 

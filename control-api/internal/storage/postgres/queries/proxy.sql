@@ -27,6 +27,7 @@ LIMIT 1;
 SELECT
     pm.protocol,
     pm.code,
+    pm.method,
     pm.caip2_chain_id,
     pma.symbol,
     pma.contract_address,
@@ -41,7 +42,7 @@ SELECT
 FROM project_payment_methods ppm
 JOIN payment_methods pm ON pm.id = ppm.payment_method_id
 JOIN payment_method_assets pma ON pma.id = ppm.asset_id
-JOIN facilitators f ON f.id = ppm.facilitator_id
+LEFT JOIN facilitators f ON f.id = ppm.facilitator_id
 JOIN projects p ON p.id = ppm.project_id
 WHERE p.slug = $1
   AND p.archived_at IS NULL

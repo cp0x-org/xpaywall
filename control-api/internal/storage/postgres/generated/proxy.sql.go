@@ -16,6 +16,7 @@ const getPaymentMethodsByProjectSlug = `-- name: GetPaymentMethodsByProjectSlug 
 SELECT
     pm.protocol,
     pm.code,
+    pm.method,
     pm.caip2_chain_id,
     pma.symbol,
     pma.contract_address,
@@ -30,7 +31,7 @@ SELECT
 FROM project_payment_methods ppm
 JOIN payment_methods pm ON pm.id = ppm.payment_method_id
 JOIN payment_method_assets pma ON pma.id = ppm.asset_id
-JOIN facilitators f ON f.id = ppm.facilitator_id
+LEFT JOIN facilitators f ON f.id = ppm.facilitator_id
 JOIN projects p ON p.id = ppm.project_id
 WHERE p.slug = $1
   AND p.archived_at IS NULL
@@ -47,6 +48,7 @@ type GetPaymentMethodsByProjectSlugParams struct {
 type GetPaymentMethodsByProjectSlugRow struct {
 	Protocol        string
 	Code            string
+	Method          pgtype.Text
 	Caip2ChainID    pgtype.Text
 	Symbol          string
 	ContractAddress pgtype.Text
@@ -55,7 +57,7 @@ type GetPaymentMethodsByProjectSlugRow struct {
 	PayoutAddress   pgtype.Text
 	Config          []byte
 	Enabled         bool
-	FacilitatorUrl  string
+	FacilitatorUrl  pgtype.Text
 	PaymentMethodID uuid.UUID
 	AssetID         uuid.UUID
 }
@@ -72,6 +74,7 @@ func (q *Queries) GetPaymentMethodsByProjectSlug(ctx context.Context, arg GetPay
 		if err := rows.Scan(
 			&i.Protocol,
 			&i.Code,
+			&i.Method,
 			&i.Caip2ChainID,
 			&i.Symbol,
 			&i.ContractAddress,

@@ -33,11 +33,17 @@ interface NetworkItem {
   name: string;
 }
 
+// MPP-only option sets. x402 methods use a facilitator + network instead.
+const METHODS = ['tempo', 'stripe'] as const;
+const SCHEMES = ['charge'] as const;
+
 const emptyValues = {
   code: '',
   protocol: 'x402',
   name: '',
   caip2_chain_id: '',
+  method: 'tempo',
+  scheme: 'charge',
   enabled: true,
   submit: null
 };
@@ -84,6 +90,8 @@ export default function PaymentMethodForm() {
             protocol: d.protocol,
             name: d.name,
             caip2_chain_id: d.caip2_chain_id ?? '',
+            method: d.method ?? 'tempo',
+            scheme: d.scheme ?? 'charge',
             enabled: d.enabled,
             submit: null
           });
@@ -124,15 +132,27 @@ export default function PaymentMethodForm() {
         validationSchema={Yup.object().shape({
           code: Yup.string().required('Code is required'),
           protocol: Yup.string().required('Protocol is required'),
-          name: Yup.string().required('Name is required')
+          name: Yup.string().required('Name is required'),
+          method: Yup.string().when('protocol', {
+            is: 'mpp',
+            then: (s) => s.required('Method is required')
+          }),
+          scheme: Yup.string().when('protocol', {
+            is: 'mpp',
+            then: (s) => s.required('Scheme is required')
+          })
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
           try {
+            const isMPP = values.protocol === 'mpp';
             const payload = {
               code: values.code,
               protocol: values.protocol,
               name: values.name,
-              caip2_chain_id: values.caip2_chain_id || null,
+              // x402 settles via a facilitator + network; MPP via method/scheme.
+              caip2_chain_id: isMPP ? null : values.caip2_chain_id || null,
+              method: isMPP ? values.method : null,
+              scheme: isMPP ? values.scheme : null,
               enabled: values.enabled
             };
             if (isCreate) {
@@ -179,49 +199,81 @@ export default function PaymentMethodForm() {
                 {touched.protocol && errors.protocol && <FormHelperText>{errors.protocol}</FormHelperText>}
               </FormControl>
 
-              {!isView && (
-                <ToggleButtonGroup
-                  exclusive
-                  size="small"
-                  value={networkMode}
-                  onChange={(_, val) => {
-                    if (val) setNetworkMode(val);
-                  }}
-                >
-                  <ToggleButton value="select">Select network</ToggleButton>
-                  <ToggleButton value="custom">Custom</ToggleButton>
-                </ToggleButtonGroup>
+              {/* x402: pick a network (sets CAIP-2 + name) or enter it manually. */}
+              {values.protocol === 'x402' && (
+                <>
+                  {!isView && (
+                    <ToggleButtonGroup
+                      exclusive
+                      size="small"
+                      value={networkMode}
+                      onChange={(_, val) => {
+                        if (val) setNetworkMode(val);
+                      }}
+                    >
+                      <ToggleButton value="select">Select network</ToggleButton>
+                      <ToggleButton value="custom">Custom</ToggleButton>
+                    </ToggleButtonGroup>
+                  )}
+
+                  {!isView && networkMode === 'select' && (
+                    <FormControl fullWidth>
+                      <InputLabel id="network-label">Network</InputLabel>
+                      <Select
+                        labelId="network-label"
+                        value={values.caip2_chain_id}
+                        label="Network"
+                        onChange={(e) => {
+                          const selected = networks.find((n) => n.caip2 === e.target.value);
+                          setFieldValue('caip2_chain_id', e.target.value);
+                          setFieldValue('name', selected?.name ?? '');
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>None</em>
+                        </MenuItem>
+                        {networks.map((n) => (
+                          <MenuItem key={n.caip2} value={n.caip2}>
+                            {n.name}
+                            <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                              {n.caip2}
+                            </Typography>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+
+                  {(isView || networkMode === 'custom') && (
+                    <>
+                      <TextField
+                        fullWidth
+                        label="Name"
+                        name="name"
+                        value={values.name}
+                        onBlur={handleBlur}
+                        onChange={handleChange}
+                        disabled={isView}
+                        error={Boolean(touched.name && errors.name)}
+                        helperText={(touched.name && errors.name) || 'Human-readable name, e.g. Base Mainnet'}
+                      />
+                      <TextField
+                        fullWidth
+                        label="CAIP-2 Chain ID"
+                        name="caip2_chain_id"
+                        value={values.caip2_chain_id}
+                        onBlur={handleBlur}
+                        onChange={handleChange}
+                        disabled={isView}
+                        helperText="Optional, e.g. eip155:8453"
+                      />
+                    </>
+                  )}
+                </>
               )}
 
-              {!isView && networkMode === 'select' && (
-                <FormControl fullWidth>
-                  <InputLabel id="network-label">Network</InputLabel>
-                  <Select
-                    labelId="network-label"
-                    value={values.caip2_chain_id}
-                    label="Network"
-                    onChange={(e) => {
-                      const selected = networks.find((n) => n.caip2 === e.target.value);
-                      setFieldValue('caip2_chain_id', e.target.value);
-                      setFieldValue('name', selected?.name ?? '');
-                    }}
-                  >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {networks.map((n) => (
-                      <MenuItem key={n.caip2} value={n.caip2}>
-                        {n.name}
-                        <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                          {n.caip2}
-                        </Typography>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
-
-              {(isView || networkMode === 'custom') && (
+              {/* MPP: no facilitator/network — a method (e.g. tempo) and scheme (charge). */}
+              {values.protocol === 'mpp' && (
                 <>
                   <TextField
                     fullWidth
@@ -232,18 +284,44 @@ export default function PaymentMethodForm() {
                     onChange={handleChange}
                     disabled={isView}
                     error={Boolean(touched.name && errors.name)}
-                    helperText={(touched.name && errors.name) || 'Human-readable name, e.g. Base Mainnet'}
+                    helperText={(touched.name && errors.name) || 'Human-readable name, e.g. Tempo Charge'}
                   />
-                  <TextField
-                    fullWidth
-                    label="CAIP-2 Chain ID"
-                    name="caip2_chain_id"
-                    value={values.caip2_chain_id}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    disabled={isView}
-                    helperText="Optional, e.g. eip155:8453"
-                  />
+                  <FormControl fullWidth error={Boolean(touched.method && errors.method)}>
+                    <InputLabel id="method-label">Method</InputLabel>
+                    <Select
+                      labelId="method-label"
+                      name="method"
+                      value={values.method}
+                      label="Method"
+                      disabled={isView}
+                      onChange={(e) => setFieldValue('method', e.target.value)}
+                    >
+                      {METHODS.map((m) => (
+                        <MenuItem key={m} value={m}>
+                          {m}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {touched.method && errors.method && <FormHelperText>{errors.method}</FormHelperText>}
+                  </FormControl>
+                  <FormControl fullWidth error={Boolean(touched.scheme && errors.scheme)}>
+                    <InputLabel id="scheme-label">Scheme</InputLabel>
+                    <Select
+                      labelId="scheme-label"
+                      name="scheme"
+                      value={values.scheme}
+                      label="Scheme"
+                      disabled={isView}
+                      onChange={(e) => setFieldValue('scheme', e.target.value)}
+                    >
+                      {SCHEMES.map((s) => (
+                        <MenuItem key={s} value={s}>
+                          {s}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {touched.scheme && errors.scheme && <FormHelperText>{errors.scheme}</FormHelperText>}
+                  </FormControl>
                 </>
               )}
 

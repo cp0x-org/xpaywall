@@ -23,8 +23,9 @@ interface ProjectPaymentMethodFull {
   asset_id: string;
   asset_symbol: string;
   scheme: string;
-  facilitator_id: string;
-  facilitator_name: string;
+  // x402 only — omitted for MPP links (control-api returns them nullable).
+  facilitator_id?: string | null;
+  facilitator_name?: string | null;
   payout_address?: string | null;
   enabled: boolean;
   created_at: string;
@@ -94,7 +95,7 @@ export default function ProjectPaymentMethodsPage() {
                   <TableCell>
                     <Chip label={m.scheme} size="small" variant="outlined" />
                   </TableCell>
-                  <TableCell>{m.facilitator_name}</TableCell>
+                  <TableCell>{m.facilitator_name ?? '—'}</TableCell>
                   <TableCell sx={{ fontFamily: 'monospace', fontSize: 12, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {m.payout_address ?? '—'}
                   </TableCell>
