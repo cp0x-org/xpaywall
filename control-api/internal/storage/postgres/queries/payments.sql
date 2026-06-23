@@ -118,6 +118,12 @@ ORDER BY p.name, ppm.created_at DESC;
 -- name: GetProjectPaymentMethod :one
 SELECT * FROM project_payment_methods WHERE id = $1;
 
+-- name: ListProjectPaymentProtocols :many
+SELECT DISTINCT pm.protocol
+FROM project_payment_methods ppm
+JOIN payment_methods pm ON pm.id = ppm.payment_method_id
+WHERE ppm.project_id = $1;
+
 -- name: CreateProjectPaymentMethod :one
 INSERT INTO project_payment_methods (id, project_id, payment_method_id, asset_id, scheme, facilitator_id, payout_address, config, enabled)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)

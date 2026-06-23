@@ -587,6 +587,33 @@ func (q *Queries) ListProjectPaymentMethods(ctx context.Context, projectID uuid.
 	return items, nil
 }
 
+const listProjectPaymentProtocols = `-- name: ListProjectPaymentProtocols :many
+SELECT DISTINCT pm.protocol
+FROM project_payment_methods ppm
+JOIN payment_methods pm ON pm.id = ppm.payment_method_id
+WHERE ppm.project_id = $1
+`
+
+func (q *Queries) ListProjectPaymentProtocols(ctx context.Context, projectID uuid.UUID) ([]string, error) {
+	rows, err := q.db.Query(ctx, listProjectPaymentProtocols, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var protocol string
+		if err := rows.Scan(&protocol); err != nil {
+			return nil, err
+		}
+		items = append(items, protocol)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateFacilitator = `-- name: UpdateFacilitator :one
 UPDATE facilitators
 SET name       = COALESCE($2, name),

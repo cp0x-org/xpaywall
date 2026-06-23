@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -760,6 +761,21 @@ func (h *Handler) CreateProjectPaymentMethod(c *gin.Context) {
 	if pm.Protocol == "x402" && req.FacilitatorID == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "facilitator_id is required for x402 payment methods"})
 		return
+	}
+	// A project may use only one protocol. Multiple methods of the same protocol
+	// are allowed (e.g. several x402 assets/chains), but mixing x402 and mpp is not.
+	protocols, err := h.q.ListProjectPaymentProtocols(c.Request.Context(), req.ProjectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	for _, existing := range protocols {
+		if existing != pm.Protocol {
+			c.JSON(http.StatusConflict, gin.H{
+				"error": fmt.Sprintf("project already uses the %q protocol; a project cannot mix payment protocols", existing),
+			})
+			return
+		}
 	}
 	row, err := h.q.CreateProjectPaymentMethod(c.Request.Context(), postgres.CreateProjectPaymentMethodParams{
 		ID:              uuid.New(),

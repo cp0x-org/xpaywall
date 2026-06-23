@@ -40,7 +40,7 @@ func installCommand() *cli.Command {
 					if cmd.Bool("skip-logs") {
 						return nil
 					}
-					return runSeedLogs(ctx, cfg.DB_DSN, "default", int(cmd.Int("log-days")), int(cmd.Int("log-count")))
+					return runSeedLogs(ctx, cfg.DB_DSN, "default", demoLogPaths, int(cmd.Int("log-days")), int(cmd.Int("log-count")))
 				},
 			},
 			{
@@ -64,7 +64,7 @@ func installCommand() *cli.Command {
 					if cmd.Bool("skip-logs") {
 						return nil
 					}
-					return runSeedLogs(ctx, cfg.DB_DSN, mppProjectSlug, int(cmd.Int("log-days")), int(cmd.Int("log-count")))
+					return runSeedLogs(ctx, cfg.DB_DSN, mppProjectSlug, demoMPPLogPaths, int(cmd.Int("log-days")), int(cmd.Int("log-count")))
 				},
 			},
 			{
@@ -154,6 +154,36 @@ $$;
 // mppProjectSlug is the slug of the project created by `install demo-mpp`.
 const mppProjectSlug = "mpp-demo"
 
+// Log path-sets seeded by runSeedLogs. Each demo seeds logs against its own
+// (disjoint) upstream endpoints so the two projects can be tested independently.
+const (
+	demoLogPaths = `
+        '/health',
+        '/api/metered/data',
+        '/api/metered/query',
+        '/api/metered/report',
+        '/weather',
+        '/weather?city=London',
+        '/weather?city=New+York',
+        '/free-endpoint',
+        '/free-multipoint',
+        '/free-multipoint/v2',
+        '/free-multipoint/v3'`
+
+	demoMPPLogPaths = `
+        '/time',
+        '/api/usage/data',
+        '/api/usage/query',
+        '/api/usage/report',
+        '/quote',
+        '/quote?symbol=BTC',
+        '/quote?symbol=ETH',
+        '/ping',
+        '/echo',
+        '/echo/v2',
+        '/echo/v3'`
+)
+
 // demoMPPSQL seeds a self-contained MPP / Tempo "charge" demo: a dedicated
 // project, upstream settings, an MPP payment method (pathUSD stablecoin on
 // Tempo) with method/scheme set, the project↔method link carrying
@@ -212,12 +242,12 @@ BEGIN
         INSERT INTO routes (
             id, project_id, name, path_pattern, price_usd, description, free
         ) VALUES
-            (gen_random_uuid(), v_project_id, 'health',             '/health',            '0.001', 'Health check endpoint (Tempo charge)',                FALSE),
-            (gen_random_uuid(), v_project_id, 'metered-api',        '/api/metered/*',     '0.10',  'Metered API billed via Tempo charge',                 FALSE),
-            (gen_random_uuid(), v_project_id, 'weather',            '/weather',           '0.10',  'Get weather data, paid via Tempo charge',             FALSE),
-            (gen_random_uuid(), v_project_id, 'free-endpoint',      '/free-endpoint',     '',      'Free endpoint, no payment required',                  TRUE),
-            (gen_random_uuid(), v_project_id, 'free-multipoint',    '/free-multipoint',   '',      'Free multipoint root, no payment required',           TRUE),
-            (gen_random_uuid(), v_project_id, 'free-multipoint-sub','/free-multipoint/*', '',      'Free multipoint with subpath, no payment required',   TRUE);
+            (gen_random_uuid(), v_project_id, 'time',      '/time',         '0.001', 'Server time endpoint (Tempo charge)',               FALSE),
+            (gen_random_uuid(), v_project_id, 'usage-api', '/api/usage/*',  '0.10',  'Usage-metered API billed via Tempo charge',         FALSE),
+            (gen_random_uuid(), v_project_id, 'quote',     '/quote',        '0.10',  'Get a price quote, paid via Tempo charge',          FALSE),
+            (gen_random_uuid(), v_project_id, 'ping',      '/ping',         '',      'Free ping endpoint, no payment required',           TRUE),
+            (gen_random_uuid(), v_project_id, 'echo',      '/echo',         '',      'Free echo root, no payment required',               TRUE),
+            (gen_random_uuid(), v_project_id, 'echo-sub',  '/echo/*',       '',      'Free echo with subpath, no payment required',       TRUE);
     END IF;
 END;
 $$;
@@ -231,19 +261,7 @@ DECLARE
     n_routes  INT;
     n_logs    INT := %d;
     days_back INT := %d;
-    paths    TEXT[] := ARRAY[
-        '/health',
-        '/api/metered/data',
-        '/api/metered/query',
-        '/api/metered/report',
-        '/weather',
-        '/weather?city=London',
-        '/weather?city=New+York',
-        '/free-endpoint',
-        '/free-multipoint',
-        '/free-multipoint/v2',
-        '/free-multipoint/v3'
-    ];
+    paths    TEXT[] := ARRAY[%s];
     methods  TEXT[] := ARRAY['GET', 'GET', 'GET', 'POST', 'POST', 'PUT', 'DELETE'];
     statuses TEXT[] := ARRAY[
         'completed', 'completed', 'completed', 'completed',
@@ -479,7 +497,7 @@ RETURNING id`
 	return adminID, nil
 }
 
-func runSeedLogs(ctx context.Context, dsn, slug string, days, count int) error {
+func runSeedLogs(ctx context.Context, dsn, slug, paths string, days, count int) error {
 	if days <= 0 {
 		return fmt.Errorf("log-days must be > 0")
 	}
@@ -493,7 +511,7 @@ func runSeedLogs(ctx context.Context, dsn, slug string, days, count int) error {
 	}
 	defer pool.Close()
 
-	if _, err = pool.Exec(ctx, fmt.Sprintf(seedLogsSQL, count, days, slug)); err != nil {
+	if _, err = pool.Exec(ctx, fmt.Sprintf(seedLogsSQL, count, days, paths, slug)); err != nil {
 		return fmt.Errorf("seed request_logs: %w", err)
 	}
 
