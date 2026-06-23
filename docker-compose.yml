@@ -3,25 +3,11 @@ networks:
     driver: bridge
 
 services:
-  xpaywall-landing:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: cp0x/xpaywall-landing:0.1.0
-    container_name: xpaywall-landing
-    restart: always
-    volumes:
-      - ./public/config.js:/usr/share/nginx/html/config.js:ro
-    ports:
-      - "3100:80"
-    tty: true
-    networks:
-      - xpaywall-net
   control-api:
     build:
       context: ./control-api
       dockerfile: Dockerfile
-    image: cp0x/xpaywall-control-api:0.1.0
+    image: cp0x/xpaywall-control-api:0.1.1
     container_name: xpaywall-control-api
     restart: unless-stopped
     networks:
@@ -35,21 +21,24 @@ services:
       MODE: debug
       INTERNAL_API_KEY: change-me-internal-secret-key
       JWT_SECRET: change-me-jwt-secret-key
-      PROXY_URL: http://127.0.0.1:8081
-      SUPERADMIN_USERNAME: admin
+      PROXY_URL: http://127.0.0.1:3102
+      SUPERADMIN_USERNAME: admin123
       SUPERADMIN_PASSWORD: admin123
       DEBUG: true
     ports:
       - "3101:9091"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # One-shot CLI runner for migrations, user creation and demo data seeding.
   # Gated behind the `cli` profile so it never starts with `docker compose up`.
   # Usage:
   #   docker compose --profile cli run --rm control-api-cli migrate
-  #   docker compose --profile cli run --rm control-api-cli install user --username alice --password 'secret'
+  #   docker compose --profile cli run --rm control-api-cli install user --username cp0x --password 'cp0xcegthGFHJKM'
   #   docker compose --profile cli run --rm control-api-cli install demo
+  #   docker compose --profile cli run --rm control-api-cli install demo-mpp
   control-api-cli:
-    image: cp0x/xpaywall-control-api:0.1.0
+    image: cp0x/xpaywall-control-api:0.1.1
     build:
       context: ./control-api
       dockerfile: Dockerfile
@@ -74,7 +63,7 @@ services:
     build:
       context: ./xgateway
       dockerfile: Dockerfile
-    image: cp0x/xgateway:0.1.0
+    image: cp0x/xgateway:0.1.1
     container_name: xgateway
     restart: unless-stopped
     networks:
@@ -96,7 +85,7 @@ services:
     build:
       context: ./examples/server
       dockerfile: Dockerfile
-    image: cp0x/xpaywall-example-server:0.1.0
+    image: cp0x/xpaywall-example-server:0.1.1
     container_name: xpaywall-example-server
     restart: unless-stopped
     networks:
@@ -110,7 +99,7 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_APP_BASE_NAME: /
-    image: cp0x/xpaywall-adminpanel:0.1.0
+    image: cp0x/xpaywall-adminpanel:0.1.1
     container_name: xpaywall-adminpanel
     restart: unless-stopped
     networks:
