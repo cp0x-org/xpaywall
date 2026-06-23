@@ -25,7 +25,7 @@ This documentation is organised so you can read it top-to-bottom on your first v
 - [09 — Requests](./04-admin-panel/09-requests.md)
 
 ### Understanding the system
-- [05 — Concepts](./05-concepts.md) — payment flow, x402, networks, price formats, route resolution.
+- [05 — Concepts](./05-concepts.md) — payment flow, x402 and MPP, networks, price formats, route resolution.
 
 ### Step-by-step guides
 - [01 — Add your first paid route](./06-guides/01-first-paid-route.md)
@@ -65,4 +65,4 @@ If you are just trying things out, **start with HTTP mode** — the [02 — Setu
 
 - Read [08 — Troubleshooting](./08-troubleshooting.md) for common errors.
 - Check [10 — Reference](./10-reference.md) for env variables, API endpoints, and the glossary.
-- For future capabilities (MPP, batch payments, OKX APP, Stripe), see [11 — Roadmap](./11-roadmap.md).
+- For future capabilities (batch payments, OKX APP, MPP sessions, Stripe), see [11 — Roadmap](./11-roadmap.md).

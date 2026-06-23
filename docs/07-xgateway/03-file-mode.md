@@ -36,6 +36,17 @@ x402:
     decimals: 6
     timeout_seconds: 30
 
+mpp:
+  - name: tempo-charge
+    method: tempo
+    scheme: charge
+    rpc_url: https://rpc.moderato.tempo.xyz
+    merchant: "0xYourPayoutAddress"
+    asset: "0x20c0000000000000000000000000000000000000"
+    decimals: 6
+    secret_key: "your-hmac-secret"
+    timeout_seconds: 30
+
 outbound:
   target: http://my-upstream:4021
   auth_header:
@@ -54,12 +65,17 @@ outbound:
       description: "Returns the current weather"
       payment_methods: [base-sepolia]
 
+    - name: paid-rpc          # MPP-only route (Tempo charge)
+      path: /rpc
+      price: "10000"          # base units — MPP needs the integer form, not "$0.01"
+      payment_methods: [tempo-charge]
+
     - name: api-v1
       path_glob: /api/v1/*
       price: "0.01"
 ```
 
-Three top-level blocks: `x402`, `outbound`, and (commented out for now) `mpp`. Let's walk each.
+Three top-level blocks: `x402`, `mpp`, and `outbound`. Let's walk each.
 
 ## The `x402` block
 
@@ -78,6 +94,26 @@ Each entry defines one accepted payment channel.
 | `sync_facilitator_on_start` | no | If true, contact the facilitator at startup to validate config. |
 
 You can define multiple `x402` entries — for example one on Base Mainnet for production and one on Base Sepolia for testing. Each rule then picks the entries it accepts via `payment_methods`.
+
+## The `mpp` block
+
+Each entry defines one accepted MPP (Machine Payments Protocol) payment channel. MPP settles an on-chain charge directly against a blockchain RPC endpoint — there is no facilitator. Only the **Tempo** method and the **`charge`** scheme work end-to-end today.
+
+| Field | Required | Notes |
+|---|---|---|
+| `name` | yes | A unique identifier you use inside `rules[].payment_methods`. |
+| `method` | yes | Only `tempo` works end-to-end. `stripe` is parsed but rejected during validation. |
+| `scheme` | yes | Only `charge` works end-to-end. `session` is parsed but rejected during validation. |
+| `rpc_url` | yes | The Tempo JSON-RPC endpoint the charge is verified and settled against. |
+| `merchant` | yes | The wallet address that receives payment. |
+| `asset` | yes | Token contract address — e.g. pathUSD, the Tempo stablecoin. |
+| `decimals` | yes | Base-unit precision of the route `price`. pathUSD = 6. |
+| `secret_key` | yes | HMAC key used to sign the 402 challenge. |
+| `timeout_seconds` | no | RPC call timeout. Default 30. |
+
+A rule can list both x402 and MPP channels in `payment_methods`. The gateway uses MPP when the client sends an MPP `Authorization` header, and x402 otherwise; a rule that lists only MPP channels always uses MPP.
+
+> **MPP price must be in base units.** Unlike x402, any rule that accepts an MPP channel must express `price` as the raw integer in the asset's base units — `"100000"` for $0.10 at 6 decimals — not the `"$0.10"` dollar form. See *Price formats* below.
 
 ## The `outbound` block
 
@@ -124,7 +160,7 @@ The interesting part. Each entry is one path rule.
 | `path_glob` | one of | Glob pattern: `/api/v1/*`. Uses Go's `path.Match` — `*` matches one segment. |
 | `price` | required if not `free` | USD amount. See *Price formats* below. |
 | `free` | no | If true, skip payment entirely. `price` and `payment_methods` are ignored. |
-| `payment_methods` | conditional | List of `x402[].name` entries this rule accepts. If omitted, defaults to all supported entries. |
+| `payment_methods` | conditional | List of `x402[].name` or `mpp[].name` entries this rule accepts. If omitted, defaults to all supported entries. |
 | `description` | no | Human-readable; appears in logs and the 402 metadata. |
 | `bazaar` | no | Discovery extension metadata; see *Bazaar* below. |
 
@@ -138,6 +174,8 @@ Two forms are accepted on the same field:
 - `price: "100000"` — raw on-chain integer, used as-is.
 
 Both produce the same on-chain amount when the asset is USDC with 6 decimals. The dollar form is easier to maintain.
+
+**MPP routes require the integer form.** The dollar form is x402-only; for any rule that accepts an MPP channel, use the base-units integer (e.g. `"100000"`).
 
 Free routes omit `price` entirely:
 
@@ -192,6 +230,7 @@ xgateway refuses to start if any of:
 - The file is not valid YAML or JSON.
 - `outbound.target` is empty.
 - Any `x402[]` entry is missing `name`, `facilitator_url`, `network`, `merchant`, or has an invalid `scheme`.
+- Any `mpp[]` entry is missing `name`, `rpc_url`, `merchant`, `asset`, or `secret_key`, uses a `method` other than `tempo`, or a `scheme` other than `charge`.
 - Any rule has neither `path` nor `path_glob`.
 - A paid rule references a `payment_methods[]` entry that is not defined.
 

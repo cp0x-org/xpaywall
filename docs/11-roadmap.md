@@ -20,13 +20,12 @@ Currently xpaywall supports x402 with the `exact` scheme — a fixed price known
 - **Why it matters:** turns x402 from "a payment per request" into "a payment per session", which is closer to how most real APIs are billed.
 - **Status:** specification stage. No code yet.
 
-### MPP (Multi-Party Payments)
+### MPP extensions
 
-Tempo's MPP protocol allows splitting one payment across multiple recipients atomically — useful for affiliate/marketplace cases. Code paths for MPP are present but commented out in this release.
+MPP (Machine Payments Protocol) ships today with the Tempo `charge` scheme — see [05 — Concepts](./05-concepts.md#mpp-machine-payments-protocol). Two extensions are recognised in configuration but not yet available:
 
-- **Idea:** define multiple payout addresses with split percentages on the project payment method; signed authorisations cover the bundle in one shot.
-- **Why it matters:** if your business model involves passing revenue through to upstream providers, MPP removes the need for off-chain reconciliation.
-- **Status:** partial implementation. Disabled in the current release. Will return as a first-class feature.
+- **Tempo `session` scheme.** Instead of a one-time charge, open a session that authorises a series of charges up to a cap, settled as they happen. Recognised in config today but rejected during validation.
+- **`stripe` method.** Settle MPP charges through Stripe rather than an on-chain Tempo RPC, for operators who want a fiat rail. Recognised in config today but rejected during validation.
 
 ### OKX Agentic Payments Protocol
 

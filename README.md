@@ -203,7 +203,7 @@ outbound:
       free: true                # no payment required
 ```
 
-See [`xgateway/config.example.yaml`](xgateway/config.example.yaml) for the full schema.
+See [`xgateway/config.dev.yaml`](xgateway/config.dev.yaml) for the full schema.
 
 ---
 

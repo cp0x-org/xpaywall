@@ -90,7 +90,7 @@ See [07-xgateway/02 — HTTP mode](./07-xgateway/02-http-mode.md) for the full c
 |---|---|
 | `docker-compose.yml` | The default development stack. |
 | `docker-compose.prod.yml` | The production override (may not exist yet — see Roadmap). |
-| `xgateway/config.dev.yaml` | Example file-mode config with two networks. |
+| `xgateway/config.dev.yaml` | Example file-mode config with x402 and MPP channels. |
 | `control-api/migrations/` | Database schema (goose migrations). |
 | `examples/server/` | The demo upstream you used in Guide 01. |
 
@@ -134,11 +134,13 @@ Always verify these against the official chain explorer before pointing real mon
 
 **HTTP mode** — xgateway fetching its configuration from control-api per request. Dynamic, multi-project.
 
+**MPP** — Machine Payments Protocol. A payment rail that settles an on-chain charge directly against a blockchain RPC, with no facilitator. xpaywall supports the Tempo `charge` scheme.
+
 **Payment Asset** — Admin-panel entity: a token (symbol, contract, decimals) attached to a payment method.
 
-**Payment Channel** — In gateway-internal API responses, the combination of (payment method, asset, scheme, facilitator, payout address) that a route accepts. One route can accept many.
+**Payment Channel** — In gateway-internal API responses, the combination that a route accepts: for x402 (payment method, asset, scheme, facilitator, payout address), for MPP (method, asset, scheme, rpc_url, payout address). One route can accept many.
 
-**Payment Method** — Admin-panel entity: a (protocol, network) pair. e.g. x402-on-Base.
+**Payment Method** — Admin-panel entity: for x402 a (protocol, network) pair, e.g. x402-on-Base; for MPP a (protocol, method, scheme) triple, e.g. MPP-Tempo-charge.
 
 **Payout Address** — The wallet address that receives the money for paid requests.
 
@@ -152,7 +154,9 @@ Always verify these against the official chain explorer before pointing real mon
 
 **Route** — Admin-panel entity: a path pattern plus a price.
 
-**Scheme** — The kind of authorisation a client signs. `exact` (only supported today) means a fixed price.
+**Scheme** — The kind of authorisation a client signs. For x402: `exact` (a fixed price). For MPP: `charge` (a one-time on-chain charge).
+
+**Tempo** — The blockchain network MPP charges are verified and settled against, addressed by an `rpc_url`.
 
 **X-PAYMENT** — The HTTP header a client sends on the retry, carrying the signed proof of payment.
 

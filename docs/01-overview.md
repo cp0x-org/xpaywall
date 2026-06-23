@@ -16,7 +16,7 @@ Traditional API monetisation needs all of:
 - A customer signup flow
 - Monthly invoicing
 
-xpaywall replaces all of that with a single primitive: **pay for this exact call, right now**. No account, no key, no subscription. The protocol it speaks (x402) was designed for AI agents and machines, but it works for human-built clients too.
+xpaywall replaces all of that with a single primitive: **pay for this exact call, right now**. No account, no key, no subscription. The protocols it speaks — x402 and MPP (Machine Payments Protocol) — were designed for AI agents and machines, but work for human-built clients too.
 
 Common use-cases:
 - Monetising AI inference (image generation, transcription, embeddings).
@@ -71,6 +71,8 @@ Steps:
 8. The upstream's response is streamed back to the client.
 
 If a route is marked **free**, steps 3–6 are skipped and the gateway proxies the call directly.
+
+The diagram shows the x402 rail. A route can also accept **MPP** (Machine Payments Protocol): the client sends its proof in an `Authorization` header and the gateway settles a Tempo on-chain `charge` against an RPC endpoint instead of calling a facilitator. See [05 — Concepts](./05-concepts.md#mpp-machine-payments-protocol).
 
 ![Architecture overview](./images/arch-overview.png)
 

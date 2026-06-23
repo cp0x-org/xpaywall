@@ -1,6 +1,6 @@
 # 05 — Concepts
 
-This page explains the ideas behind xpaywall in plain language: how payment actually flows, what x402 is, how networks and assets are identified, and how the gateway decides which rule to apply to an incoming request. Read this once and the admin panel will make much more sense.
+This page explains the ideas behind xpaywall in plain language: how payment actually flows, what x402 and MPP are, how networks and assets are identified, and how the gateway decides which rule to apply to an incoming request. Read this once and the admin panel will make much more sense.
 
 ## The payment flow
 
@@ -17,6 +17,8 @@ The flow looks like this:
 
 From the client's point of view, the magic is: one request → 402 with instructions → pay → retry → success. From the gateway's point of view: every paid request is a "verify then forward" pipeline.
 
+The steps above describe the **x402** rail. **MPP** follows the same shape — 402 → pay → retry → forward — but the proof travels in an `Authorization` header and is settled against a blockchain RPC endpoint instead of a facilitator. See [MPP](#mpp-machine-payments-protocol) below.
+
 ## x402
 
 x402 is the protocol that defines how the 402 response is structured and how the proof header is signed. Think of it as "HTTP + a payment instruction format".
@@ -31,6 +33,18 @@ Two more schemes are on the roadmap:
 - **batch-payment** — one signature covers many requests up to a cap. Cheaper for high-frequency callers.
 
 See [11 — Roadmap](./11-roadmap.md) for the schedule.
+
+## MPP (Machine Payments Protocol)
+
+MPP is a second payment rail xpaywall supports alongside x402. Where x402 delegates verification to an external facilitator, MPP settles an on-chain **charge** directly against a blockchain RPC endpoint — there is no facilitator in the loop.
+
+xpaywall today supports MPP with the **Tempo** method and the **`charge`** scheme:
+
+- **Tempo `charge`** — a one-time on-chain charge. The client signs an authorisation and sends it in an `Authorization` header (not the `X-PAYMENT` header x402 uses). The gateway verifies and settles the charge against the configured Tempo RPC endpoint, then forwards the request.
+
+In **file mode**, a single route can accept **both** rails at once. When a request carries an MPP `Authorization` header the gateway uses MPP; otherwise it falls back to x402. A route that lists only MPP channels always uses MPP. (In HTTP mode the admin panel commits each project to a single protocol — see [Project Payment Methods](./04-admin-panel/07-project-payment-methods.md).)
+
+The Tempo `session` scheme and the `stripe` method are recognised in configuration but rejected during validation — they are not available yet. See [11 — Roadmap](./11-roadmap.md).
 
 ## Networks and assets
 

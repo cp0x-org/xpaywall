@@ -71,6 +71,8 @@ Looks for an `X-PAYMENT` header on the request:
 - **Missing** and the route is free → skip straight to proxying.
 - **Present** → POST the proof to the facilitator. If the facilitator says valid, proceed. If invalid, return 402 again with a `lastError` field describing the rejection.
 
+A route can accept two payment rails. If the client sends an MPP `Authorization` header the gateway runs the **MPP** path — verifying and settling a Tempo `charge` against the configured RPC endpoint instead of calling a facilitator. Otherwise it runs the **x402** path described above. A route that lists only MPP channels always uses MPP.
+
 ### Proxy
 
 Builds the upstream URL from the project's Server Base URL + the route's path. Copies the client's headers (minus a small denylist), injects the project's configured auth header if one is set, streams the request body, and streams the response back. The client sees the upstream response unchanged.

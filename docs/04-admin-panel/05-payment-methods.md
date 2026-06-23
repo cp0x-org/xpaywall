@@ -1,6 +1,6 @@
 ﻿# Admin Panel — Payment Methods
 
-A **payment method** is a template for "this protocol on this network". It says, for example, "x402 on Base Mainnet". It does not yet say which asset, which facilitator or which wallet receives the money — those come from assets and from the per-project link.
+A **payment method** is a template for "this protocol on this network". It says, for example, "x402 on Base Mainnet", or "MPP via Tempo". It does not yet say which asset, which facilitator or which wallet receives the money — those come from assets and from the per-project link.
 
 You define payment methods once, then reuse them across many projects.
 
@@ -15,13 +15,17 @@ Open **Payments → Payment Methods** and click **Create Payment Method**.
 | Field | What to put |
 |---|---|
 | **Code** | A unique short identifier. Lowercase letters, digits and hyphens. Example: `x402-base-usdc`. You will see it everywhere in the UI alongside the human name, so make it descriptive. |
-| **Protocol** | `x402`. (MPP is reserved for the future — see [11 — Roadmap](./../11-roadmap.md).) |
-| **Network** | Pick a network from the dropdown, or switch to **Custom** to type a CAIP-2 chain ID directly. |
-| **Name** | Human-readable label, e.g. `Base Mainnet`. The select-network mode fills this in for you. |
-| **CAIP-2 Chain ID** | Auto-filled when you pick a known network. For custom entries, format is `eip155:<chainId>`. Examples: `eip155:8453` (Base Mainnet), `eip155:84532` (Base Sepolia). |
+| **Protocol** | `x402` or `MPP`. The fields below the protocol change with your choice: x402 uses a **Network**; MPP (Machine Payments Protocol) uses a **Method** and **Scheme**. |
+| **Name** | Human-readable label, e.g. `Base Mainnet` or `Tempo Charge`. For x402, the select-network mode fills this in for you; for MPP it is optional. |
+| **Network** *(x402)* | Pick a network from the dropdown, or switch to **Custom** to type a CAIP-2 chain ID directly. |
+| **CAIP-2 Chain ID** *(x402)* | Auto-filled when you pick a known network. For custom entries, format is `eip155:<chainId>`. Examples: `eip155:8453` (Base Mainnet), `eip155:84532` (Base Sepolia). |
+| **Method** *(MPP)* | `tempo` or `stripe`. Only `tempo` works end-to-end today — `stripe` is accepted by the form but rejected by the gateway. |
+| **Scheme** *(MPP)* | `charge` — a one-time on-chain charge. (The `session` scheme is planned; see [11 — Roadmap](./../11-roadmap.md).) |
 | **Enabled** | Leave on. Switching off keeps the row but stops the method appearing in selections. |
 
-### Network: select vs custom
+### Network: select vs custom (x402)
+
+For an MPP method there is no network — the form shows **Method** and **Scheme** selectors instead. The toggle below applies to x402 methods only.
 
 The form has a toggle between **Select network** and **Custom**.
 
