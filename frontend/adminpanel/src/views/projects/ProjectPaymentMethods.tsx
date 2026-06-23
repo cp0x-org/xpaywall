@@ -115,6 +115,12 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
   const getFacilitatorName = (id: string) => facilitators.find((x) => x.id === id)?.name ?? id;
   const getProtocol = (paymentMethodId: string) => paymentMethods.find((x) => x.id === paymentMethodId)?.protocol ?? '';
 
+  // A project may use only one protocol. Once any method is configured, lock new
+  // additions to that same protocol (multiple methods of one protocol are allowed,
+  // e.g. several x402 assets/chains, but x402 and mpp cannot be mixed).
+  const lockedProtocol = methods.length > 0 ? getProtocol(methods[0].payment_method_id) : '';
+  const selectablePaymentMethods = lockedProtocol ? paymentMethods.filter((pm) => pm.protocol === lockedProtocol) : paymentMethods;
+
   return (
     <Box>
       {showActions && (
@@ -278,13 +284,22 @@ export default function ProjectPaymentMethods({ projectId, isView, canEdit }: Pr
                         }}
                         onBlur={handleBlur}
                       >
-                        {paymentMethods.map((pm) => (
+                        {selectablePaymentMethods.map((pm) => (
                           <MenuItem key={pm.id} value={pm.id}>
                             {pm.name} ({pm.protocol})
                           </MenuItem>
                         ))}
                       </Select>
-                      {touched.payment_method_id && errors.payment_method_id && <FormHelperText>{errors.payment_method_id}</FormHelperText>}
+                      {touched.payment_method_id && errors.payment_method_id ? (
+                        <FormHelperText>{errors.payment_method_id}</FormHelperText>
+                      ) : (
+                        !editing &&
+                        lockedProtocol && (
+                          <FormHelperText>
+                            This project uses the {lockedProtocol} protocol; only {lockedProtocol} methods can be added.
+                          </FormHelperText>
+                        )
+                      )}
                     </FormControl>
 
                     <FormControl fullWidth error={Boolean(touched.asset_id && errors.asset_id)}>

@@ -54,9 +54,7 @@ export default function PaymentAssetForm() {
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
 
   useEffect(() => {
-    axios
-      .get<PaymentMethodOption[]>('/api/v1/payment-methods')
-      .then((res) => setPaymentMethods(res.data ?? []));
+    axios.get<PaymentMethodOption[]>('/api/v1/payment-methods').then((res) => setPaymentMethods(res.data ?? []));
   }, []);
 
   useEffect(() => {
@@ -151,9 +149,7 @@ export default function PaymentAssetForm() {
                     </MenuItem>
                   ))}
                 </Select>
-                {touched.payment_method_id && errors.payment_method_id && (
-                  <FormHelperText>{errors.payment_method_id}</FormHelperText>
-                )}
+                {touched.payment_method_id && errors.payment_method_id && <FormHelperText>{errors.payment_method_id}</FormHelperText>}
               </FormControl>
 
               <TextField

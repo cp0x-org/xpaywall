@@ -150,9 +150,7 @@ export default function RouteFormPage() {
   const ownedProjects = projects.filter((p) => canManage(currentUserId, p.owner_user_id));
   const projectOwnerMap: Record<string, string | null | undefined> = {};
   for (const p of projects) projectOwnerMap[p.id] = p.owner_user_id;
-  const canEditCurrent = isCreate
-    ? true
-    : canManage(currentUserId, projectOwnerMap[initialValues.project_id]);
+  const canEditCurrent = isCreate ? true : canManage(currentUserId, projectOwnerMap[initialValues.project_id]);
   const projectsForSelect = isCreate ? ownedProjects : projects;
 
   useEffect(() => {
@@ -206,10 +204,7 @@ export default function RouteFormPage() {
           path_pattern: Yup.string().required('Path pattern is required'),
           price_usd: Yup.string().when('free', {
             is: false,
-            then: (s) =>
-              s
-                .required('Price is required')
-                .matches(/^\d+(\.\d+)?$/, 'Must be a positive number, e.g. 0.10')
+            then: (s) => s.required('Price is required').matches(/^\d+(\.\d+)?$/, 'Must be a positive number, e.g. 0.10')
           }),
           bazaar: Yup.string().test('json', 'Bazaar must be valid JSON object', (val) => {
             if (!val || !val.trim()) return true;
@@ -321,286 +316,287 @@ export default function RouteFormPage() {
 
           const selectedProject = projects.find((p) => p.id === values.project_id);
           const fullProxyUrl = selectedProject
-            ? buildUrl(proxyUrl, `/${selectedProject.slug}${values.path_pattern.startsWith('/') ? values.path_pattern : values.path_pattern ? `/${values.path_pattern}` : ''}`)
+            ? buildUrl(
+                proxyUrl,
+                `/${selectedProject.slug}${values.path_pattern.startsWith('/') ? values.path_pattern : values.path_pattern ? `/${values.path_pattern}` : ''}`
+              )
             : '';
           const fullTargetUrl = selectedProject ? buildUrl(selectedProject.base_url ?? '', values.path_pattern) : '';
 
           return (
-          <form onSubmit={handleSubmit}>
-            <Stack spacing={2} sx={{ maxWidth: 720 }}>
-              <Grid container spacing={3}>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Grid container spacing={1} sx={{ alignItems: 'center' }}>
-                    <Grid>
-                      <LinkTwoToneIcon color="primary" />
+            <form onSubmit={handleSubmit}>
+              <Stack spacing={2} sx={{ maxWidth: 720 }}>
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Grid container spacing={1} sx={{ alignItems: 'center' }}>
+                      <Grid>
+                        <LinkTwoToneIcon color="primary" />
+                      </Grid>
+                      <Grid size={{ sm: 'grow' }}>
+                        <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
+                          {selectedProject ? fullProxyUrl || '—' : 'choose project'}
+                        </Typography>
+                        <Typography variant="subtitle2">PROXY URL</Typography>
+                      </Grid>
                     </Grid>
-                    <Grid size={{ sm: 'grow' }}>
-                      <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
-                        {selectedProject ? (fullProxyUrl || '—') : 'choose project'}
-                      </Typography>
-                      <Typography variant="subtitle2">PROXY URL</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12, sm: 6 }}>
+                    <Grid container spacing={1} sx={{ alignItems: 'center' }}>
+                      <Grid>
+                        <LanguageTwoToneIcon color="secondary" />
+                      </Grid>
+                      <Grid size={{ sm: 'grow' }}>
+                        <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
+                          {selectedProject ? fullTargetUrl || '—' : 'choose project'}
+                        </Typography>
+                        <Typography variant="subtitle2">TARGET URL</Typography>
+                      </Grid>
                     </Grid>
                   </Grid>
                 </Grid>
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Grid container spacing={1} sx={{ alignItems: 'center' }}>
-                    <Grid>
-                      <LanguageTwoToneIcon color="secondary" />
-                    </Grid>
-                    <Grid size={{ sm: 'grow' }}>
-                      <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
-                        {selectedProject ? (fullTargetUrl || '—') : 'choose project'}
-                      </Typography>
-                      <Typography variant="subtitle2">TARGET URL</Typography>
-                    </Grid>
-                  </Grid>
-                </Grid>
-              </Grid>
-              <Divider />
+                <Divider />
 
-              <FormControl fullWidth error={Boolean(touched.project_id && errors.project_id)} disabled={isView}>
-                <InputLabel id="project-label">Project</InputLabel>
-                <Select
-                  labelId="project-label"
-                  name="project_id"
-                  value={values.project_id}
-                  label="Project"
-                  onChange={(e) => setFieldValue('project_id', e.target.value)}
-                >
-                  {projectsForSelect.map((p) => (
-                    <MenuItem key={p.id} value={p.id}>
-                      {p.name} ({p.slug})
-                    </MenuItem>
-                  ))}
-                </Select>
-                {touched.project_id && errors.project_id && (
-                  <FormHelperText>{errors.project_id}</FormHelperText>
-                )}
-              </FormControl>
+                <FormControl fullWidth error={Boolean(touched.project_id && errors.project_id)} disabled={isView}>
+                  <InputLabel id="project-label">Project</InputLabel>
+                  <Select
+                    labelId="project-label"
+                    name="project_id"
+                    value={values.project_id}
+                    label="Project"
+                    onChange={(e) => setFieldValue('project_id', e.target.value)}
+                  >
+                    {projectsForSelect.map((p) => (
+                      <MenuItem key={p.id} value={p.id}>
+                        {p.name} ({p.slug})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {touched.project_id && errors.project_id && <FormHelperText>{errors.project_id}</FormHelperText>}
+                </FormControl>
 
-              <TextField
-                fullWidth
-                label="Route Name"
-                name="name"
-                value={values.name}
-                onBlur={handleBlur}
-                onChange={handleChange}
-                error={Boolean(touched.name && errors.name)}
-                helperText={touched.name && errors.name}
-                disabled={isView}
-              />
-
-              <TextField
-                fullWidth
-                label="Path Pattern"
-                name="path_pattern"
-                value={values.path_pattern}
-                onBlur={handleBlur}
-                onChange={handleChange}
-                error={Boolean(touched.path_pattern && errors.path_pattern)}
-                helperText={(touched.path_pattern && errors.path_pattern) || 'e.g. /api/v1/* or /users/:id'}
-                disabled={isView}
-              />
-
-              <TextField
-                fullWidth
-                multiline
-                minRows={2}
-                label="Description"
-                name="description"
-                value={values.description}
-                onBlur={handleBlur}
-                onChange={handleChange}
-                disabled={isView}
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    name="free"
-                    checked={values.free}
-                    onChange={(e) => setFieldValue('free', e.target.checked)}
-                    disabled={isView}
-                  />
-                }
-                label="Free (no payment required)"
-              />
-
-              {!values.free && (
                 <TextField
                   fullWidth
-                  label="Price (USD)"
-                  name="price_usd"
-                  value={values.price_usd}
+                  label="Route Name"
+                  name="name"
+                  value={values.name}
                   onBlur={handleBlur}
                   onChange={handleChange}
-                  error={Boolean(touched.price_usd && errors.price_usd)}
-                  helperText={(touched.price_usd && errors.price_usd) || 'e.g. 0.10'}
+                  error={Boolean(touched.name && errors.name)}
+                  helperText={touched.name && errors.name}
                   disabled={isView}
                 />
-              )}
 
-              <Divider />
+                <TextField
+                  fullWidth
+                  label="Path Pattern"
+                  name="path_pattern"
+                  value={values.path_pattern}
+                  onBlur={handleBlur}
+                  onChange={handleChange}
+                  error={Boolean(touched.path_pattern && errors.path_pattern)}
+                  helperText={(touched.path_pattern && errors.path_pattern) || 'e.g. /api/v1/* or /users/:id'}
+                  disabled={isView}
+                />
 
-              <Accordion defaultExpanded={Boolean(values.bazaar)}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Stack>
-                    <Typography variant="subtitle1">Bazaar Discovery Extension</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Optional JSON describing the endpoint's method, body type, request/response schemas and examples.
-                      Leave empty for auto-mode (minimal GET declaration).
-                    </Typography>
-                  </Stack>
-                </AccordionSummary>
-                <AccordionDetails>
-                  <Stack spacing={2}>
-                    {!isView && (
-                      <Stack direction="row" spacing={1} flexWrap="wrap">
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => setFieldValue('bazaar', JSON.stringify(BAZAAR_TEMPLATE, null, 2))}
-                        >
-                          Insert Template
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          color="warning"
-                          onClick={() => setFieldValue('bazaar', '')}
-                          disabled={!values.bazaar}
-                        >
-                          Clear
-                        </Button>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => {
-                            try {
-                              const parsed = JSON.parse(values.bazaar);
-                              setFieldValue('bazaar', JSON.stringify(parsed, null, 2));
-                            } catch {
-                              // ignore — validation will catch it
-                            }
-                          }}
-                          disabled={!values.bazaar}
-                        >
-                          Format
-                        </Button>
-                      </Stack>
-                    )}
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  label="Description"
+                  name="description"
+                  value={values.description}
+                  onBlur={handleBlur}
+                  onChange={handleChange}
+                  disabled={isView}
+                />
 
-                    <TextField
-                      fullWidth
-                      multiline
-                      minRows={8}
-                      maxRows={24}
-                      label="Bazaar JSON"
-                      name="bazaar"
-                      value={values.bazaar}
-                      onBlur={handleBlur}
-                      onChange={handleChange}
-                      error={Boolean(touched.bazaar && errors.bazaar)}
-                      helperText={touched.bazaar && errors.bazaar}
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      name="free"
+                      checked={values.free}
+                      onChange={(e) => setFieldValue('free', e.target.checked)}
                       disabled={isView}
-                      slotProps={{
-                        input: { style: { fontFamily: 'monospace', fontSize: 13 } }
-                      }}
                     />
+                  }
+                  label="Free (no payment required)"
+                />
 
-                    {!isView && (
-                      <Accordion variant="outlined">
-                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                          <Stack>
-                            <Typography variant="subtitle2">Auto-generate from a sample request</Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              Sends the request from your browser, then derives Bazaar JSON from the request/response.
-                              Target must allow CORS from this origin.
-                            </Typography>
-                          </Stack>
-                        </AccordionSummary>
-                        <AccordionDetails>
-                          <Stack spacing={2}>
-                            <Stack direction="row" spacing={1}>
-                              <FormControl sx={{ minWidth: 120 }} size="small">
-                                <InputLabel id="gen-method-label">Method</InputLabel>
-                                <Select
-                                  labelId="gen-method-label"
-                                  value={genMethod}
-                                  label="Method"
-                                  onChange={(e) => setGenMethod(e.target.value as typeof genMethod)}
-                                >
-                                  {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
-                                    <MenuItem key={m} value={m}>
-                                      {m}
-                                    </MenuItem>
-                                  ))}
-                                </Select>
-                              </FormControl>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Sample URL"
-                                placeholder="https://upstream.example.com/users"
-                                value={genUrl}
-                                onChange={(e) => setGenUrl(e.target.value)}
-                              />
-                            </Stack>
-
-                            {genMethod !== 'GET' && genMethod !== 'DELETE' && (
-                              <TextField
-                                fullWidth
-                                multiline
-                                minRows={3}
-                                size="small"
-                                label="Request body (JSON, optional)"
-                                value={genBody}
-                                onChange={(e) => setGenBody(e.target.value)}
-                                slotProps={{
-                                  input: { style: { fontFamily: 'monospace', fontSize: 13 } }
-                                }}
-                              />
-                            )}
-
-                            {genError && <FormHelperText error>{genError}</FormHelperText>}
-
-                            <Box>
-                              <Button
-                                variant="contained"
-                                size="small"
-                                onClick={handleGenerateBazaar}
-                                disabled={genBusy}
-                                startIcon={genBusy ? <CircularProgress size={16} color="inherit" /> : undefined}
-                              >
-                                {genBusy ? 'Fetching…' : 'Get Bazaar Description'}
-                              </Button>
-                            </Box>
-                          </Stack>
-                        </AccordionDetails>
-                      </Accordion>
-                    )}
-                  </Stack>
-                </AccordionDetails>
-              </Accordion>
-
-              {errors.submit && (
-                <Box>
-                  <FormHelperText error>{errors.submit}</FormHelperText>
-                </Box>
-              )}
-
-              <Stack direction="row" spacing={2} justifyContent="flex-end">
-                <Button variant="outlined" onClick={() => navigate('/routes')} disabled={isSubmitting}>
-                  {isView ? 'Back' : 'Cancel'}
-                </Button>
-                {!isView && canEditCurrent && (
-                  <Button type="submit" variant="contained" disabled={isSubmitting}>
-                    {isEdit ? 'Save Changes' : 'Create Route'}
-                  </Button>
+                {!values.free && (
+                  <TextField
+                    fullWidth
+                    label="Price (USD)"
+                    name="price_usd"
+                    value={values.price_usd}
+                    onBlur={handleBlur}
+                    onChange={handleChange}
+                    error={Boolean(touched.price_usd && errors.price_usd)}
+                    helperText={(touched.price_usd && errors.price_usd) || 'e.g. 0.10'}
+                    disabled={isView}
+                  />
                 )}
+
+                <Divider />
+
+                <Accordion defaultExpanded={Boolean(values.bazaar)}>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Stack>
+                      <Typography variant="subtitle1">Bazaar Discovery Extension</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Optional JSON describing the endpoint's method, body type, request/response schemas and examples. Leave empty for
+                        auto-mode (minimal GET declaration).
+                      </Typography>
+                    </Stack>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <Stack spacing={2}>
+                      {!isView && (
+                        <Stack direction="row" spacing={1} flexWrap="wrap">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => setFieldValue('bazaar', JSON.stringify(BAZAAR_TEMPLATE, null, 2))}
+                          >
+                            Insert Template
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="warning"
+                            onClick={() => setFieldValue('bazaar', '')}
+                            disabled={!values.bazaar}
+                          >
+                            Clear
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => {
+                              try {
+                                const parsed = JSON.parse(values.bazaar);
+                                setFieldValue('bazaar', JSON.stringify(parsed, null, 2));
+                              } catch {
+                                // ignore — validation will catch it
+                              }
+                            }}
+                            disabled={!values.bazaar}
+                          >
+                            Format
+                          </Button>
+                        </Stack>
+                      )}
+
+                      <TextField
+                        fullWidth
+                        multiline
+                        minRows={8}
+                        maxRows={24}
+                        label="Bazaar JSON"
+                        name="bazaar"
+                        value={values.bazaar}
+                        onBlur={handleBlur}
+                        onChange={handleChange}
+                        error={Boolean(touched.bazaar && errors.bazaar)}
+                        helperText={touched.bazaar && errors.bazaar}
+                        disabled={isView}
+                        slotProps={{
+                          input: { style: { fontFamily: 'monospace', fontSize: 13 } }
+                        }}
+                      />
+
+                      {!isView && (
+                        <Accordion variant="outlined">
+                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                            <Stack>
+                              <Typography variant="subtitle2">Auto-generate from a sample request</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Sends the request from your browser, then derives Bazaar JSON from the request/response. Target must allow
+                                CORS from this origin.
+                              </Typography>
+                            </Stack>
+                          </AccordionSummary>
+                          <AccordionDetails>
+                            <Stack spacing={2}>
+                              <Stack direction="row" spacing={1}>
+                                <FormControl sx={{ minWidth: 120 }} size="small">
+                                  <InputLabel id="gen-method-label">Method</InputLabel>
+                                  <Select
+                                    labelId="gen-method-label"
+                                    value={genMethod}
+                                    label="Method"
+                                    onChange={(e) => setGenMethod(e.target.value as typeof genMethod)}
+                                  >
+                                    {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
+                                      <MenuItem key={m} value={m}>
+                                        {m}
+                                      </MenuItem>
+                                    ))}
+                                  </Select>
+                                </FormControl>
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  label="Sample URL"
+                                  placeholder="https://upstream.example.com/users"
+                                  value={genUrl}
+                                  onChange={(e) => setGenUrl(e.target.value)}
+                                />
+                              </Stack>
+
+                              {genMethod !== 'GET' && genMethod !== 'DELETE' && (
+                                <TextField
+                                  fullWidth
+                                  multiline
+                                  minRows={3}
+                                  size="small"
+                                  label="Request body (JSON, optional)"
+                                  value={genBody}
+                                  onChange={(e) => setGenBody(e.target.value)}
+                                  slotProps={{
+                                    input: { style: { fontFamily: 'monospace', fontSize: 13 } }
+                                  }}
+                                />
+                              )}
+
+                              {genError && <FormHelperText error>{genError}</FormHelperText>}
+
+                              <Box>
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  onClick={handleGenerateBazaar}
+                                  disabled={genBusy}
+                                  startIcon={genBusy ? <CircularProgress size={16} color="inherit" /> : undefined}
+                                >
+                                  {genBusy ? 'Fetching…' : 'Get Bazaar Description'}
+                                </Button>
+                              </Box>
+                            </Stack>
+                          </AccordionDetails>
+                        </Accordion>
+                      )}
+                    </Stack>
+                  </AccordionDetails>
+                </Accordion>
+
+                {errors.submit && (
+                  <Box>
+                    <FormHelperText error>{errors.submit}</FormHelperText>
+                  </Box>
+                )}
+
+                <Stack direction="row" spacing={2} justifyContent="flex-end">
+                  <Button variant="outlined" onClick={() => navigate('/routes')} disabled={isSubmitting}>
+                    {isView ? 'Back' : 'Cancel'}
+                  </Button>
+                  {!isView && canEditCurrent && (
+                    <Button type="submit" variant="contained" disabled={isSubmitting}>
+                      {isEdit ? 'Save Changes' : 'Create Route'}
+                    </Button>
+                  )}
+                </Stack>
               </Stack>
-            </Stack>
-          </form>
+            </form>
           );
         }}
       </Formik>

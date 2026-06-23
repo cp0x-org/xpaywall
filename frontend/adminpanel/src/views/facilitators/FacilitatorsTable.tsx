@@ -93,12 +93,26 @@ export default function FacilitatorsTable({ rows, onDelete }: { rows: Facilitato
                   <TableCell align="center" sx={{ pr: 3 }}>
                     <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                       <Tooltip title="View">
-                        <IconButton color="primary" component={Link} to="/facilitators/view" state={{ id: row.id }} size="small" aria-label="View">
+                        <IconButton
+                          color="primary"
+                          component={Link}
+                          to="/facilitators/view"
+                          state={{ id: row.id }}
+                          size="small"
+                          aria-label="View"
+                        >
                           <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Edit">
-                        <IconButton color="secondary" component={Link} to="/facilitators/edit" state={{ id: row.id }} size="small" aria-label="Edit">
+                        <IconButton
+                          color="secondary"
+                          component={Link}
+                          to="/facilitators/edit"
+                          state={{ id: row.id }}
+                          size="small"
+                          aria-label="Edit"
+                        >
                           <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>

@@ -249,7 +249,11 @@ export default function NavGroup({ item, lastItem, remItems, lastItemId, selecte
               sx={{ mr: 1, mb: 0.25 }}
               primary={
                 <Typography variant={isSelected ? 'h5' : 'body1'} sx={{ color: 'inherit' }}>
-                  {currentItem.id === lastItemId ? <IntlText id="more-items" /> : <IntlText id={currentItem.title} fallback={currentItem.id} />}
+                  {currentItem.id === lastItemId ? (
+                    <IntlText id="more-items" />
+                  ) : (
+                    <IntlText id={currentItem.title} fallback={currentItem.id} />
+                  )}
                 </Typography>
               }
             />

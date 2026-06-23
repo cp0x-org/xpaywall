@@ -47,11 +47,7 @@ export default function FacilitatorsPage() {
   const rows = useMemo(() => {
     if (!search.trim()) return facilitators;
     const query = search.toLowerCase();
-    return facilitators.filter(
-      (f) =>
-        f.name.toLowerCase().includes(query) ||
-        f.url.toLowerCase().includes(query)
-    );
+    return facilitators.filter((f) => f.name.toLowerCase().includes(query) || f.url.toLowerCase().includes(query));
   }, [search, facilitators]);
 
   return (

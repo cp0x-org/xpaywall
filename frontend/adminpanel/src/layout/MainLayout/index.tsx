@@ -78,7 +78,6 @@ export default function MainLayout() {
           maxWidth={container ? 'lg' : false}
           sx={{ ...(!container && { px: { xs: 0 } }), minHeight: 'calc(100vh - 128px)', display: 'flex', flexDirection: 'column' }}
         >
-
           {/* breadcrumb */}
           <Breadcrumbs />
           <Outlet />

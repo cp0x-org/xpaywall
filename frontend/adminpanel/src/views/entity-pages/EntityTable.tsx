@@ -89,12 +89,7 @@ export default function EntityTable({ rows, basePath }: EntityTableProps) {
     <MainCard content={false}>
       <TableContainer>
         <Table sx={{ minWidth: 880 }} aria-labelledby="tableTitle">
-          <EntityTableHeader
-            order={order}
-            orderBy={orderBy}
-            onRequestSort={handleRequestSort}
-            rowCount={rows.length}
-          />
+          <EntityTableHeader order={order} orderBy={orderBy} onRequestSort={handleRequestSort} rowCount={rows.length} />
           <TableBody>
             {stableSort(rows, getComparator(order, orderBy))
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)

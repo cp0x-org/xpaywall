@@ -29,8 +29,8 @@ import useAuth from 'hooks/useAuth';
 import axios from 'utils/axios';
 import { canManage } from 'utils/ownership';
 
-import {FullProject, ProxyUrl} from './types';
-import {TableBody} from "../../ui-component/mui";
+import { FullProject, ProxyUrl } from './types';
+import { TableBody } from '../../ui-component/mui';
 import ProjectPaymentMethods from './ProjectPaymentMethods';
 
 function toSlug(value: string) {
@@ -71,24 +71,23 @@ export default function ProjectFormPage() {
   const [initialValues, setInitialValues] = React.useState({
     ...emptyValues,
     owner_user_id: (user as any)?.id ?? '',
-    owner_username: (user as any)?.username ?? '',
+    owner_username: (user as any)?.username ?? ''
   });
 
-  const [proxyUrl, setProxyUrl] = React.useState("")
-  const [originTarget, setOriginTarget] = React.useState("")
-  const [tab, setTab] = React.useState(0)
+  const [proxyUrl, setProxyUrl] = React.useState('');
+  const [originTarget, setOriginTarget] = React.useState('');
+  const [tab, setTab] = React.useState(0);
 
   React.useEffect(() => {
     axios
-        .get<ProxyUrl>(`/api/v1/system/proxy-url`)
-        .then((res) => {
-          const d = res.data;
-          setProxyUrl(d.proxy_url ?? "");
-        })
-        .catch(() => setLoadError('Failed to load proxy url'))
-        .finally(() => setLoading(false));
-
-  },[]);
+      .get<ProxyUrl>(`/api/v1/system/proxy-url`)
+      .then((res) => {
+        const d = res.data;
+        setProxyUrl(d.proxy_url ?? '');
+      })
+      .catch(() => setLoadError('Failed to load proxy url'))
+      .finally(() => setLoading(false));
+  }, []);
 
   React.useEffect(() => {
     if ((isEdit || isView) && projectId) {
@@ -145,247 +144,252 @@ export default function ProjectFormPage() {
       </Tabs>
 
       {tab === 1 && projectId && (
-        <ProjectPaymentMethods projectId={projectId} isView={isView} canEdit={isCreate || canManage(currentUserId, initialValues.owner_user_id)} />
+        <ProjectPaymentMethods
+          projectId={projectId}
+          isView={isView}
+          canEdit={isCreate || canManage(currentUserId, initialValues.owner_user_id)}
+        />
       )}
 
-      {tab === 0 && <>
-      <Grid container spacing={3} sx={{ mb: 2 }}>
-        <Grid size={{ xs: 12, sm: (isEdit || isView) ? 4 : 6 }}>
-          <Grid container spacing={1} sx={{ alignItems: 'center' }}>
-            <Grid>
-              <LinkTwoToneIcon color="primary" />
-            </Grid>
-            <Grid size={{ sm: 'grow' }}>
-              <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
-                {proxyUrl || '—'}
-              </Typography>
-              <Typography variant="subtitle2">PROXY URL</Typography>
-            </Grid>
-          </Grid>
-        </Grid>
-        <Grid size={{ xs: 12, sm: (isEdit || isView) ? 4 : 6 }}>
-          <Grid container spacing={1} sx={{ alignItems: 'center' }}>
-            <Grid>
-              <LanguageTwoToneIcon color="secondary" />
-            </Grid>
-            <Grid size={{ sm: 'grow' }}>
-              <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
-                {originTarget || '—'}
-              </Typography>
-              <Typography variant="subtitle2">ORIGIN TARGET</Typography>
-            </Grid>
-          </Grid>
-        </Grid>
-        {(isEdit || isView) && (
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <Grid container spacing={1} sx={{ alignItems: 'center' }}>
-              <Grid>
-                <PersonTwoToneIcon color="action" />
-              </Grid>
-              <Grid size={{ sm: 'grow' }}>
-                <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
-                  {initialValues.owner_username || '—'}
-                </Typography>
-                <Typography variant="subtitle2">OWNER</Typography>
+      {tab === 0 && (
+        <>
+          <Grid container spacing={3} sx={{ mb: 2 }}>
+            <Grid size={{ xs: 12, sm: isEdit || isView ? 4 : 6 }}>
+              <Grid container spacing={1} sx={{ alignItems: 'center' }}>
+                <Grid>
+                  <LinkTwoToneIcon color="primary" />
+                </Grid>
+                <Grid size={{ sm: 'grow' }}>
+                  <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
+                    {proxyUrl || '—'}
+                  </Typography>
+                  <Typography variant="subtitle2">PROXY URL</Typography>
+                </Grid>
               </Grid>
             </Grid>
+            <Grid size={{ xs: 12, sm: isEdit || isView ? 4 : 6 }}>
+              <Grid container spacing={1} sx={{ alignItems: 'center' }}>
+                <Grid>
+                  <LanguageTwoToneIcon color="secondary" />
+                </Grid>
+                <Grid size={{ sm: 'grow' }}>
+                  <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
+                    {originTarget || '—'}
+                  </Typography>
+                  <Typography variant="subtitle2">ORIGIN TARGET</Typography>
+                </Grid>
+              </Grid>
+            </Grid>
+            {(isEdit || isView) && (
+              <Grid size={{ xs: 12, sm: 4 }}>
+                <Grid container spacing={1} sx={{ alignItems: 'center' }}>
+                  <Grid>
+                    <PersonTwoToneIcon color="action" />
+                  </Grid>
+                  <Grid size={{ sm: 'grow' }}>
+                    <Typography variant="h5" sx={{ wordBreak: 'break-all' }}>
+                      {initialValues.owner_username || '—'}
+                    </Typography>
+                    <Typography variant="subtitle2">OWNER</Typography>
+                  </Grid>
+                </Grid>
+              </Grid>
+            )}
           </Grid>
-        )}
-      </Grid>
-      <Box sx={{ mb: 3, width: '100%', height: 1, bgcolor: 'divider' }} />
-      <Formik
-        enableReinitialize
-        initialValues={initialValues}
-        validationSchema={Yup.object().shape({
-          name: Yup.string().required('Name is required'),
-          slug: Yup.string()
-            .matches(/^[a-z0-9-]+$/, 'Only lowercase letters, numbers and hyphens')
-            .required('Slug is required'),
-          base_url: Yup.string().url('Must be a valid URL').required('Server Base URL is required')
-        })}
-        onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
-          try {
-            const payload = {
-              name: values.name,
-              slug: values.slug,
-              owner_user_id: values.owner_user_id,
-              base_url: values.base_url,
-              auth_header_name: values.auth_header_name || null,
-              auth_header_value: values.auth_header_value || null,
-              allow_unmatched: values.allow_unmatched
-            };
+          <Box sx={{ mb: 3, width: '100%', height: 1, bgcolor: 'divider' }} />
+          <Formik
+            enableReinitialize
+            initialValues={initialValues}
+            validationSchema={Yup.object().shape({
+              name: Yup.string().required('Name is required'),
+              slug: Yup.string()
+                .matches(/^[a-z0-9-]+$/, 'Only lowercase letters, numbers and hyphens')
+                .required('Slug is required'),
+              base_url: Yup.string().url('Must be a valid URL').required('Server Base URL is required')
+            })}
+            onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
+              try {
+                const payload = {
+                  name: values.name,
+                  slug: values.slug,
+                  owner_user_id: values.owner_user_id,
+                  base_url: values.base_url,
+                  auth_header_name: values.auth_header_name || null,
+                  auth_header_value: values.auth_header_value || null,
+                  allow_unmatched: values.allow_unmatched
+                };
 
-            if (isCreate) {
-              await axios.post('/api/v1/projects', payload);
-            } else if (isEdit && projectId) {
-              await axios.put(`/api/v1/projects/${projectId}`, payload);
-            }
+                if (isCreate) {
+                  await axios.post('/api/v1/projects', payload);
+                } else if (isEdit && projectId) {
+                  await axios.put(`/api/v1/projects/${projectId}`, payload);
+                }
 
-            navigate('/projects');
-          } catch (err: any) {
-            setStatus({ success: false });
-            setErrors({ submit: err?.error || err?.message || 'Request failed' });
-            setSubmitting(false);
-          }
-        }}
-      >
-        {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, setFieldValue, touched, values }) => (
-          <form onSubmit={handleSubmit}>
-            <Stack spacing={3} sx={{ width: '100%', maxWidth: 1080 }}>
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) minmax(0, 1fr)' },
-                  gap: { xs: 3, lg: 4 },
-                  alignItems: 'start'
-                }}
-              >
-                <Stack spacing={2.5}>
-                  <Box>
-                    <Typography variant="h4">Project Settings</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Basic project identity and owner configuration.
-                    </Typography>
-                    <Box
-                      sx={{
-                        mt: 1.5,
-                        width: '100%',
-                        height: 1,
-                        bgcolor: 'divider'
-                      }}
-                    />
-                  </Box>
-
-                  <TextField
-                    fullWidth
-                    label="Project Name"
-                    name="name"
-                    value={values.name}
-                    onBlur={handleBlur}
-                    disabled={isView}
-                    onChange={(e) => {
-                      handleChange(e);
-                      if (!touched.slug) {
-                        setFieldValue('slug', toSlug(e.target.value));
-                      }
+                navigate('/projects');
+              } catch (err: any) {
+                setStatus({ success: false });
+                setErrors({ submit: err?.error || err?.message || 'Request failed' });
+                setSubmitting(false);
+              }
+            }}
+          >
+            {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, setFieldValue, touched, values }) => (
+              <form onSubmit={handleSubmit}>
+                <Stack spacing={3} sx={{ width: '100%', maxWidth: 1080 }}>
+                  <Box
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) minmax(0, 1fr)' },
+                      gap: { xs: 3, lg: 4 },
+                      alignItems: 'start'
                     }}
-                    error={Boolean(touched.name && errors.name)}
-                    helperText={touched.name && errors.name}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Slug"
-                    name="slug"
-                    value={values.slug}
-                    onBlur={handleBlur}
-                    disabled={isView}
-                    onChange={handleChange}
-                    error={Boolean(touched.slug && errors.slug)}
-                    helperText={(touched.slug && errors.slug) || 'URL-friendly identifier, e.g. my-project'}
-                  />
-
-                </Stack>
-
-                <Stack spacing={2.5}>
-                  <Box>
-                    <Typography variant="h4">Server Route Settings</Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Upstream server connection and route matching behavior.
-                    </Typography>
-                    <Box
-                      sx={{
-                        mt: 1.5,
-                        width: '100%',
-                        height: 1,
-                        bgcolor: 'divider'
-                      }}
-                    />
-                  </Box>
-
-                  <TextField
-                    fullWidth
-                    label="Server Base URL"
-                    name="base_url"
-                    value={values.base_url}
-                    onBlur={handleBlur}
-                    disabled={isView}
-                    onChange={(e) => {
-                      handleChange(e);
-                      setOriginTarget(e.target.value);
-                    }}
-                    error={Boolean(touched.base_url && errors.base_url)}
-                    helperText={(touched.base_url && errors.base_url) || 'e.g. https://api.example.com'}
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Auth Header Name"
-                    name="auth_header_name"
-                    value={values.auth_header_name}
-                    onBlur={handleBlur}
-                    disabled={isView}
-                    onChange={handleChange}
-                    helperText="Optional, e.g. Authorization"
-                  />
-
-                  <TextField
-                    fullWidth
-                    label="Auth Header Value"
-                    name="auth_header_value"
-                    value={values.auth_header_value}
-                    onBlur={handleBlur}
-                    disabled={isView}
-                    onChange={handleChange}
-                    helperText="Optional, e.g. Bearer token123"
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        name="allow_unmatched"
-                        checked={values.allow_unmatched}
-                        onChange={handleChange}
-                        disabled={isView}
-                        color="primary"
-                      />
-                    }
-                    label="Allow Unmatched Routes"
-                    sx={{ ml: 0 }}
-                  />
-                </Stack>
-              </Box>
-
-              {errors.submit && (
-                <Box>
-                  <FormHelperText error>{errors.submit as string}</FormHelperText>
-                </Box>
-              )}
-
-              <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={2} justifyContent="flex-end">
-                <Button variant="outlined" onClick={() => navigate('/projects')} disabled={isSubmitting}>
-                  {isView ? 'Back' : 'Cancel'}
-                </Button>
-                {isView && projectId && (
-                  <Button
-                    variant="contained"
-                    startIcon={<EditTwoToneIcon />}
-                    onClick={() => navigate('/projects/edit', { state: { id: projectId } })}
                   >
-                    Edit
-                  </Button>
-                )}
-                {!isView && (isCreate || canManage(currentUserId, initialValues.owner_user_id)) && (
-                  <Button type="submit" variant="contained" disabled={isSubmitting}>
-                    {isCreate ? 'Create Project' : 'Save Changes'}
-                  </Button>
-                )}
-              </Stack>
-            </Stack>
-          </form>
-        )}
-      </Formik>
-      </>}
+                    <Stack spacing={2.5}>
+                      <Box>
+                        <Typography variant="h4">Project Settings</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Basic project identity and owner configuration.
+                        </Typography>
+                        <Box
+                          sx={{
+                            mt: 1.5,
+                            width: '100%',
+                            height: 1,
+                            bgcolor: 'divider'
+                          }}
+                        />
+                      </Box>
+
+                      <TextField
+                        fullWidth
+                        label="Project Name"
+                        name="name"
+                        value={values.name}
+                        onBlur={handleBlur}
+                        disabled={isView}
+                        onChange={(e) => {
+                          handleChange(e);
+                          if (!touched.slug) {
+                            setFieldValue('slug', toSlug(e.target.value));
+                          }
+                        }}
+                        error={Boolean(touched.name && errors.name)}
+                        helperText={touched.name && errors.name}
+                      />
+
+                      <TextField
+                        fullWidth
+                        label="Slug"
+                        name="slug"
+                        value={values.slug}
+                        onBlur={handleBlur}
+                        disabled={isView}
+                        onChange={handleChange}
+                        error={Boolean(touched.slug && errors.slug)}
+                        helperText={(touched.slug && errors.slug) || 'URL-friendly identifier, e.g. my-project'}
+                      />
+                    </Stack>
+
+                    <Stack spacing={2.5}>
+                      <Box>
+                        <Typography variant="h4">Server Route Settings</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Upstream server connection and route matching behavior.
+                        </Typography>
+                        <Box
+                          sx={{
+                            mt: 1.5,
+                            width: '100%',
+                            height: 1,
+                            bgcolor: 'divider'
+                          }}
+                        />
+                      </Box>
+
+                      <TextField
+                        fullWidth
+                        label="Server Base URL"
+                        name="base_url"
+                        value={values.base_url}
+                        onBlur={handleBlur}
+                        disabled={isView}
+                        onChange={(e) => {
+                          handleChange(e);
+                          setOriginTarget(e.target.value);
+                        }}
+                        error={Boolean(touched.base_url && errors.base_url)}
+                        helperText={(touched.base_url && errors.base_url) || 'e.g. https://api.example.com'}
+                      />
+
+                      <TextField
+                        fullWidth
+                        label="Auth Header Name"
+                        name="auth_header_name"
+                        value={values.auth_header_name}
+                        onBlur={handleBlur}
+                        disabled={isView}
+                        onChange={handleChange}
+                        helperText="Optional, e.g. Authorization"
+                      />
+
+                      <TextField
+                        fullWidth
+                        label="Auth Header Value"
+                        name="auth_header_value"
+                        value={values.auth_header_value}
+                        onBlur={handleBlur}
+                        disabled={isView}
+                        onChange={handleChange}
+                        helperText="Optional, e.g. Bearer token123"
+                      />
+
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            name="allow_unmatched"
+                            checked={values.allow_unmatched}
+                            onChange={handleChange}
+                            disabled={isView}
+                            color="primary"
+                          />
+                        }
+                        label="Allow Unmatched Routes"
+                        sx={{ ml: 0 }}
+                      />
+                    </Stack>
+                  </Box>
+
+                  {errors.submit && (
+                    <Box>
+                      <FormHelperText error>{errors.submit as string}</FormHelperText>
+                    </Box>
+                  )}
+
+                  <Stack direction={{ xs: 'column-reverse', sm: 'row' }} spacing={2} justifyContent="flex-end">
+                    <Button variant="outlined" onClick={() => navigate('/projects')} disabled={isSubmitting}>
+                      {isView ? 'Back' : 'Cancel'}
+                    </Button>
+                    {isView && projectId && (
+                      <Button
+                        variant="contained"
+                        startIcon={<EditTwoToneIcon />}
+                        onClick={() => navigate('/projects/edit', { state: { id: projectId } })}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                    {!isView && (isCreate || canManage(currentUserId, initialValues.owner_user_id)) && (
+                      <Button type="submit" variant="contained" disabled={isSubmitting}>
+                        {isCreate ? 'Create Project' : 'Save Changes'}
+                      </Button>
+                    )}
+                  </Stack>
+                </Stack>
+              </form>
+            )}
+          </Formik>
+        </>
+      )}
     </MainCard>
   );
 }

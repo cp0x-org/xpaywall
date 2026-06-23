@@ -33,26 +33,20 @@ export default function RoutesPage() {
   const [projectOwnerIds, setProjectOwnerIds] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
-    const fetchRoutes = axiosServices
-      .get<RouteRow[]>('/api/v1/outbound-routes')
-      .then((res) => setRoutes(res.data ?? []));
+    const fetchRoutes = axiosServices.get<RouteRow[]>('/api/v1/outbound-routes').then((res) => setRoutes(res.data ?? []));
 
-    const fetchProxy = axiosServices
-      .get<ProxyUrl>('/api/v1/system/proxy-url')
-      .then((res) => setProxyUrl(res.data.proxy_url ?? ''));
+    const fetchProxy = axiosServices.get<ProxyUrl>('/api/v1/system/proxy-url').then((res) => setProxyUrl(res.data.proxy_url ?? ''));
 
-    const fetchProjects = axiosServices
-      .get<Project[]>('/api/v1/projects/with-config')
-      .then((res) => {
-        const baseMap: Record<string, string> = {};
-        const ownerMap: Record<string, string | null> = {};
-        for (const p of res.data ?? []) {
-          baseMap[p.id] = p.base_url ?? '';
-          ownerMap[p.id] = p.owner_user_id ?? null;
-        }
-        setProjectBaseUrls(baseMap);
-        setProjectOwnerIds(ownerMap);
-      });
+    const fetchProjects = axiosServices.get<Project[]>('/api/v1/projects/with-config').then((res) => {
+      const baseMap: Record<string, string> = {};
+      const ownerMap: Record<string, string | null> = {};
+      for (const p of res.data ?? []) {
+        baseMap[p.id] = p.base_url ?? '';
+        ownerMap[p.id] = p.owner_user_id ?? null;
+      }
+      setProjectBaseUrls(baseMap);
+      setProjectOwnerIds(ownerMap);
+    });
 
     Promise.all([fetchRoutes, fetchProxy, fetchProjects])
       .catch((err) => setError(err?.error || err?.message || 'Failed to load routes'))
@@ -63,10 +57,7 @@ export default function RoutesPage() {
     if (!search.trim()) return routes;
     const query = search.toLowerCase();
     return routes.filter(
-      (r) =>
-        r.name.toLowerCase().includes(query) ||
-        r.path_pattern.toLowerCase().includes(query) ||
-        r.id.includes(query)
+      (r) => r.name.toLowerCase().includes(query) || r.path_pattern.toLowerCase().includes(query) || r.id.includes(query)
     );
   }, [search, routes]);
 
@@ -109,15 +100,15 @@ export default function RoutesPage() {
         </CardContent>
       ) : (
         <RoutesTable
-        rows={rows}
-        proxyUrl={proxyUrl}
-        projectBaseUrls={projectBaseUrls}
-        projectOwnerIds={projectOwnerIds}
-        onDelete={async (id) => {
-          await axiosServices.delete(`/api/v1/outbound-routes/${id}`);
-          setRoutes((prev) => prev.filter((r) => r.id !== id));
-        }}
-      />
+          rows={rows}
+          proxyUrl={proxyUrl}
+          projectBaseUrls={projectBaseUrls}
+          projectOwnerIds={projectOwnerIds}
+          onDelete={async (id) => {
+            await axiosServices.delete(`/api/v1/outbound-routes/${id}`);
+            setRoutes((prev) => prev.filter((r) => r.id !== id));
+          }}
+        />
       )}
     </MainCard>
   );

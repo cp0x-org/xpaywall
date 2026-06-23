@@ -57,13 +57,7 @@ function stableSort(array: Project[], comparator: (a: Project, b: Project) => nu
   return stabilized.map((el) => el[0]);
 }
 
-export default function ProjectsTable({
-  rows,
-  onDelete
-}: {
-  rows: Project[];
-  onDelete: (id: string) => Promise<void>;
-}) {
+export default function ProjectsTable({ rows, onDelete }: { rows: Project[]; onDelete: (id: string) => Promise<void> }) {
   const { user } = useAuth();
   const currentUserId = (user as { id?: string } | null | undefined)?.id;
   const [order, setOrder] = React.useState<ArrangementOrder>('asc');
@@ -96,54 +90,63 @@ export default function ProjectsTable({
     <MainCard content={false}>
       <TableContainer>
         <Table sx={{ minWidth: 760 }} aria-labelledby="tableTitle">
-          <ProjectsTableHeader
-            order={order}
-            orderBy={orderBy}
-            onRequestSort={handleRequestSort}
-            rowCount={rows.length}
-          />
+          <ProjectsTableHeader order={order} orderBy={orderBy} onRequestSort={handleRequestSort} rowCount={rows.length} />
           <TableBody>
             {stableSort(rows, getComparator(order, orderBy))
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((row) => {
                 const isOwner = canManage(currentUserId, row.owner_user_id);
                 return (
-                <TableRow hover tabIndex={-1} key={row.id}>
-                  <TableCell>
-                    <Typography variant="subtitle1">{row.name}</Typography>
-                  </TableCell>
-                  <TableCell>{row.slug}</TableCell>
-                  <TableCell>
-                    <Chip label={row.enabled ? 'Yes' : 'No'} size="small" color={row.enabled ? 'success' : 'default'} />
-                  </TableCell>
-                  <TableCell>{row.owner_username || (row.owner_user_id ? row.owner_user_id.slice(0, 8) : '—')}</TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.base_url}</TableCell>
-                  <TableCell>{row.payment_methods?.join(', ') || '—'}</TableCell>
-                  <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell align="center" sx={{ pr: 3 }}>
-                    <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-                      <Tooltip title="View">
-                        <IconButton color="primary" component={Link} to="/projects/view" state={{ id: row.id }} size="small" aria-label="View">
-                          <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
-                      {isOwner && (
-                        <Tooltip title="Edit">
-                          <IconButton color="secondary" component={Link} to="/projects/edit" state={{ id: row.id }} size="small" aria-label="Edit">
-                            <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                  <TableRow hover tabIndex={-1} key={row.id}>
+                    <TableCell>
+                      <Typography variant="subtitle1">{row.name}</Typography>
+                    </TableCell>
+                    <TableCell>{row.slug}</TableCell>
+                    <TableCell>
+                      <Chip label={row.enabled ? 'Yes' : 'No'} size="small" color={row.enabled ? 'success' : 'default'} />
+                    </TableCell>
+                    <TableCell>{row.owner_username || (row.owner_user_id ? row.owner_user_id.slice(0, 8) : '—')}</TableCell>
+                    <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.base_url}</TableCell>
+                    <TableCell>{row.payment_methods?.join(', ') || '—'}</TableCell>
+                    <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell align="center" sx={{ pr: 3 }}>
+                      <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                        <Tooltip title="View">
+                          <IconButton
+                            color="primary"
+                            component={Link}
+                            to="/projects/view"
+                            state={{ id: row.id }}
+                            size="small"
+                            aria-label="View"
+                          >
+                            <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                           </IconButton>
                         </Tooltip>
-                      )}
-                      {isOwner && (
-                        <Tooltip title="Archive Project">
-                          <IconButton color="error" size="small" aria-label="Archive Project" onClick={() => setDeletingRow(row)}>
-                            <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </Stack>
-                  </TableCell>
-                </TableRow>
+                        {isOwner && (
+                          <Tooltip title="Edit">
+                            <IconButton
+                              color="secondary"
+                              component={Link}
+                              to="/projects/edit"
+                              state={{ id: row.id }}
+                              size="small"
+                              aria-label="Edit"
+                            >
+                              <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {isOwner && (
+                          <Tooltip title="Archive Project">
+                            <IconButton color="error" size="small" aria-label="Archive Project" onClick={() => setDeletingRow(row)}>
+                              <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
             {emptyRows > 0 && (
@@ -169,8 +172,8 @@ export default function ProjectsTable({
         <DialogTitle>Archive Project</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Archive <strong>{deletingRow?.name}</strong>? The project will be hidden from the panel and xgateway
-            will stop resolving its routes. Request logs and historical stats are preserved.
+            Archive <strong>{deletingRow?.name}</strong>? The project will be hidden from the panel and xgateway will stop resolving its
+            routes. Request logs and historical stats are preserved.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

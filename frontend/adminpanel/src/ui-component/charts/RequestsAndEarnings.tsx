@@ -129,14 +129,14 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
       .catch(() => {});
   }, [periodMode, customFrom, customTo, projectId]);
 
-  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   const options = useMemo((): ApexOptions => {
     const isHourly = granularity === 'hour';
 
-    const maxReq  = series[0].data.length ? Math.max(...series[0].data.map((d) => d.y)) : 0;
+    const maxReq = series[0].data.length ? Math.max(...series[0].data.map((d) => d.y)) : 0;
     const maxEarn = series[1].data.length ? Math.max(...series[1].data.map((d) => d.y)) : 0;
-    const reqMax  = Math.ceil((maxReq  || 1) * 1.2);
+    const reqMax = Math.ceil((maxReq || 1) * 1.2);
     const earnMax = Math.ceil((maxEarn || 1) * 1.2 * 10000) / 10000;
 
     return {
@@ -149,7 +149,9 @@ export default function RequestsAndEarnings({ periodMode, customFrom, customTo, 
         toolbar: { show: true },
         zoom: { enabled: false },
         events: {
-          mounted: () => { window.dispatchEvent(new Event('resize')); }
+          mounted: () => {
+            window.dispatchEvent(new Event('resize'));
+          }
         }
       },
       colors: [COLOR_REQUESTS, COLOR_EARNINGS],
