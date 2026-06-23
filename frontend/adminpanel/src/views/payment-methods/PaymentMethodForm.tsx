@@ -132,7 +132,12 @@ export default function PaymentMethodForm() {
         validationSchema={Yup.object().shape({
           code: Yup.string().required('Code is required'),
           protocol: Yup.string().required('Protocol is required'),
-          name: Yup.string().required('Name is required'),
+          // MPP doesn't need a name; x402 derives one from the network or custom entry.
+          name: Yup.string().when('protocol', {
+            is: 'mpp',
+            then: (s) => s,
+            otherwise: (s) => s.required('Name is required')
+          }),
           method: Yup.string().when('protocol', {
             is: 'mpp',
             then: (s) => s.required('Method is required')
@@ -181,6 +186,19 @@ export default function PaymentMethodForm() {
                 disabled={isView}
                 error={Boolean(touched.code && errors.code)}
                 helperText={(touched.code && errors.code) || 'Unique identifier, e.g. x402-base-usdc'}
+              />
+
+              {/* Common to both protocols. For x402 it's the network name (auto-filled on network select). */}
+              <TextField
+                fullWidth
+                label="Name"
+                name="name"
+                value={values.name}
+                onBlur={handleBlur}
+                onChange={handleChange}
+                disabled={isView}
+                error={Boolean(touched.name && errors.name)}
+                helperText={(touched.name && errors.name) || 'Human-readable name, e.g. Base Mainnet or Tempo Charge'}
               />
 
               <FormControl fullWidth error={Boolean(touched.protocol && errors.protocol)}>
@@ -245,29 +263,16 @@ export default function PaymentMethodForm() {
                   )}
 
                   {(isView || networkMode === 'custom') && (
-                    <>
-                      <TextField
-                        fullWidth
-                        label="Name"
-                        name="name"
-                        value={values.name}
-                        onBlur={handleBlur}
-                        onChange={handleChange}
-                        disabled={isView}
-                        error={Boolean(touched.name && errors.name)}
-                        helperText={(touched.name && errors.name) || 'Human-readable name, e.g. Base Mainnet'}
-                      />
-                      <TextField
-                        fullWidth
-                        label="CAIP-2 Chain ID"
-                        name="caip2_chain_id"
-                        value={values.caip2_chain_id}
-                        onBlur={handleBlur}
-                        onChange={handleChange}
-                        disabled={isView}
-                        helperText="Optional, e.g. eip155:8453"
-                      />
-                    </>
+                    <TextField
+                      fullWidth
+                      label="CAIP-2 Chain ID"
+                      name="caip2_chain_id"
+                      value={values.caip2_chain_id}
+                      onBlur={handleBlur}
+                      onChange={handleChange}
+                      disabled={isView}
+                      helperText="Optional, e.g. eip155:8453"
+                    />
                   )}
                 </>
               )}
@@ -275,17 +280,6 @@ export default function PaymentMethodForm() {
               {/* MPP: no facilitator/network — a method (e.g. tempo) and scheme (charge). */}
               {values.protocol === 'mpp' && (
                 <>
-                  <TextField
-                    fullWidth
-                    label="Name"
-                    name="name"
-                    value={values.name}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                    disabled={isView}
-                    error={Boolean(touched.name && errors.name)}
-                    helperText={(touched.name && errors.name) || 'Human-readable name, e.g. Tempo Charge'}
-                  />
                   <FormControl fullWidth error={Boolean(touched.method && errors.method)}>
                     <InputLabel id="method-label">Method</InputLabel>
                     <Select

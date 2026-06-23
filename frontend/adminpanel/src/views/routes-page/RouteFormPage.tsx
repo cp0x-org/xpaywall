@@ -42,6 +42,8 @@ interface Project {
   slug: string;
   base_url?: string | null;
   owner_user_id?: string | null;
+  // Distinct protocols of the project's enabled payment methods (a project uses one).
+  payment_methods?: string[];
 }
 
 interface ProxyUrlResp {
@@ -315,6 +317,8 @@ export default function RouteFormPage() {
           };
 
           const selectedProject = projects.find((p) => p.id === values.project_id);
+          // Bazaar is an x402-only discovery extension — hide it for MPP projects.
+          const isMppProject = (selectedProject?.payment_methods ?? []).includes('mpp');
           const fullProxyUrl = selectedProject
             ? buildUrl(
                 proxyUrl,
@@ -436,148 +440,152 @@ export default function RouteFormPage() {
                   />
                 )}
 
-                <Divider />
+                {!isMppProject && (
+                  <>
+                    <Divider />
 
-                <Accordion defaultExpanded={Boolean(values.bazaar)}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Stack>
-                      <Typography variant="subtitle1">Bazaar Discovery Extension</Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Optional JSON describing the endpoint's method, body type, request/response schemas and examples. Leave empty for
-                        auto-mode (minimal GET declaration).
-                      </Typography>
-                    </Stack>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Stack spacing={2}>
-                      {!isView && (
-                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => setFieldValue('bazaar', JSON.stringify(BAZAAR_TEMPLATE, null, 2))}
-                          >
-                            Insert Template
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            color="warning"
-                            onClick={() => setFieldValue('bazaar', '')}
-                            disabled={!values.bazaar}
-                          >
-                            Clear
-                          </Button>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => {
-                              try {
-                                const parsed = JSON.parse(values.bazaar);
-                                setFieldValue('bazaar', JSON.stringify(parsed, null, 2));
-                              } catch {
-                                // ignore — validation will catch it
-                              }
-                            }}
-                            disabled={!values.bazaar}
-                          >
-                            Format
-                          </Button>
+                    <Accordion defaultExpanded={Boolean(values.bazaar)}>
+                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Stack>
+                          <Typography variant="subtitle1">Bazaar Discovery Extension</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            Optional JSON describing the endpoint's method, body type, request/response schemas and examples. Leave empty
+                            for auto-mode (minimal GET declaration).
+                          </Typography>
                         </Stack>
-                      )}
-
-                      <TextField
-                        fullWidth
-                        multiline
-                        minRows={8}
-                        maxRows={24}
-                        label="Bazaar JSON"
-                        name="bazaar"
-                        value={values.bazaar}
-                        onBlur={handleBlur}
-                        onChange={handleChange}
-                        error={Boolean(touched.bazaar && errors.bazaar)}
-                        helperText={touched.bazaar && errors.bazaar}
-                        disabled={isView}
-                        slotProps={{
-                          input: { style: { fontFamily: 'monospace', fontSize: 13 } }
-                        }}
-                      />
-
-                      {!isView && (
-                        <Accordion variant="outlined">
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Stack>
-                              <Typography variant="subtitle2">Auto-generate from a sample request</Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                Sends the request from your browser, then derives Bazaar JSON from the request/response. Target must allow
-                                CORS from this origin.
-                              </Typography>
+                      </AccordionSummary>
+                      <AccordionDetails>
+                        <Stack spacing={2}>
+                          {!isView && (
+                            <Stack direction="row" spacing={1} flexWrap="wrap">
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => setFieldValue('bazaar', JSON.stringify(BAZAAR_TEMPLATE, null, 2))}
+                              >
+                                Insert Template
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="warning"
+                                onClick={() => setFieldValue('bazaar', '')}
+                                disabled={!values.bazaar}
+                              >
+                                Clear
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  try {
+                                    const parsed = JSON.parse(values.bazaar);
+                                    setFieldValue('bazaar', JSON.stringify(parsed, null, 2));
+                                  } catch {
+                                    // ignore — validation will catch it
+                                  }
+                                }}
+                                disabled={!values.bazaar}
+                              >
+                                Format
+                              </Button>
                             </Stack>
-                          </AccordionSummary>
-                          <AccordionDetails>
-                            <Stack spacing={2}>
-                              <Stack direction="row" spacing={1}>
-                                <FormControl sx={{ minWidth: 120 }} size="small">
-                                  <InputLabel id="gen-method-label">Method</InputLabel>
-                                  <Select
-                                    labelId="gen-method-label"
-                                    value={genMethod}
-                                    label="Method"
-                                    onChange={(e) => setGenMethod(e.target.value as typeof genMethod)}
-                                  >
-                                    {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
-                                      <MenuItem key={m} value={m}>
-                                        {m}
-                                      </MenuItem>
-                                    ))}
-                                  </Select>
-                                </FormControl>
-                                <TextField
-                                  fullWidth
-                                  size="small"
-                                  label="Sample URL"
-                                  placeholder="https://upstream.example.com/users"
-                                  value={genUrl}
-                                  onChange={(e) => setGenUrl(e.target.value)}
-                                />
-                              </Stack>
+                          )}
 
-                              {genMethod !== 'GET' && genMethod !== 'DELETE' && (
-                                <TextField
-                                  fullWidth
-                                  multiline
-                                  minRows={3}
-                                  size="small"
-                                  label="Request body (JSON, optional)"
-                                  value={genBody}
-                                  onChange={(e) => setGenBody(e.target.value)}
-                                  slotProps={{
-                                    input: { style: { fontFamily: 'monospace', fontSize: 13 } }
-                                  }}
-                                />
-                              )}
+                          <TextField
+                            fullWidth
+                            multiline
+                            minRows={8}
+                            maxRows={24}
+                            label="Bazaar JSON"
+                            name="bazaar"
+                            value={values.bazaar}
+                            onBlur={handleBlur}
+                            onChange={handleChange}
+                            error={Boolean(touched.bazaar && errors.bazaar)}
+                            helperText={touched.bazaar && errors.bazaar}
+                            disabled={isView}
+                            slotProps={{
+                              input: { style: { fontFamily: 'monospace', fontSize: 13 } }
+                            }}
+                          />
 
-                              {genError && <FormHelperText error>{genError}</FormHelperText>}
+                          {!isView && (
+                            <Accordion variant="outlined">
+                              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                                <Stack>
+                                  <Typography variant="subtitle2">Auto-generate from a sample request</Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                    Sends the request from your browser, then derives Bazaar JSON from the request/response. Target must
+                                    allow CORS from this origin.
+                                  </Typography>
+                                </Stack>
+                              </AccordionSummary>
+                              <AccordionDetails>
+                                <Stack spacing={2}>
+                                  <Stack direction="row" spacing={1}>
+                                    <FormControl sx={{ minWidth: 120 }} size="small">
+                                      <InputLabel id="gen-method-label">Method</InputLabel>
+                                      <Select
+                                        labelId="gen-method-label"
+                                        value={genMethod}
+                                        label="Method"
+                                        onChange={(e) => setGenMethod(e.target.value as typeof genMethod)}
+                                      >
+                                        {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map((m) => (
+                                          <MenuItem key={m} value={m}>
+                                            {m}
+                                          </MenuItem>
+                                        ))}
+                                      </Select>
+                                    </FormControl>
+                                    <TextField
+                                      fullWidth
+                                      size="small"
+                                      label="Sample URL"
+                                      placeholder="https://upstream.example.com/users"
+                                      value={genUrl}
+                                      onChange={(e) => setGenUrl(e.target.value)}
+                                    />
+                                  </Stack>
 
-                              <Box>
-                                <Button
-                                  variant="contained"
-                                  size="small"
-                                  onClick={handleGenerateBazaar}
-                                  disabled={genBusy}
-                                  startIcon={genBusy ? <CircularProgress size={16} color="inherit" /> : undefined}
-                                >
-                                  {genBusy ? 'Fetching…' : 'Get Bazaar Description'}
-                                </Button>
-                              </Box>
-                            </Stack>
-                          </AccordionDetails>
-                        </Accordion>
-                      )}
-                    </Stack>
-                  </AccordionDetails>
-                </Accordion>
+                                  {genMethod !== 'GET' && genMethod !== 'DELETE' && (
+                                    <TextField
+                                      fullWidth
+                                      multiline
+                                      minRows={3}
+                                      size="small"
+                                      label="Request body (JSON, optional)"
+                                      value={genBody}
+                                      onChange={(e) => setGenBody(e.target.value)}
+                                      slotProps={{
+                                        input: { style: { fontFamily: 'monospace', fontSize: 13 } }
+                                      }}
+                                    />
+                                  )}
+
+                                  {genError && <FormHelperText error>{genError}</FormHelperText>}
+
+                                  <Box>
+                                    <Button
+                                      variant="contained"
+                                      size="small"
+                                      onClick={handleGenerateBazaar}
+                                      disabled={genBusy}
+                                      startIcon={genBusy ? <CircularProgress size={16} color="inherit" /> : undefined}
+                                    >
+                                      {genBusy ? 'Fetching…' : 'Get Bazaar Description'}
+                                    </Button>
+                                  </Box>
+                                </Stack>
+                              </AccordionDetails>
+                            </Accordion>
+                          )}
+                        </Stack>
+                      </AccordionDetails>
+                    </Accordion>
+                  </>
+                )}
 
                 {errors.submit && (
                   <Box>

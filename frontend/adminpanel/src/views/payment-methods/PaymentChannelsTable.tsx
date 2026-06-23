@@ -89,9 +89,9 @@ export default function PaymentChannelsTable({ rows, onDelete }: { rows: Payment
                     <Typography variant="subtitle1">{row.protocol}</Typography>
                   </TableCell>
                   <TableCell>{row.name}</TableCell>
-                  <TableCell>{row.method ?? '—'}</TableCell>
+                  {/* x402 has no method; show its network name (or CAIP-2 code) instead. */}
+                  <TableCell>{row.protocol === 'x402' ? row.name || row.caip2_chain_id || '—' : (row.method ?? '—')}</TableCell>
                   <TableCell>{row.scheme ?? '—'}</TableCell>
-                  <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{row.caip2_chain_id ?? '—'}</TableCell>
                   <TableCell>
                     <Chip label={row.enabled ? 'Enabled' : 'Disabled'} size="small" color={row.enabled ? 'success' : 'default'} />
                   </TableCell>
@@ -133,7 +133,7 @@ export default function PaymentChannelsTable({ rows, onDelete }: { rows: Payment
               ))}
             {emptyRows > 0 && (
               <TableRow sx={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={9} />
+                <TableCell colSpan={8} />
               </TableRow>
             )}
           </TableBody>
