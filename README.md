@@ -131,8 +131,6 @@ control-api:
     JWT_SECRET: change-me-jwt-secret-key
     PROXY_URL: http://your-server-ip:3102             # public gateway URL
     MODE: release                                     # Gin mode: release | debug
-    SUPERADMIN_USERNAME: admin
-    SUPERADMIN_PASSWORD: your-strong-password
 
 xgateway:
   environment:
@@ -171,8 +169,11 @@ adminpanel:
 | `PROXY_URL` | Yes | Public URL of xgateway (returned in 402 responses) |
 | `PORT` | No | Listen port (default: `9090`) |
 | `MODE` | No | Gin mode: `release` or `debug` |
-| `SUPERADMIN_USERNAME` | No | Bootstrap admin username |
-| `SUPERADMIN_PASSWORD` | No | Bootstrap admin password |
+| `APP_BASE_URL` | No | Frontend base URL for password-reset links (default `http://localhost:3000`) |
+| `GOOGLE_CLIENT_ID` | No | OAuth client ID; required for Google sign-in (`POST /auth/google`) |
+
+> **Superadmin:** there is no bootstrap-admin env var. Register a user, then grant the
+> role directly in Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`
 
 ---
 
