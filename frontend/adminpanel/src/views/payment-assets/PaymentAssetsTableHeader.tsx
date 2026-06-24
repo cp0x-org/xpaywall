@@ -17,6 +17,7 @@ const headCells: HeadCell[] = [
   { id: 'payment_method_chain', numeric: false, label: 'Chain ID' },
   { id: 'contract_address', numeric: false, label: 'Contract Address' },
   { id: 'decimals', numeric: true, label: 'Decimals' },
+  { id: 'is_global', numeric: false, label: 'Global' },
   { id: 'created_at', numeric: false, label: 'Created At' }
 ];
 

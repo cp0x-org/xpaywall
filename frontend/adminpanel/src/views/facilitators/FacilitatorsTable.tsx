@@ -17,6 +17,7 @@ import Typography from '@mui/material/Typography';
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
 import FacilitatorsTableHeader from './FacilitatorsTableHeader';
+import useAuth from 'hooks/useAuth';
 
 // assets
 import DeleteTwoToneIcon from '@mui/icons-material/DeleteTwoTone';
@@ -50,6 +51,8 @@ function stableSort(array: Facilitator[], comparator: (a: Facilitator, b: Facili
 }
 
 export default function FacilitatorsTable({ rows, onDelete }: { rows: Facilitator[]; onDelete: (id: string) => void }) {
+  const { user } = useAuth();
+  const isSuperadmin = user?.role === 'superadmin';
   const [order, setOrder] = React.useState<ArrangementOrder>('asc');
   const [orderBy, setOrderBy] = React.useState<string>('name');
   const [page, setPage] = React.useState<number>(0);
@@ -89,6 +92,9 @@ export default function FacilitatorsTable({ rows, onDelete }: { rows: Facilitato
                   <TableCell>
                     <Chip label={row.enabled ? 'Enabled' : 'Disabled'} size="small" color={row.enabled ? 'success' : 'default'} />
                   </TableCell>
+                  <TableCell>
+                    <Chip label={row.is_global ? 'Global' : 'Local'} size="small" color={row.is_global ? 'primary' : 'default'} />
+                  </TableCell>
                   <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
                   <TableCell align="center" sx={{ pr: 3 }}>
                     <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'center', gap: 1 }}>
@@ -104,30 +110,35 @@ export default function FacilitatorsTable({ rows, onDelete }: { rows: Facilitato
                           <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Edit">
-                        <IconButton
-                          color="secondary"
-                          component={Link}
-                          to="/facilitators/edit"
-                          state={{ id: row.id }}
-                          size="small"
-                          aria-label="Edit"
-                        >
-                          <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" size="small" aria-label="Delete" onClick={() => onDelete(row.id)}>
-                          <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
+                      {/* Global entities are editable only by superadmins; others get view only. */}
+                      {(!row.is_global || isSuperadmin) && (
+                        <>
+                          <Tooltip title="Edit">
+                            <IconButton
+                              color="secondary"
+                              component={Link}
+                              to="/facilitators/edit"
+                              state={{ id: row.id }}
+                              size="small"
+                              aria-label="Edit"
+                            >
+                              <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton color="error" size="small" aria-label="Delete" onClick={() => onDelete(row.id)}>
+                              <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
               ))}
             {emptyRows > 0 && (
               <TableRow sx={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={5} />
+                <TableCell colSpan={6} />
               </TableRow>
             )}
           </TableBody>

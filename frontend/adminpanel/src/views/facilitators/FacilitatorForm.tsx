@@ -20,6 +20,7 @@ import { Formik } from 'formik';
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
 import GlobalScopeToggle from 'ui-component/GlobalScopeToggle';
+import useAuth from 'hooks/useAuth';
 import axios from 'utils/axios';
 import { Facilitator } from './types';
 
@@ -40,6 +41,9 @@ export default function FacilitatorForm() {
   const isView = pathname.includes('/view');
 
   const id: string | undefined = (state as any)?.id;
+
+  const { user } = useAuth();
+  const isSuperadmin = user?.role === 'superadmin';
 
   const [loading, setLoading] = useState(isEdit || isView);
   const [loadError, setLoadError] = useState('');
@@ -170,7 +174,8 @@ export default function FacilitatorForm() {
                 <Button variant="outlined" onClick={() => navigate('/facilitators')} disabled={isSubmitting}>
                   {isView ? 'Back' : 'Cancel'}
                 </Button>
-                {isView && id && (
+                {/* Global entities are read-only for non-superadmins: hide Edit. */}
+                {isView && id && (!initialValues.is_global || isSuperadmin) && (
                   <Button
                     variant="contained"
                     startIcon={<EditTwoToneIcon />}

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Link } from 'react-router-dom';
 
 // material-ui
+import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
@@ -16,6 +17,7 @@ import Typography from '@mui/material/Typography';
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
 import PaymentAssetsTableHeader from './PaymentAssetsTableHeader';
+import useAuth from 'hooks/useAuth';
 
 // assets
 import DeleteTwoToneIcon from '@mui/icons-material/DeleteTwoTone';
@@ -49,6 +51,8 @@ function stableSort(array: PaymentMethodAsset[], comparator: (a: PaymentMethodAs
 }
 
 export default function PaymentAssetsTable({ rows, onDelete }: { rows: PaymentMethodAsset[]; onDelete: (id: string) => void }) {
+  const { user } = useAuth();
+  const isSuperadmin = user?.role === 'superadmin';
   const [order, setOrder] = React.useState<ArrangementOrder>('asc');
   const [orderBy, setOrderBy] = React.useState<string>('symbol');
   const [page, setPage] = React.useState<number>(0);
@@ -94,6 +98,9 @@ export default function PaymentAssetsTable({ rows, onDelete }: { rows: PaymentMe
                     {row.contract_address ?? '—'}
                   </TableCell>
                   <TableCell>{row.decimals}</TableCell>
+                  <TableCell>
+                    <Chip label={row.is_global ? 'Global' : 'Local'} size="small" color={row.is_global ? 'primary' : 'default'} />
+                  </TableCell>
                   <TableCell>{new Date(row.created_at).toLocaleDateString()}</TableCell>
                   <TableCell align="center" sx={{ pr: 3 }}>
                     <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'center', gap: 1 }}>
@@ -109,30 +116,35 @@ export default function PaymentAssetsTable({ rows, onDelete }: { rows: PaymentMe
                           <VisibilityTwoToneIcon sx={{ fontSize: '1.3rem' }} />
                         </IconButton>
                       </Tooltip>
-                      <Tooltip title="Edit">
-                        <IconButton
-                          color="secondary"
-                          component={Link}
-                          to="/payment-assets/edit"
-                          state={{ id: row.id }}
-                          size="small"
-                          aria-label="Edit"
-                        >
-                          <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" size="small" aria-label="Delete" onClick={() => onDelete(row.id)}>
-                          <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
-                        </IconButton>
-                      </Tooltip>
+                      {/* Global entities are editable only by superadmins; others get view only. */}
+                      {(!row.is_global || isSuperadmin) && (
+                        <>
+                          <Tooltip title="Edit">
+                            <IconButton
+                              color="secondary"
+                              component={Link}
+                              to="/payment-assets/edit"
+                              state={{ id: row.id }}
+                              size="small"
+                              aria-label="Edit"
+                            >
+                              <EditTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton color="error" size="small" aria-label="Delete" onClick={() => onDelete(row.id)}>
+                              <DeleteTwoToneIcon sx={{ fontSize: '1.3rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
                     </Stack>
                   </TableCell>
                 </TableRow>
               ))}
             {emptyRows > 0 && (
               <TableRow sx={{ height: 53 * emptyRows }}>
-                <TableCell colSpan={7} />
+                <TableCell colSpan={8} />
               </TableRow>
             )}
           </TableBody>

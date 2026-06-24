@@ -18,6 +18,7 @@ const headCells: HeadCell[] = [
   { id: 'method', numeric: false, label: 'Method' },
   { id: 'scheme', numeric: false, label: 'Scheme' },
   { id: 'enabled', numeric: false, label: 'Enabled' },
+  { id: 'is_global', numeric: false, label: 'Global' },
   { id: 'created_at', numeric: false, label: 'Created At' }
 ];
 

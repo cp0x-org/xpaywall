@@ -88,7 +88,11 @@ export default function RoutesTable({
   onDelete: (id: string) => Promise<void>;
 }) {
   const { user } = useAuth();
-  const currentUserId = (user as { id?: string } | null | undefined)?.id;
+  const currentUser = user as { id?: string; username?: string } | null | undefined;
+  const currentUserId = currentUser?.id;
+  // Routes are owner-scoped, so every row belongs to the current user; the proxy
+  // URL is /{username}/{project_slug}/{route}.
+  const currentUsername = currentUser?.username;
   const [order, setOrder] = React.useState<ArrangementOrder>('asc');
   const [orderBy, setOrderBy] = React.useState<string>('name');
   const [page, setPage] = React.useState<number>(0);
@@ -125,6 +129,7 @@ export default function RoutesTable({
               .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
               .map((row) => {
                 const isOwner = canManage(currentUserId, projectOwnerIds[row.project_id]);
+                const proxyHref = currentUsername ? buildUrl(proxyUrl, `${currentUsername}/${row.project_slug}${row.path_pattern}`) : '';
                 return (
                   <TableRow hover tabIndex={-1} key={row.id}>
                     <TableCell>
@@ -137,7 +142,7 @@ export default function RoutesTable({
                     <TableCell>{row.free ? '—' : row.price_usd ? `$${row.price_usd}` : '—'}</TableCell>
                     <TableCell>{row.project_name || row.project_id.slice(0, 8)}</TableCell>
                     <TableCell align="center">
-                      <UrlLinkCell url={buildUrl(proxyUrl, `${row.project_slug}${row.path_pattern}`)} />
+                      <UrlLinkCell url={proxyHref} />
                     </TableCell>
                     <TableCell align="center">
                       <UrlLinkCell url={buildUrl(projectBaseUrls[row.project_id] ?? '', row.path_pattern)} />
