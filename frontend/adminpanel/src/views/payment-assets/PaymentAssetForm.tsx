@@ -21,6 +21,7 @@ import { Formik } from 'formik';
 
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
+import GlobalScopeToggle from 'ui-component/GlobalScopeToggle';
 import axios from 'utils/axios';
 import { PaymentMethodAsset } from './types';
 
@@ -35,6 +36,7 @@ const emptyValues = {
   symbol: '',
   contract_address: '',
   decimals: 18,
+  is_global: false,
   submit: null
 };
 
@@ -68,6 +70,7 @@ export default function PaymentAssetForm() {
             symbol: d.symbol,
             contract_address: d.contract_address ?? '',
             decimals: d.decimals,
+            is_global: d.is_global ?? false,
             submit: null
           });
         })
@@ -115,7 +118,8 @@ export default function PaymentAssetForm() {
               payment_method_id: values.payment_method_id,
               symbol: values.symbol,
               contract_address: values.contract_address || null,
-              decimals: Number(values.decimals)
+              decimals: Number(values.decimals),
+              is_global: values.is_global
             };
             if (isCreate) {
               await axios.post('/api/v1/payment-method-assets', payload);
@@ -189,6 +193,8 @@ export default function PaymentAssetForm() {
                 helperText={(touched.decimals && errors.decimals) || 'e.g. 6 for USDC, 18 for ETH'}
                 slotProps={{ htmlInput: { min: 0, max: 77 } }}
               />
+
+              <GlobalScopeToggle checked={values.is_global} onChange={(v) => setFieldValue('is_global', v)} disabled={isView} />
 
               {errors.submit && (
                 <Box>

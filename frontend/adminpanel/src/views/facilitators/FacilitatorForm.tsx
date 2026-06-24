@@ -19,6 +19,7 @@ import { Formik } from 'formik';
 
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
+import GlobalScopeToggle from 'ui-component/GlobalScopeToggle';
 import axios from 'utils/axios';
 import { Facilitator } from './types';
 
@@ -26,6 +27,7 @@ const emptyValues = {
   name: '',
   url: '',
   enabled: true,
+  is_global: false,
   submit: null
 };
 
@@ -53,6 +55,7 @@ export default function FacilitatorForm() {
             name: d.name,
             url: d.url,
             enabled: d.enabled,
+            is_global: d.is_global ?? false,
             submit: null
           });
         })
@@ -98,7 +101,8 @@ export default function FacilitatorForm() {
             const payload = {
               name: values.name,
               url: values.url,
-              enabled: values.enabled
+              enabled: values.enabled,
+              is_global: values.is_global
             };
             if (isCreate) {
               await axios.post('/api/v1/facilitators', payload);
@@ -153,6 +157,8 @@ export default function FacilitatorForm() {
                 label="Enabled"
                 sx={{ ml: 0 }}
               />
+
+              <GlobalScopeToggle checked={values.is_global} onChange={(v) => setFieldValue('is_global', v)} disabled={isView} />
 
               {errors.submit && (
                 <Box>

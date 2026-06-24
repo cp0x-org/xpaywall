@@ -57,8 +57,11 @@ export type JWTContextType = CanRemove & {
   isInitialized?: boolean;
   user?: UserProfile | null | undefined;
   logout: () => void;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, firstName: string, lastName: string) => Promise<void>;
+  login: (identifier: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
+  googleLogin: (idToken: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<string>;
+  confirmResetPassword: (token: string, password: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: VoidFunction;
 };

@@ -1,14 +1,12 @@
 import { SyntheticEvent, useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useDispatch } from 'store';
 
 // material-ui
 import Button from '@mui/material/Button';
-import Checkbox from '@mui/material/Checkbox';
+import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import FormHelperText from '@mui/material/FormHelperText';
-import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import InputAdornment from '@mui/material/InputAdornment';
 import InputLabel from '@mui/material/InputLabel';
@@ -24,10 +22,12 @@ import { Formik } from 'formik';
 // project imports
 import AnimateButton from 'ui-component/extended/AnimateButton';
 import CustomFormControl from 'ui-component/extended/Form/CustomFormControl';
+import GoogleLoginButton from '../GoogleLoginButton';
 import useAuth from 'hooks/useAuth';
 import useScriptRef from 'hooks/useScriptRef';
 import { strengthColor, strengthIndicator } from 'utils/password-strength';
 import { openSnackbar } from 'store/slices/snackbar';
+import { DASHBOARD_PATH } from 'config';
 
 // assets
 import Visibility from '@mui/icons-material/Visibility';
@@ -44,7 +44,6 @@ export default function JWTRegister({ ...others }) {
   const dispatch = useDispatch();
 
   const [showPassword, setShowPassword] = useState(false);
-  const [checked, setChecked] = useState(true);
 
   const [strength, setStrength] = useState(0);
   const [level, setLevel] = useState<StringColorProps>();
@@ -58,9 +57,6 @@ export default function JWTRegister({ ...others }) {
     event.preventDefault();
   };
 
-  const [searchParams] = useSearchParams();
-  const authParam = searchParams.get('auth');
-
   const changePassword = (value: string) => {
     const temp = strengthIndicator(value);
     setStrength(temp);
@@ -68,48 +64,37 @@ export default function JWTRegister({ ...others }) {
   };
 
   useEffect(() => {
-    changePassword('123456');
+    changePassword('');
   }, []);
 
   return (
     <>
       <Stack sx={{ mb: 2, alignItems: 'center' }}>
-        <Typography variant="subtitle1">Sign up with Email address </Typography>
+        <Typography variant="subtitle1">Sign up with username & email</Typography>
       </Stack>
 
       <Formik
         initialValues={{
+          username: '',
           email: '',
           password: '',
-          firstName: '',
-          lastName: '',
           submit: null
         }}
         validationSchema={Yup.object().shape({
-          firstName: Yup.string()
+          username: Yup.string()
             .trim()
-            .required('First name is required')
-            .min(2, 'First name must be at least 2 characters')
-            .max(50, 'First name must not exceed 50 characters')
-            .matches(/^[A-Za-z\s]+$/, 'First name can only contain letters and spaces'),
-          lastName: Yup.string()
-            .trim()
-            .required('Last name is required')
-            .min(2, 'Last name must be at least 2 characters')
-            .max(50, 'Last name must not exceed 50 characters')
-            .matches(/^[A-Za-z\s]+$/, 'Last name can only contain letters and spaces'),
+            .required('Username is required')
+            .min(2, 'Username must be at least 2 characters')
+            .max(50, 'Username must not exceed 50 characters'),
           email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
           password: Yup.string()
             .required('Password is required')
-            .test('no-leading-trailing-whitespace', 'Password can not start or end with spaces', (value) => value === value.trim())
-            .max(10, 'Password must be less than 10 characters')
+            .min(8, 'Password must be at least 8 characters')
+            .test('no-leading-trailing-whitespace', 'Password can not start or end with spaces', (value) => value === value?.trim())
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
           try {
-            const trimmedFirstName = values.firstName.trim();
-            const trimmedLastName = values.lastName.trim();
-            const trimmedEmail = values.email.trim();
-            await register?.(trimmedEmail, values.password, trimmedFirstName, trimmedLastName);
+            await register?.(values.username.trim(), values.email.trim(), values.password);
             if (scriptedRef.current) {
               setStatus({ success: true });
               setSubmitting(false);
@@ -126,16 +111,14 @@ export default function JWTRegister({ ...others }) {
               );
 
               setTimeout(() => {
-                navigate(authParam ? `/login?auth=${authParam}` : '/login', {
-                  replace: true
-                });
-              }, 1500);
+                navigate(DASHBOARD_PATH, { replace: true });
+              }, 1000);
             }
           } catch (err: any) {
             console.error(err);
             if (scriptedRef.current) {
               setStatus({ success: false });
-              setErrors({ submit: err.message });
+              setErrors({ submit: err?.error || err?.message || 'Registration failed' });
               setSubmitting(false);
             }
           }
@@ -143,46 +126,26 @@ export default function JWTRegister({ ...others }) {
       >
         {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, touched, values }) => (
           <form noValidate onSubmit={handleSubmit} {...others}>
-            <Grid container spacing={{ xs: 0, sm: 2 }}>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <CustomFormControl fullWidth error={Boolean(touched.firstName && errors.firstName)}>
-                  <InputLabel htmlFor="outlined-adornment-first-register">First Name</InputLabel>
-                  <OutlinedInput
-                    id="outlined-adornment-first-register"
-                    type="text"
-                    name="firstName"
-                    value={values.firstName}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                  />
-                  {touched.firstName && errors.firstName && (
-                    <FormHelperText error id="standard-weight-helper-text--register">
-                      {errors.firstName}
-                    </FormHelperText>
-                  )}
-                </CustomFormControl>
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <CustomFormControl fullWidth error={Boolean(touched.lastName && errors.lastName)}>
-                  <InputLabel htmlFor="outlined-adornment-last-register">Last Name</InputLabel>
-                  <OutlinedInput
-                    id="outlined-adornment-last-register"
-                    type="text"
-                    name="lastName"
-                    value={values.lastName}
-                    onBlur={handleBlur}
-                    onChange={handleChange}
-                  />
-                  {touched.lastName && errors.lastName && (
-                    <FormHelperText error id="standard-weight-helper-text--register">
-                      {errors.lastName}
-                    </FormHelperText>
-                  )}
-                </CustomFormControl>
-              </Grid>
-            </Grid>
+            <CustomFormControl fullWidth error={Boolean(touched.username && errors.username)}>
+              <InputLabel htmlFor="outlined-adornment-username-register">Username</InputLabel>
+              <OutlinedInput
+                id="outlined-adornment-username-register"
+                type="text"
+                value={values.username}
+                name="username"
+                onBlur={handleBlur}
+                onChange={handleChange}
+                label="Username"
+              />
+              {touched.username && errors.username && (
+                <FormHelperText error id="standard-weight-helper-text-username-register">
+                  {errors.username}
+                </FormHelperText>
+              )}
+            </CustomFormControl>
+
             <CustomFormControl fullWidth error={Boolean(touched.email && errors.email)}>
-              <InputLabel htmlFor="outlined-adornment-email-register">Email Address / Username</InputLabel>
+              <InputLabel htmlFor="outlined-adornment-email-register">Email Address</InputLabel>
               <OutlinedInput
                 id="outlined-adornment-email-register"
                 type="email"
@@ -190,9 +153,10 @@ export default function JWTRegister({ ...others }) {
                 name="email"
                 onBlur={handleBlur}
                 onChange={handleChange}
+                label="Email Address"
               />
               {touched.email && errors.email && (
-                <FormHelperText error id="standard-weight-helper-text--register">
+                <FormHelperText error id="standard-weight-helper-text-email-register">
                   {errors.email}
                 </FormHelperText>
               )}
@@ -245,17 +209,6 @@ export default function JWTRegister({ ...others }) {
               </FormControl>
             )}
 
-            <FormControlLabel
-              control={<Checkbox checked={checked} onChange={(event) => setChecked(event.target.checked)} name="checked" color="primary" />}
-              label={
-                <Typography variant="subtitle1">
-                  Agree with &nbsp;
-                  <Typography variant="subtitle1" component={Link} to="#">
-                    Terms & Condition.
-                  </Typography>
-                </Typography>
-              }
-            />
             {errors.submit && (
               <Box sx={{ mt: 3 }}>
                 <FormHelperText error>{errors.submit}</FormHelperText>
@@ -268,6 +221,18 @@ export default function JWTRegister({ ...others }) {
                   Sign up
                 </Button>
               </AnimateButton>
+            </Box>
+
+            <Box sx={{ mt: 2 }}>
+              <Divider>
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  OR
+                </Typography>
+              </Divider>
+            </Box>
+
+            <Box sx={{ mt: 2 }}>
+              <GoogleLoginButton />
             </Box>
           </form>
         )}

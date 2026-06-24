@@ -16,7 +16,6 @@ import AuthCardWrapper from './AuthCardWrapper';
 import Logo from 'ui-component/Logo';
 import AuthFooter from 'ui-component/cards/AuthFooter';
 
-import useAuth from 'hooks/useAuth';
 import { APP_AUTH } from 'config';
 
 // Possible auth types
@@ -34,7 +33,6 @@ const authLoginImports: Record<AuthType, () => Promise<any>> = {
 // ================================|| AUTH3 - LOGIN ||================================ //
 
 export default function Login() {
-  const { isLoggedIn } = useAuth();
   const downMD = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
   const [AuthLoginComponent, setAuthLoginComponent] = useState<React.ComponentType | null>(null);
 
@@ -75,17 +73,11 @@ export default function Login() {
                 </Stack>
                 <Box sx={{ width: 1 }}>{AuthLoginComponent && <AuthLoginComponent />}</Box>
                 <Divider sx={{ width: 1 }} />
-                {/* Registration link hidden — not available yet */}
-                {/* <Stack sx={{ alignItems: 'center' }}>
-                  <Typography
-                    component={Link}
-                    to="/register"
-                    variant="subtitle1"
-                    sx={{ textDecoration: 'none' }}
-                  >
+                <Stack sx={{ alignItems: 'center' }}>
+                  <Typography component={Link} to="/register" variant="subtitle1" sx={{ textDecoration: 'none' }} color="secondary">
                     Don&apos;t have an account?
                   </Typography>
-                </Stack> */}
+                </Stack>
                 <Stack sx={{ alignItems: 'center', gap: 0.5 }}>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
                     Demo credentials

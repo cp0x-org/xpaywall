@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 // material-ui
 import Button from '@mui/material/Button';
@@ -20,17 +20,23 @@ import useScriptRef from 'hooks/useScriptRef';
 import { useDispatch } from 'store';
 import { openSnackbar } from 'store/slices/snackbar';
 
+// extractToken pulls the `token` query param out of the reset URL returned by the API.
+function extractToken(resetUrl: string): string | null {
+  try {
+    return new URL(resetUrl).searchParams.get('token');
+  } catch {
+    return null;
+  }
+}
+
 // ========================|| JWT - FORGOT PASSWORD ||======================== //
 
-export default function AuthForgotPassword({ link, ...others }: { link?: string }) {
+export default function AuthForgotPassword({ ...others }) {
   const scriptedRef = useScriptRef();
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { isLoggedIn, resetPassword } = useAuth();
-
-  const [searchParams] = useSearchParams();
-  const authParam = searchParams.get('auth');
+  const { requestPasswordReset } = useAuth();
 
   return (
     <Formik
@@ -43,46 +49,33 @@ export default function AuthForgotPassword({ link, ...others }: { link?: string 
       })}
       onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
         try {
-          await resetPassword?.(values.email).then(
-            () => {
-              setStatus({ success: true });
-              setSubmitting(false);
-              dispatch(
-                openSnackbar({
-                  open: true,
-                  message: 'Check mail for reset password link',
-                  variant: 'alert',
-                  alert: {
-                    color: 'success'
-                  },
-                  close: false
-                })
-              );
-              setTimeout(() => {
-                navigate(
-                  isLoggedIn ? `/pages/check-mail/${link || 'check-mail3'}` : authParam ? `/check-mail?auth=${authParam}` : '/check-mail',
-                  {
-                    replace: true
-                  }
-                );
-              }, 1500);
+          // Backend always responds 200 (it never reveals whether the email exists).
+          // Until SMTP is wired up it returns the reset link, which we use to route
+          // straight to the reset page so the flow is usable end-to-end.
+          const resetUrl = (await requestPasswordReset?.(values.email)) ?? '';
+          const token = resetUrl ? extractToken(resetUrl) : null;
 
-              // WARNING: do not set any formik state here as formik might be already destroyed here. You may get following error by doing so.
-              // Warning: Can't perform a React state update on an unmounted component. This is a no-op, but it indicates a memory leak in your application.
-              // To fix, cancel all subscriptions and asynchronous tasks in a useEffect cleanup function.
-              // github issue: https://github.com/formium/formik/issues/2430
-            },
-            (err: any) => {
-              setStatus({ success: false });
-              setErrors({ submit: err.message });
-              setSubmitting(false);
-            }
-          );
+          if (scriptedRef.current) {
+            setStatus({ success: true });
+            setSubmitting(false);
+            dispatch(
+              openSnackbar({
+                open: true,
+                message: token ? 'Reset link generated. Redirecting…' : 'If the email is registered, a reset link has been sent.',
+                variant: 'alert',
+                alert: { color: 'success' },
+                close: false
+              })
+            );
+            setTimeout(() => {
+              navigate(token ? `/reset-password?token=${encodeURIComponent(token)}` : '/login', { replace: true });
+            }, 1500);
+          }
         } catch (err: any) {
           console.error(err);
           if (scriptedRef.current) {
             setStatus({ success: false });
-            setErrors({ submit: err.message });
+            setErrors({ submit: err?.error || err?.message || 'Request failed' });
             setSubmitting(false);
           }
         }
@@ -91,7 +84,7 @@ export default function AuthForgotPassword({ link, ...others }: { link?: string 
       {({ errors, handleBlur, handleChange, handleSubmit, isSubmitting, touched, values }) => (
         <form noValidate onSubmit={handleSubmit} {...others}>
           <CustomFormControl fullWidth error={Boolean(touched.email && errors.email)}>
-            <InputLabel htmlFor="outlined-adornment-email-forgot">Email Address / Username</InputLabel>
+            <InputLabel htmlFor="outlined-adornment-email-forgot">Email Address</InputLabel>
             <OutlinedInput
               id="outlined-adornment-email-forgot"
               type="email"
@@ -99,7 +92,7 @@ export default function AuthForgotPassword({ link, ...others }: { link?: string 
               name="email"
               onBlur={handleBlur}
               onChange={handleChange}
-              label="Email Address / Username"
+              label="Email Address"
             />
             {touched.email && errors.email && (
               <FormHelperText error id="standard-weight-helper-text-email-forgot">

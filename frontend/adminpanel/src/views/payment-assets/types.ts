@@ -6,6 +6,8 @@ export interface PaymentMethodAsset {
   symbol: string;
   contract_address?: string | null;
   decimals: number;
+  is_global: boolean;
+  owner_user_id?: string | null;
   created_at: string;
   updated_at: string;
 }

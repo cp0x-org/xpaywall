@@ -36,7 +36,7 @@ import { StringColorProps } from 'types';
 
 // ========================|| JWT - RESET PASSWORD ||======================== //
 
-export default function AuthResetPassword({ link, ...others }: { link?: string }) {
+export default function AuthResetPassword({ ...others }) {
   const navigate = useNavigate();
   const scriptedRef = useScriptRef();
 
@@ -44,7 +44,7 @@ export default function AuthResetPassword({ link, ...others }: { link?: string }
   const [strength, setStrength] = useState(0);
   const [level, setLevel] = useState<StringColorProps>();
 
-  const { isLoggedIn } = useAuth();
+  const { confirmResetPassword } = useAuth();
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
@@ -65,7 +65,7 @@ export default function AuthResetPassword({ link, ...others }: { link?: string }
   }, []);
 
   const [searchParams] = useSearchParams();
-  const authParam = searchParams.get('auth');
+  const token = searchParams.get('token') || '';
 
   return (
     <Formik
@@ -75,14 +75,17 @@ export default function AuthResetPassword({ link, ...others }: { link?: string }
         submit: null
       }}
       validationSchema={Yup.object().shape({
-        password: Yup.string().max(255).required('Password is required'),
+        password: Yup.string().min(8, 'Password must be at least 8 characters').max(255).required('Password is required'),
         confirmPassword: Yup.string()
           .required('Confirm Password is required')
           .test('confirmPassword', 'Both Password must be match!', (confirmPassword, yup) => yup.parent.password === confirmPassword)
       })}
       onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
         try {
-          // password reset
+          if (!token) {
+            throw new Error('Missing or invalid reset token');
+          }
+          await confirmResetPassword?.(token, values.password);
           if (scriptedRef.current) {
             setStatus({ success: true });
             setSubmitting(false);
@@ -90,7 +93,7 @@ export default function AuthResetPassword({ link, ...others }: { link?: string }
             dispatch(
               openSnackbar({
                 open: true,
-                message: 'Successfuly reset password.',
+                message: 'Successfully reset password.',
                 variant: 'alert',
                 alert: {
                   color: 'success'
@@ -100,16 +103,14 @@ export default function AuthResetPassword({ link, ...others }: { link?: string }
             );
 
             setTimeout(() => {
-              navigate(isLoggedIn ? `/pages/login/${link || 'login3'}` : authParam ? `/login?auth=${authParam}` : '/login', {
-                replace: true
-              });
+              navigate('/login', { replace: true });
             }, 1500);
           }
         } catch (err: any) {
           console.error(err);
           if (scriptedRef.current) {
             setStatus({ success: false });
-            setErrors({ submit: err.message });
+            setErrors({ submit: err?.error || err?.message || 'Reset failed' });
             setSubmitting(false);
           }
         }

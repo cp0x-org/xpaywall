@@ -25,6 +25,7 @@ import { Formik } from 'formik';
 
 // project imports
 import MainCard from 'ui-component/cards/MainCard';
+import GlobalScopeToggle from 'ui-component/GlobalScopeToggle';
 import axios from 'utils/axios';
 import { PaymentMethod } from './types';
 
@@ -45,6 +46,7 @@ const emptyValues = {
   method: 'tempo',
   scheme: 'charge',
   enabled: true,
+  is_global: false,
   submit: null
 };
 
@@ -93,6 +95,7 @@ export default function PaymentMethodForm() {
             method: d.method ?? 'tempo',
             scheme: d.scheme ?? 'charge',
             enabled: d.enabled,
+            is_global: d.is_global ?? false,
             submit: null
           });
         })
@@ -158,7 +161,8 @@ export default function PaymentMethodForm() {
               caip2_chain_id: isMPP ? null : values.caip2_chain_id || null,
               method: isMPP ? values.method : null,
               scheme: isMPP ? values.scheme : null,
-              enabled: values.enabled
+              enabled: values.enabled,
+              is_global: values.is_global
             };
             if (isCreate) {
               await axios.post('/api/v1/payment-methods', payload);
@@ -332,6 +336,8 @@ export default function PaymentMethodForm() {
                 label="Enabled"
                 sx={{ ml: 0 }}
               />
+
+              <GlobalScopeToggle checked={values.is_global} onChange={(v) => setFieldValue('is_global', v)} disabled={isView} />
 
               {errors.submit && (
                 <Box>

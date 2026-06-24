@@ -84,8 +84,9 @@ export function JWTProvider({ children }: { children: React.ReactElement }) {
     init();
   }, []);
 
-  const login = async (username: string, password: string) => {
-    const response = await axios.post('/auth/login', { username, password });
+  // identifier may be a username or an email address; the backend resolves either.
+  const login = async (identifier: string, password: string) => {
+    const response = await axios.post('/auth/login', { username: identifier, password });
     const { token, user } = response.data;
     setSession(token);
     dispatch({
@@ -97,14 +98,55 @@ export function JWTProvider({ children }: { children: React.ReactElement }) {
     });
   };
 
-  const register = async (_email: string, _password: string, _firstName: string, _lastName: string) => {};
+  // register creates a local account and signs the user in (backend returns a token).
+  const register = async (username: string, email: string, password: string) => {
+    const response = await axios.post('/auth/register', { username, email, password });
+    const { token, user } = response.data;
+    setSession(token);
+    dispatch({
+      type: LOGIN,
+      payload: {
+        isLoggedIn: true,
+        user
+      }
+    });
+  };
+
+  // googleLogin verifies a Google ID token (from Google Identity Services) and signs in.
+  const googleLogin = async (idToken: string) => {
+    const response = await axios.post('/auth/google', { id_token: idToken });
+    const { token, user } = response.data;
+    setSession(token);
+    dispatch({
+      type: LOGIN,
+      payload: {
+        isLoggedIn: true,
+        user
+      }
+    });
+  };
 
   const logout = () => {
     setSession(null);
     dispatch({ type: LOGOUT });
   };
 
-  const resetPassword = async (_email: string) => {};
+  // requestPasswordReset asks for a reset link. Until SMTP is wired up the backend
+  // returns the link directly so it can be surfaced to the user.
+  const requestPasswordReset = async (email: string): Promise<string> => {
+    const response = await axios.post('/auth/forgot-password', { email });
+    return response.data?.reset_url ?? '';
+  };
+
+  // confirmResetPassword consumes a reset token and sets a new password.
+  const confirmResetPassword = async (token: string, password: string) => {
+    await axios.post('/auth/reset-password', { token, password });
+  };
+
+  // resetPassword kept for context-type compatibility; delegates to requestPasswordReset.
+  const resetPassword = async (email: string) => {
+    await requestPasswordReset(email);
+  };
 
   const updateProfile = () => {};
 
@@ -112,7 +154,13 @@ export function JWTProvider({ children }: { children: React.ReactElement }) {
     return <Loader />;
   }
 
-  return <JWTContext value={{ ...state, login, logout, register, resetPassword, updateProfile }}>{children}</JWTContext>;
+  return (
+    <JWTContext
+      value={{ ...state, login, logout, register, googleLogin, requestPasswordReset, confirmResetPassword, resetPassword, updateProfile }}
+    >
+      {children}
+    </JWTContext>
+  );
 }
 
 export default JWTContext;
