@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	postgres "github.com/cp0x-org/xpaywall/control-api/internal/storage/postgres/generated"
+	"github.com/cp0x-org/xpaywall/control-api/internal/validate"
 )
 
 type projectResponse struct {
@@ -49,24 +50,25 @@ func toProjectResponse(p postgres.Project) projectResponse {
 // @Security    BearerAuth
 // @Router      /api/v1/projects [get]
 func (h *Handler) ListProjects(c *gin.Context) {
-	projects, err := h.q.ListProjects(c.Request.Context())
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	projects, err := h.q.ListProjectsByOwner(c.Request.Context(), &callerID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	users, _ := h.q.ListUsers(c.Request.Context())
-	usernames := make(map[uuid.UUID]string, len(users))
-	for _, u := range users {
-		usernames[u.ID] = u.Username
-	}
+	username, _ := c.Get("username")
+	callerName, _ := username.(string)
 
 	result := make([]projectResponse, len(projects))
 	for i, p := range projects {
 		r := toProjectResponse(p)
-		if p.OwnerUserID != nil {
-			r.OwnerUsername = usernames[*p.OwnerUserID]
-		}
+		r.OwnerUsername = callerName
 		result[i] = r
 	}
 	c.JSON(http.StatusOK, result)
@@ -86,6 +88,9 @@ func (h *Handler) GetProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	if !h.requireProjectOwner(c, id) {
 		return
 	}
 	project, err := h.q.GetProject(c.Request.Context(), id)
@@ -110,6 +115,9 @@ func (h *Handler) GetFullProject(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	if !h.requireProjectOwner(c, id) {
 		return
 	}
 	project, err := h.q.GetProject(c.Request.Context(), id)
@@ -172,6 +180,19 @@ func (h *Handler) CreateProject(c *gin.Context) {
 	var req createProjectRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if !validate.Slug(req.Slug) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "slug may contain only letters, digits, underscore and hyphen"})
+		return
+	}
+
+	// Slug is unique per owner: reject a second active project with the same slug.
+	if _, err := h.q.GetActiveProjectByOwnerAndSlug(c.Request.Context(), postgres.GetActiveProjectByOwnerAndSlugParams{
+		OwnerUserID: &ownerID,
+		Slug:        req.Slug,
+	}); err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "a project with this slug already exists"})
 		return
 	}
 
@@ -246,6 +267,22 @@ func (h *Handler) UpdateProject(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
+	}
+	if req.Slug != nil && !validate.Slug(*req.Slug) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "slug may contain only letters, digits, underscore and hyphen"})
+		return
+	}
+
+	// Slug is unique per owner: reject renaming onto another active project's slug.
+	if req.Slug != nil {
+		callerID, _ := callerUserID(c)
+		if existing, err := h.q.GetActiveProjectByOwnerAndSlug(c.Request.Context(), postgres.GetActiveProjectByOwnerAndSlugParams{
+			OwnerUserID: &callerID,
+			Slug:        *req.Slug,
+		}); err == nil && existing.ID != id {
+			c.JSON(http.StatusConflict, gin.H{"error": "a project with this slug already exists"})
+			return
+		}
 	}
 
 	project, err := h.q.UpdateProject(c.Request.Context(), postgres.UpdateProjectParams{
@@ -328,29 +365,27 @@ type projectWithConfigResponse struct {
 // @Security    BearerAuth
 // @Router      /api/v1/projects/with-config [get]
 func (h *Handler) ListProjectsWithConfig(c *gin.Context) {
-	projects, err := h.q.ListProjectsWithConfig(c.Request.Context())
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	projects, err := h.q.ListProjectsWithConfigByOwner(c.Request.Context(), &callerID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	users, _ := h.q.ListUsers(c.Request.Context())
-	usernames := make(map[uuid.UUID]string, len(users))
-	for _, u := range users {
-		usernames[u.ID] = u.Username
-	}
+	username, _ := c.Get("username")
+	callerName, _ := username.(string)
 
 	result := make([]projectWithConfigResponse, len(projects))
 	for i, p := range projects {
 		result[i] = projectWithConfigResponse{
-			ID:          p.ID,
-			OwnerUserID: p.OwnerUserID,
-			OwnerUsername: func() string {
-				if p.OwnerUserID != nil {
-					return usernames[*p.OwnerUserID]
-				}
-				return ""
-			}(),
+			ID:             p.ID,
+			OwnerUserID:    p.OwnerUserID,
+			OwnerUsername:  callerName,
 			Name:           p.Name,
 			Slug:           p.Slug,
 			Enabled:        p.Enabled,

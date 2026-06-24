@@ -170,10 +170,19 @@ func (h *Handler) ListRequestLogs(c *gin.Context) {
 		}
 	}
 
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	if pid := c.Query("project_id"); pid != "" {
 		id, err := uuid.Parse(pid)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project_id"})
+			return
+		}
+		if !h.requireProjectOwner(c, id) {
 			return
 		}
 		rows, err := h.q.ListRequestLogsByProject(c.Request.Context(), postgres.ListRequestLogsByProjectParams{
@@ -193,9 +202,10 @@ func (h *Handler) ListRequestLogs(c *gin.Context) {
 		return
 	}
 
-	rows, err := h.q.ListRequestLogs(c.Request.Context(), postgres.ListRequestLogsParams{
-		Limit:  limit,
-		Offset: offset,
+	rows, err := h.q.ListRequestLogsByOwner(c.Request.Context(), postgres.ListRequestLogsByOwnerParams{
+		OwnerUserID: &callerID,
+		Limit:       limit,
+		Offset:      offset,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -227,6 +237,9 @@ func (h *Handler) GetRequestLog(c *gin.Context) {
 	row, err := h.q.GetRequestLog(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, row.ProjectID) {
 		return
 	}
 	c.JSON(http.StatusOK, toRequestLogResponse(row))
@@ -391,6 +404,14 @@ func (h *Handler) ListRequestEvents(c *gin.Context) {
 	logID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	logRow, err := h.q.GetRequestLog(c.Request.Context(), logID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, logRow.ProjectID) {
 		return
 	}
 	rows, err := h.q.ListRequestEventsByLog(c.Request.Context(), logID)

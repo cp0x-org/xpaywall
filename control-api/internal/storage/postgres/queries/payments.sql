@@ -1,12 +1,17 @@
 -- name: ListPaymentMethods :many
 SELECT * FROM payment_methods ORDER BY protocol, name;
 
+-- name: ListPaymentMethodsVisible :many
+SELECT * FROM payment_methods
+WHERE is_global = TRUE OR owner_user_id = $1
+ORDER BY protocol, name;
+
 -- name: GetPaymentMethod :one
 SELECT * FROM payment_methods WHERE id = $1;
 
 -- name: CreatePaymentMethod :one
-INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, method, scheme, enabled)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, method, scheme, enabled, is_global, owner_user_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING *;
 
 -- name: UpdatePaymentMethod :one
@@ -27,11 +32,23 @@ DELETE FROM payment_methods WHERE id = $1;
 
 -- name: ListPaymentMethodAssets :many
 SELECT
-    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals, pma.created_at, pma.updated_at,
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals,
+    pma.is_global, pma.owner_user_id, pma.created_at, pma.updated_at,
     pm.name AS payment_method_name,
     pm.caip2_chain_id AS payment_method_chain
 FROM payment_method_assets pma
 JOIN payment_methods pm ON pm.id = pma.payment_method_id
+ORDER BY pma.created_at DESC;
+
+-- name: ListPaymentMethodAssetsVisible :many
+SELECT
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals,
+    pma.is_global, pma.owner_user_id, pma.created_at, pma.updated_at,
+    pm.name AS payment_method_name,
+    pm.caip2_chain_id AS payment_method_chain
+FROM payment_method_assets pma
+JOIN payment_methods pm ON pm.id = pma.payment_method_id
+WHERE pma.is_global = TRUE OR pma.owner_user_id = $1
 ORDER BY pma.created_at DESC;
 
 -- name: ListPaymentMethodAssetsByMethod :many
@@ -46,7 +63,8 @@ ORDER BY pma.created_at DESC;
 
 -- name: GetPaymentMethodAsset :one
 SELECT
-    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals, pma.created_at, pma.updated_at,
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals,
+    pma.is_global, pma.owner_user_id, pma.created_at, pma.updated_at,
     pm.name AS payment_method_name,
     pm.caip2_chain_id AS payment_method_chain
 FROM payment_method_assets pma
@@ -54,8 +72,8 @@ JOIN payment_methods pm ON pm.id = pma.payment_method_id
 WHERE pma.id = $1;
 
 -- name: CreatePaymentMethodAsset :one
-INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals, is_global, owner_user_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: UpdatePaymentMethodAsset :one
@@ -73,12 +91,17 @@ DELETE FROM payment_method_assets WHERE id = $1;
 -- name: ListFacilitators :many
 SELECT * FROM facilitators ORDER BY name;
 
+-- name: ListFacilitatorsVisible :many
+SELECT * FROM facilitators
+WHERE is_global = TRUE OR owner_user_id = $1
+ORDER BY name;
+
 -- name: GetFacilitator :one
 SELECT * FROM facilitators WHERE id = $1;
 
 -- name: CreateFacilitator :one
-INSERT INTO facilitators (id, name, url, enabled)
-VALUES ($1, $2, $3, $4)
+INSERT INTO facilitators (id, name, url, enabled, is_global, owner_user_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: UpdateFacilitator :one
@@ -113,6 +136,26 @@ JOIN projects              p  ON p.id  = ppm.project_id
 JOIN payment_methods       pm ON pm.id = ppm.payment_method_id
 JOIN payment_method_assets a  ON a.id  = ppm.asset_id
 LEFT JOIN facilitators     f  ON f.id  = ppm.facilitator_id
+ORDER BY p.name, ppm.created_at DESC;
+
+-- name: ListAllProjectPaymentMethodsByOwner :many
+SELECT
+    ppm.id,
+    ppm.project_id,          p.name   AS project_name,
+    ppm.payment_method_id,   pm.name  AS payment_method_name,
+    ppm.asset_id,            a.symbol AS asset_symbol,
+    ppm.scheme,
+    ppm.facilitator_id,      f.name   AS facilitator_name,
+    ppm.payout_address,
+    ppm.enabled,
+    ppm.created_at,
+    ppm.updated_at
+FROM project_payment_methods ppm
+JOIN projects              p  ON p.id  = ppm.project_id
+JOIN payment_methods       pm ON pm.id = ppm.payment_method_id
+JOIN payment_method_assets a  ON a.id  = ppm.asset_id
+LEFT JOIN facilitators     f  ON f.id  = ppm.facilitator_id
+WHERE p.owner_user_id = $1
 ORDER BY p.name, ppm.created_at DESC;
 
 -- name: GetProjectPaymentMethod :one

@@ -20,6 +20,13 @@ FROM routes r
 JOIN projects p ON p.id = r.project_id
 ORDER BY r.name;
 
+-- name: ListOutboundRoutesByOwner :many
+SELECT r.id, r.project_id, p.slug AS project_slug, r.name, r.path_pattern, r.price_usd, r.description, r.free, r.bazaar, r.created_at, r.updated_at
+FROM routes r
+JOIN projects p ON p.id = r.project_id
+WHERE p.owner_user_id = $1
+ORDER BY r.name;
+
 -- name: ListOutboundRoutesByProject :many
 SELECT r.id, r.project_id, p.slug AS project_slug, r.name, r.path_pattern, r.price_usd, r.description, r.free, r.bazaar, r.created_at, r.updated_at
 FROM routes r

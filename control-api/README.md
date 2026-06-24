@@ -35,12 +35,15 @@ go run ./cmd/control-api --env-file .env install
 | `INTERNAL_API_KEY` | yes | — | Shared secret with xgateway (sent as `X-Api-Key`) |
 | `JWT_SECRET` | yes | — | Signs admin JWT tokens |
 | `PROXY_URL` | yes | — | Public URL of xgateway (returned to the dashboard and in 402 responses) |
-| `SUPERADMIN_USERNAME` | no | — | Bootstrap admin username |
-| `SUPERADMIN_PASSWORD` | no | — | Bootstrap admin password |
 | `PORT` | no | `9090` | HTTP listen port |
 | `MODE` | no | `release` | Gin mode (`release` or `debug`) |
 | `DEBUG` | no | `false` | Verbose logging |
 | `CORS_ORIGINS` | no | `*` | Comma-separated allowed origins |
+| `APP_BASE_URL` | no | `http://localhost:3000` | Frontend base URL for password-reset links |
+| `GOOGLE_CLIENT_ID` | no | — | OAuth client ID; required for Google sign-in (`POST /auth/google`) |
+
+> **Superadmin:** there is no bootstrap-admin env var. Provision the role directly in
+> Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`
 
 `--env-file <path>` loads variables from a dotenv file before parsing. `.env` in the working directory is loaded automatically when present.
 

@@ -5,9 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/bcrypt"
 
 	postgres "github.com/cp0x-org/xpaywall/control-api/internal/storage/postgres/generated"
+	"github.com/cp0x-org/xpaywall/control-api/internal/validate"
 )
 
 // ListUsers returns all users.
@@ -73,6 +75,10 @@ func (h *Handler) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if !validate.Slug(req.Username) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username may contain only letters, digits, underscore and hyphen"})
+		return
+	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -83,7 +89,8 @@ func (h *Handler) CreateUser(c *gin.Context) {
 	user, err := h.q.CreateUser(c.Request.Context(), postgres.CreateUserParams{
 		ID:           uuid.New(),
 		Username:     req.Username,
-		PasswordHash: string(hash),
+		AuthProvider: "local",
+		PasswordHash: pgtype.Text{String: string(hash), Valid: true},
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -118,6 +125,10 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	var req updateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if req.Username != nil && !validate.Slug(*req.Username) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username may contain only letters, digits, underscore and hyphen"})
 		return
 	}
 

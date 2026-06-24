@@ -201,6 +201,63 @@ func (q *Queries) GetRecentRequestsForDashboard(ctx context.Context) ([]GetRecen
 	return items, nil
 }
 
+const getRecentRequestsForDashboardByOwner = `-- name: GetRecentRequestsForDashboardByOwner :many
+SELECT
+    rl.id,
+    rl.path,
+    rl.method,
+    rl.created_at,
+    COALESCE(rl.final_status_code,
+        CASE WHEN rl.payment_required = TRUE AND rl.payment_completed = FALSE THEN 402 ELSE 200 END
+    )::INTEGER                AS status_code,
+    pm.protocol               AS payment_channel,
+    rl.amount_usd
+FROM request_logs rl
+JOIN projects p ON p.id = rl.project_id
+LEFT JOIN payment_methods pm ON pm.id = rl.payment_channel_id
+WHERE p.owner_user_id = $1
+ORDER BY rl.created_at DESC
+LIMIT 5
+`
+
+type GetRecentRequestsForDashboardByOwnerRow struct {
+	ID             uuid.UUID
+	Path           string
+	Method         string
+	CreatedAt      pgtype.Timestamp
+	StatusCode     int32
+	PaymentChannel pgtype.Text
+	AmountUsd      pgtype.Numeric
+}
+
+func (q *Queries) GetRecentRequestsForDashboardByOwner(ctx context.Context, ownerUserID *uuid.UUID) ([]GetRecentRequestsForDashboardByOwnerRow, error) {
+	rows, err := q.db.Query(ctx, getRecentRequestsForDashboardByOwner, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetRecentRequestsForDashboardByOwnerRow
+	for rows.Next() {
+		var i GetRecentRequestsForDashboardByOwnerRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Path,
+			&i.Method,
+			&i.CreatedAt,
+			&i.StatusCode,
+			&i.PaymentChannel,
+			&i.AmountUsd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRecentRequestsForDashboardByProject = `-- name: GetRecentRequestsForDashboardByProject :many
 SELECT
     rl.id,
@@ -374,6 +431,65 @@ type ListRequestLogsParams struct {
 
 func (q *Queries) ListRequestLogs(ctx context.Context, arg ListRequestLogsParams) ([]RequestLog, error) {
 	rows, err := q.db.Query(ctx, listRequestLogs, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []RequestLog
+	for rows.Next() {
+		var i RequestLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.OutboundRouteID,
+			&i.RequestID,
+			&i.Method,
+			&i.Path,
+			&i.ClientIp,
+			&i.UserAgent,
+			&i.Status,
+			&i.PaymentRequired,
+			&i.PaymentRequestedAt,
+			&i.PaymentCompleted,
+			&i.PaymentCompletedAt,
+			&i.PaymentChannelID,
+			&i.PaymentChannelAssetID,
+			&i.AmountUsd,
+			&i.UpstreamUrl,
+			&i.UpstreamStatusCode,
+			&i.UpstreamResponseTimeMs,
+			&i.FinalStatusCode,
+			&i.ErrorType,
+			&i.ErrorMessage,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRequestLogsByOwner = `-- name: ListRequestLogsByOwner :many
+SELECT rl.id, rl.project_id, rl.outbound_route_id, rl.request_id, rl.method, rl.path, rl.client_ip, rl.user_agent, rl.status, rl.payment_required, rl.payment_requested_at, rl.payment_completed, rl.payment_completed_at, rl.payment_channel_id, rl.payment_channel_asset_id, rl.amount_usd, rl.upstream_url, rl.upstream_status_code, rl.upstream_response_time_ms, rl.final_status_code, rl.error_type, rl.error_message, rl.created_at, rl.updated_at FROM request_logs rl
+JOIN projects p ON p.id = rl.project_id
+WHERE p.owner_user_id = $1
+ORDER BY rl.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListRequestLogsByOwnerParams struct {
+	OwnerUserID *uuid.UUID
+	Limit       int32
+	Offset      int32
+}
+
+func (q *Queries) ListRequestLogsByOwner(ctx context.Context, arg ListRequestLogsByOwnerParams) ([]RequestLog, error) {
+	rows, err := q.db.Query(ctx, listRequestLogsByOwner, arg.OwnerUserID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

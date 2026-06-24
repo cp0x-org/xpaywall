@@ -33,16 +33,19 @@ JOIN payment_methods pm ON pm.id = ppm.payment_method_id
 JOIN payment_method_assets pma ON pma.id = ppm.asset_id
 LEFT JOIN facilitators f ON f.id = ppm.facilitator_id
 JOIN projects p ON p.id = ppm.project_id
-WHERE p.slug = $1
+JOIN users u ON u.id = p.owner_user_id
+WHERE u.username = $1
+  AND p.slug = $2
   AND p.archived_at IS NULL
-  AND ppm.enabled = $2
-  AND pm.enabled = $3
+  AND ppm.enabled = $3
+  AND pm.enabled = $4
 `
 
 type GetPaymentMethodsByProjectSlugParams struct {
-	Slug      string
-	Enabled   bool
-	Enabled_2 bool
+	Username   string
+	Slug       string
+	PpmEnabled bool
+	PmEnabled  bool
 }
 
 type GetPaymentMethodsByProjectSlugRow struct {
@@ -63,7 +66,12 @@ type GetPaymentMethodsByProjectSlugRow struct {
 }
 
 func (q *Queries) GetPaymentMethodsByProjectSlug(ctx context.Context, arg GetPaymentMethodsByProjectSlugParams) ([]GetPaymentMethodsByProjectSlugRow, error) {
-	rows, err := q.db.Query(ctx, getPaymentMethodsByProjectSlug, arg.Slug, arg.Enabled, arg.Enabled_2)
+	rows, err := q.db.Query(ctx, getPaymentMethodsByProjectSlug,
+		arg.Username,
+		arg.Slug,
+		arg.PpmEnabled,
+		arg.PmEnabled,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -113,17 +121,20 @@ SELECT
     prs.allow_unmatched
 FROM routes oroute
 JOIN projects p ON p.id = oroute.project_id
+JOIN users u ON u.id = p.owner_user_id
 JOIN project_routes_settings prs ON prs.project_id = oroute.project_id
-WHERE p.slug = $1
+WHERE u.username = $1
+  AND p.slug = $2
   AND p.archived_at IS NULL
-  AND $2::text LIKE REPLACE(oroute.path_pattern, '*', '%')
+  AND $3::text LIKE REPLACE(oroute.path_pattern, '*', '%')
 ORDER BY
-    CASE WHEN oroute.path_pattern = $2 THEN 0 ELSE 1 END,
+    CASE WHEN oroute.path_pattern = $3 THEN 0 ELSE 1 END,
     length(oroute.path_pattern) DESC
 LIMIT 1
 `
 
 type ResolveOutboundRouteParams struct {
+	Username    string
 	Slug        string
 	InboundPath string
 }
@@ -144,7 +155,7 @@ type ResolveOutboundRouteRow struct {
 }
 
 func (q *Queries) ResolveOutboundRoute(ctx context.Context, arg ResolveOutboundRouteParams) (ResolveOutboundRouteRow, error) {
-	row := q.db.QueryRow(ctx, resolveOutboundRoute, arg.Slug, arg.InboundPath)
+	row := q.db.QueryRow(ctx, resolveOutboundRoute, arg.Username, arg.Slug, arg.InboundPath)
 	var i ResolveOutboundRouteRow
 	err := row.Scan(
 		&i.ID,

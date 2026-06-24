@@ -14,8 +14,10 @@ SELECT
     prs.allow_unmatched
 FROM routes oroute
 JOIN projects p ON p.id = oroute.project_id
+JOIN users u ON u.id = p.owner_user_id
 JOIN project_routes_settings prs ON prs.project_id = oroute.project_id
-WHERE p.slug = $1
+WHERE u.username = sqlc.arg(username)
+  AND p.slug = sqlc.arg(slug)
   AND p.archived_at IS NULL
   AND sqlc.arg(inbound_path)::text LIKE REPLACE(oroute.path_pattern, '*', '%')
 ORDER BY
@@ -44,7 +46,9 @@ JOIN payment_methods pm ON pm.id = ppm.payment_method_id
 JOIN payment_method_assets pma ON pma.id = ppm.asset_id
 LEFT JOIN facilitators f ON f.id = ppm.facilitator_id
 JOIN projects p ON p.id = ppm.project_id
-WHERE p.slug = $1
+JOIN users u ON u.id = p.owner_user_id
+WHERE u.username = sqlc.arg(username)
+  AND p.slug = sqlc.arg(slug)
   AND p.archived_at IS NULL
-  AND ppm.enabled = $2
-  AND pm.enabled = $3;
+  AND ppm.enabled = sqlc.arg(ppm_enabled)
+  AND pm.enabled = sqlc.arg(pm_enabled);

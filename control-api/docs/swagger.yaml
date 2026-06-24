@@ -7,10 +7,44 @@ definitions:
       user:
         $ref: '#/definitions/auth.userResponse'
     type: object
+  auth.changePasswordRequest:
+    properties:
+      new_password:
+        minLength: 8
+        type: string
+      old_password:
+        type: string
+    required:
+    - new_password
+    - old_password
+    type: object
   auth.errorResponse:
     properties:
       error:
         type: string
+    type: object
+  auth.forgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
+  auth.forgotPasswordResponse:
+    properties:
+      message:
+        type: string
+      reset_url:
+        description: ResetURL is returned temporarily until SMTP delivery is wired
+          up.
+        type: string
+    type: object
+  auth.googleAuthRequest:
+    properties:
+      id_token:
+        type: string
+    required:
+    - id_token
     type: object
   auth.loginRequest:
     properties:
@@ -22,9 +56,38 @@ definitions:
     - password
     - username
     type: object
+  auth.registerRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  auth.resetPasswordRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      token:
+        type: string
+    required:
+    - password
+    - token
+    type: object
   auth.userResponse:
     properties:
+      email:
+        type: string
       id:
+        type: string
+      role:
         type: string
       username:
         type: string
@@ -115,6 +178,8 @@ definitions:
     properties:
       enabled:
         type: boolean
+      is_global:
+        type: boolean
       name:
         type: string
       url:
@@ -150,6 +215,8 @@ definitions:
         type: string
       decimals:
         type: integer
+      is_global:
+        type: boolean
       payment_method_id:
         type: string
       symbol:
@@ -166,6 +233,8 @@ definitions:
       code:
         type: string
       enabled:
+        type: boolean
+      is_global:
         type: boolean
       method:
         type: string
@@ -328,7 +397,11 @@ definitions:
         type: boolean
       id:
         type: string
+      is_global:
+        type: boolean
       name:
+        type: string
+      owner_user_id:
         type: string
       updated_at:
         type: string
@@ -399,6 +472,10 @@ definitions:
         type: integer
       id:
         type: string
+      is_global:
+        type: boolean
+      owner_user_id:
+        type: string
       payment_method_chain:
         type: string
       payment_method_id:
@@ -422,9 +499,13 @@ definitions:
         type: boolean
       id:
         type: string
+      is_global:
+        type: boolean
       method:
         type: string
       name:
+        type: string
+      owner_user_id:
         type: string
       protocol:
         type: string
@@ -2212,6 +2293,99 @@ paths:
       summary: Update user
       tags:
       - users
+  /auth/change-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Current and new password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.changePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.forgotPasswordResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - auth
+  /auth/forgot-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Account email
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.forgotPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.forgotPasswordResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+      summary: Request password reset
+      tags:
+      - auth
+  /auth/google:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Google ID token
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.googleAuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.authResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+      summary: Google sign-in
+      tags:
+      - auth
   /auth/login:
     post:
       consumes:
@@ -2267,10 +2441,72 @@ paths:
       summary: Get current user
       tags:
       - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Registration details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.registerRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.authResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+      summary: Register
+      tags:
+      - auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Reset token and new password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/auth.resetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.forgotPasswordResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/auth.errorResponse'
+      summary: Reset password
+      tags:
+      - auth
   /proxy/resolve/{path}:
     get:
       parameters:
-      - description: Path in format {projectSlug}/{inboundPath}
+      - description: Path in format {username}/{projectSlug}/{inboundPath}
         in: path
         name: path
         required: true

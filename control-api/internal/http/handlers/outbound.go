@@ -88,6 +88,16 @@ func routeListByProjectRowToResponse(r postgres.ListOutboundRoutesByProjectRow) 
 	}
 }
 
+func routeListByOwnerRowToResponse(r postgres.ListOutboundRoutesByOwnerRow) outboundRouteResponse {
+	return outboundRouteResponse{
+		ID: r.ID, ProjectID: r.ProjectID, ProjectSlug: r.ProjectSlug,
+		Name: r.Name, PathPattern: r.PathPattern,
+		PriceUSD: r.PriceUsd, Description: r.Description, Free: r.Free,
+		Bazaar:    json.RawMessage(r.Bazaar),
+		CreatedAt: r.CreatedAt.Time, UpdatedAt: r.UpdatedAt.Time,
+	}
+}
+
 func routeGetRowToResponse(r postgres.GetOutboundRouteRow) outboundRouteResponse {
 	return outboundRouteResponse{
 		ID: r.ID, ProjectID: r.ProjectID,
@@ -129,7 +139,14 @@ func routeUpdateRowToResponse(r postgres.UpdateOutboundRouteRow) outboundRouteRe
 // @Security    BearerAuth
 // @Router      /api/v1/outbound-routes [get]
 func (h *Handler) ListOutboundRoutes(c *gin.Context) {
-	projects, _ := h.q.ListProjects(c.Request.Context())
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	// Caller's own projects only, for name resolution.
+	projects, _ := h.q.ListProjectsByOwner(c.Request.Context(), &callerID)
 	projectNames := make(map[uuid.UUID]string, len(projects))
 	for _, p := range projects {
 		projectNames[p.ID] = p.Name
@@ -139,6 +156,9 @@ func (h *Handler) ListOutboundRoutes(c *gin.Context) {
 		id, err := uuid.Parse(pid)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project_id"})
+			return
+		}
+		if !h.requireProjectOwner(c, id) {
 			return
 		}
 		rows, err := h.q.ListOutboundRoutesByProject(c.Request.Context(), id)
@@ -156,14 +176,14 @@ func (h *Handler) ListOutboundRoutes(c *gin.Context) {
 		return
 	}
 
-	rows, err := h.q.ListOutboundRoutes(c.Request.Context())
+	rows, err := h.q.ListOutboundRoutesByOwner(c.Request.Context(), &callerID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	result := make([]outboundRouteResponse, len(rows))
 	for i, r := range rows {
-		resp := routeListRowToResponse(r)
+		resp := routeListByOwnerRowToResponse(r)
 		resp.ProjectName = projectNames[r.ProjectID]
 		result[i] = resp
 	}
@@ -189,6 +209,9 @@ func (h *Handler) GetOutboundRoute(c *gin.Context) {
 	row, err := h.q.GetOutboundRoute(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, row.ProjectID) {
 		return
 	}
 	c.JSON(http.StatusOK, routeGetRowToResponse(row))

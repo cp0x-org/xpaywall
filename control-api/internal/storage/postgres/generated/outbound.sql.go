@@ -199,6 +199,60 @@ func (q *Queries) ListOutboundRoutes(ctx context.Context) ([]ListOutboundRoutesR
 	return items, nil
 }
 
+const listOutboundRoutesByOwner = `-- name: ListOutboundRoutesByOwner :many
+SELECT r.id, r.project_id, p.slug AS project_slug, r.name, r.path_pattern, r.price_usd, r.description, r.free, r.bazaar, r.created_at, r.updated_at
+FROM routes r
+JOIN projects p ON p.id = r.project_id
+WHERE p.owner_user_id = $1
+ORDER BY r.name
+`
+
+type ListOutboundRoutesByOwnerRow struct {
+	ID          uuid.UUID
+	ProjectID   uuid.UUID
+	ProjectSlug string
+	Name        string
+	PathPattern string
+	PriceUsd    string
+	Description string
+	Free        bool
+	Bazaar      []byte
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
+}
+
+func (q *Queries) ListOutboundRoutesByOwner(ctx context.Context, ownerUserID *uuid.UUID) ([]ListOutboundRoutesByOwnerRow, error) {
+	rows, err := q.db.Query(ctx, listOutboundRoutesByOwner, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOutboundRoutesByOwnerRow
+	for rows.Next() {
+		var i ListOutboundRoutesByOwnerRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.ProjectSlug,
+			&i.Name,
+			&i.PathPattern,
+			&i.PriceUsd,
+			&i.Description,
+			&i.Free,
+			&i.Bazaar,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listOutboundRoutesByProject = `-- name: ListOutboundRoutesByProject :many
 SELECT r.id, r.project_id, p.slug AS project_slug, r.name, r.path_pattern, r.price_usd, r.description, r.free, r.bazaar, r.created_at, r.updated_at
 FROM routes r

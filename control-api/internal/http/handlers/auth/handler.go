@@ -9,23 +9,30 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
+	"github.com/cp0x-org/xpaywall/control-api/config"
 	postgres "github.com/cp0x-org/xpaywall/control-api/internal/storage/postgres/generated"
 )
 
 type Handler struct {
-	q                  *postgres.Queries
-	jwtSecret          string
-	superadminUsername string
-	superadminPassword string
+	cfg       *config.ControlAPIConfig
+	q         *postgres.Queries
+	mailer    Mailer
+	jwtSecret string
 }
 
-func New(q *postgres.Queries, jwtSecret, superadminUsername, superadminPassword string) *Handler {
-	return &Handler{q: q, jwtSecret: jwtSecret, superadminUsername: superadminUsername, superadminPassword: superadminPassword}
+func New(cfg *config.ControlAPIConfig, q *postgres.Queries, mailer Mailer) *Handler {
+	return &Handler{
+		cfg:       cfg,
+		q:         q,
+		mailer:    mailer,
+		jwtSecret: cfg.JWTSecret,
+	}
 }
 
 type Claims struct {
 	UserID   uuid.UUID `json:"user_id"`
 	Username string    `json:"username"`
+	Role     string    `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -37,6 +44,12 @@ type loginRequest struct {
 type userResponse struct {
 	ID       uuid.UUID `json:"id"`
 	Username string    `json:"username"`
+	Email    string    `json:"email,omitempty"`
+	Role     string    `json:"role"`
+}
+
+func toUserResponse(u postgres.User) userResponse {
+	return userResponse{ID: u.ID, Username: u.Username, Email: u.Email.String, Role: u.Role}
 }
 
 type authResponse struct {
@@ -66,35 +79,25 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	if h.superadminUsername != "" && req.Username == h.superadminUsername {
-		if req.Password != h.superadminPassword {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
-			return
-		}
-		token, err := h.generateToken(uuid.Nil, h.superadminUsername)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
-			return
-		}
-		c.JSON(http.StatusOK, authResponse{
-			Token: token,
-			User:  userResponse{ID: uuid.Nil, Username: h.superadminUsername},
-		})
-		return
-	}
-
-	user, err := h.q.GetUserByUsername(c.Request.Context(), req.Username)
+	// The login identifier may be either a username or an email address.
+	user, err := h.q.GetUserByUsernameOrEmail(c.Request.Context(), req.Username)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
+	// OAuth-only users (e.g. Google) have no password hash and cannot password-login.
+	if !user.PasswordHash.Valid {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
 		return
 	}
 
-	token, err := h.generateToken(user.ID, user.Username)
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash.String), []byte(req.Password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid username or password"})
+		return
+	}
+
+	token, err := h.generateToken(user.ID, user.Username, user.Role)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate token"})
 		return
@@ -102,7 +105,7 @@ func (h *Handler) Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, authResponse{
 		Token: token,
-		User:  userResponse{ID: user.ID, Username: user.Username},
+		User:  toUserResponse(user),
 	})
 }
 
@@ -133,13 +136,14 @@ func (h *Handler) Me(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, userResponse{ID: user.ID, Username: user.Username})
+	c.JSON(http.StatusOK, toUserResponse(user))
 }
 
-func (h *Handler) generateToken(userID uuid.UUID, username string) (string, error) {
+func (h *Handler) generateToken(userID uuid.UUID, username, role string) (string, error) {
 	cl := Claims{
 		UserID:   userID,
 		Username: username,
+		Role:     role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

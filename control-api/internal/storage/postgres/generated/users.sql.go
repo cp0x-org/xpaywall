@@ -12,20 +12,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createUser = `-- name: CreateUser :one
-INSERT INTO users (id, username, password_hash)
-VALUES ($1, $2, $3)
-RETURNING id, username, password_hash, created_at, updated_at
+const createGoogleUser = `-- name: CreateGoogleUser :one
+INSERT INTO users (id, username, email, google_id, avatar_url, auth_provider)
+VALUES ($1, $2, $3, $4, $5, 'google')
+RETURNING id, username, password_hash, created_at, updated_at, email, google_id, auth_provider, avatar_url, role
 `
 
-type CreateUserParams struct {
-	ID           uuid.UUID
-	Username     string
-	PasswordHash string
+type CreateGoogleUserParams struct {
+	ID        uuid.UUID
+	Username  string
+	Email     pgtype.Text
+	GoogleID  pgtype.Text
+	AvatarUrl pgtype.Text
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRow(ctx, createUser, arg.ID, arg.Username, arg.PasswordHash)
+func (q *Queries) CreateGoogleUser(ctx context.Context, arg CreateGoogleUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createGoogleUser,
+		arg.ID,
+		arg.Username,
+		arg.Email,
+		arg.GoogleID,
+		arg.AvatarUrl,
+	)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -33,6 +41,49 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Email,
+		&i.GoogleID,
+		&i.AuthProvider,
+		&i.AvatarUrl,
+		&i.Role,
+	)
+	return i, err
+}
+
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (id, username, email, password_hash, auth_provider)
+VALUES ($1, $2, $3, $5, $4)
+RETURNING id, username, password_hash, created_at, updated_at, email, google_id, auth_provider, avatar_url, role
+`
+
+type CreateUserParams struct {
+	ID           uuid.UUID
+	Username     string
+	Email        pgtype.Text
+	AuthProvider string
+	PasswordHash pgtype.Text
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.ID,
+		arg.Username,
+		arg.Email,
+		arg.AuthProvider,
+		arg.PasswordHash,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.GoogleID,
+		&i.AuthProvider,
+		&i.AvatarUrl,
+		&i.Role,
 	)
 	return i, err
 }
@@ -48,7 +99,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id uuid.UUID) error {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, username, password_hash, created_at, updated_at FROM users
+SELECT id, username, password_hash, created_at, updated_at, email, google_id, auth_provider, avatar_url, role FROM users
 WHERE id = $1
 `
 
@@ -61,12 +112,63 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Email,
+		&i.GoogleID,
+		&i.AuthProvider,
+		&i.AvatarUrl,
+		&i.Role,
+	)
+	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, username, password_hash, created_at, updated_at, email, google_id, auth_provider, avatar_url, role FROM users
+WHERE email = $1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email pgtype.Text) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.GoogleID,
+		&i.AuthProvider,
+		&i.AvatarUrl,
+		&i.Role,
+	)
+	return i, err
+}
+
+const getUserByGoogleID = `-- name: GetUserByGoogleID :one
+SELECT id, username, password_hash, created_at, updated_at, email, google_id, auth_provider, avatar_url, role FROM users
+WHERE google_id = $1
+`
+
+func (q *Queries) GetUserByGoogleID(ctx context.Context, googleID pgtype.Text) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByGoogleID, googleID)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.GoogleID,
+		&i.AuthProvider,
+		&i.AvatarUrl,
+		&i.Role,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, password_hash, created_at, updated_at FROM users
+SELECT id, username, password_hash, created_at, updated_at, email, google_id, auth_provider, avatar_url, role FROM users
 WHERE username = $1
 `
 
@@ -79,12 +181,74 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Email,
+		&i.GoogleID,
+		&i.AuthProvider,
+		&i.AvatarUrl,
+		&i.Role,
+	)
+	return i, err
+}
+
+const getUserByUsernameOrEmail = `-- name: GetUserByUsernameOrEmail :one
+SELECT id, username, password_hash, created_at, updated_at, email, google_id, auth_provider, avatar_url, role FROM users
+WHERE username = $1 OR email = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserByUsernameOrEmail(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByUsernameOrEmail, username)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.GoogleID,
+		&i.AuthProvider,
+		&i.AvatarUrl,
+		&i.Role,
+	)
+	return i, err
+}
+
+const linkGoogleAccount = `-- name: LinkGoogleAccount :one
+UPDATE users
+SET google_id  = $2,
+    avatar_url = COALESCE($3, avatar_url),
+    updated_at = CURRENT_TIMESTAMP
+WHERE id = $1
+RETURNING id, username, password_hash, created_at, updated_at, email, google_id, auth_provider, avatar_url, role
+`
+
+type LinkGoogleAccountParams struct {
+	ID        uuid.UUID
+	GoogleID  pgtype.Text
+	AvatarUrl pgtype.Text
+}
+
+func (q *Queries) LinkGoogleAccount(ctx context.Context, arg LinkGoogleAccountParams) (User, error) {
+	row := q.db.QueryRow(ctx, linkGoogleAccount, arg.ID, arg.GoogleID, arg.AvatarUrl)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.PasswordHash,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.GoogleID,
+		&i.AuthProvider,
+		&i.AvatarUrl,
+		&i.Role,
 	)
 	return i, err
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, password_hash, created_at, updated_at FROM users
+SELECT id, username, password_hash, created_at, updated_at, email, google_id, auth_provider, avatar_url, role FROM users
 ORDER BY created_at DESC
 `
 
@@ -103,6 +267,11 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.PasswordHash,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Email,
+			&i.GoogleID,
+			&i.AuthProvider,
+			&i.AvatarUrl,
+			&i.Role,
 		); err != nil {
 			return nil, err
 		}
@@ -119,7 +288,7 @@ UPDATE users
 SET username   = COALESCE($2, username),
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, username, password_hash, created_at, updated_at
+RETURNING id, username, password_hash, created_at, updated_at, email, google_id, auth_provider, avatar_url, role
 `
 
 type UpdateUserParams struct {
@@ -136,6 +305,11 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.PasswordHash,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Email,
+		&i.GoogleID,
+		&i.AuthProvider,
+		&i.AvatarUrl,
+		&i.Role,
 	)
 	return i, err
 }
@@ -148,7 +322,7 @@ WHERE id = $1
 
 type UpdateUserPasswordParams struct {
 	ID           uuid.UUID
-	PasswordHash string
+	PasswordHash pgtype.Text
 }
 
 func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) error {

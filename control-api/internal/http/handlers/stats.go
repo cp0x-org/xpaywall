@@ -65,6 +65,18 @@ GROUP BY 1
 ORDER BY 1
 `
 
+const getHourlyStatsByOwnerSQL = `
+SELECT
+    date_trunc('hour', rl.created_at) - (EXTRACT(HOUR FROM rl.created_at)::INT % 2) * INTERVAL '1 hour' AS bucket,
+    COUNT(*)::BIGINT                                                                                AS total_requests,
+    COALESCE(SUM(rl.amount_usd) FILTER (WHERE rl.payment_completed = TRUE), 0)::FLOAT8            AS total_earnings_usd
+FROM request_logs rl
+JOIN projects p ON p.id = rl.project_id
+WHERE rl.created_at >= $1 AND rl.created_at < $2 AND p.owner_user_id = $3
+GROUP BY 1
+ORDER BY 1
+`
+
 const getDailyStatsWithProjectSQL = `
 SELECT
     DATE(created_at)                                                                                   AS day,
@@ -146,11 +158,20 @@ func (h *Handler) GetDailyStats(c *gin.Context) {
 		to = now.Add(24 * time.Hour).Truncate(24 * time.Hour)
 	}
 
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	var projectID *uuid.UUID
 	if pidStr := c.Query("project_id"); pidStr != "" {
 		pid, err := uuid.Parse(pidStr)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project_id"})
+			return
+		}
+		if !h.requireProjectOwner(c, pid) {
 			return
 		}
 		projectID = &pid
@@ -159,14 +180,20 @@ func (h *Handler) GetDailyStats(c *gin.Context) {
 	useHourly := to.Sub(from) < 48*time.Hour
 
 	if useHourly {
-		sql := getHourlyStatsSQL
+		// Default to the caller's projects; narrow to one project when requested.
+		sql := getHourlyStatsByOwnerSQL
 		args := []any{
 			pgtype.Timestamp{Time: from, Valid: true},
 			pgtype.Timestamp{Time: to, Valid: true},
+			&callerID,
 		}
 		if projectID != nil {
 			sql = getHourlyStatsWithProjectSQL
-			args = append(args, *projectID)
+			args = []any{
+				pgtype.Timestamp{Time: from, Valid: true},
+				pgtype.Timestamp{Time: to, Valid: true},
+				*projectID,
+			}
 		}
 		pgRows, err := h.db.Query(c.Request.Context(), sql, args...)
 		if err != nil {
@@ -233,9 +260,10 @@ func (h *Handler) GetDailyStats(c *gin.Context) {
 		return
 	}
 
-	rows, err := h.q.GetDailyStats(c.Request.Context(), postgres.GetDailyStatsParams{
-		CreatedAt:   pgtype.Timestamp{Time: from, Valid: true},
-		CreatedAt_2: pgtype.Timestamp{Time: to, Valid: true},
+	rows, err := h.q.GetDailyStatsByOwner(c.Request.Context(), postgres.GetDailyStatsByOwnerParams{
+		Owner:       &callerID,
+		PeriodStart: pgtype.Timestamp{Time: from, Valid: true},
+		PeriodEnd:   pgtype.Timestamp{Time: to, Valid: true},
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -346,11 +374,20 @@ func (h *Handler) GetDashboardStats(c *gin.Context) {
 		return
 	}
 
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	var projectID *uuid.UUID
 	if pidStr := c.Query("project_id"); pidStr != "" {
 		pid, parseErr := uuid.Parse(pidStr)
 		if parseErr != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project_id"})
+			return
+		}
+		if !h.requireProjectOwner(c, pid) {
 			return
 		}
 		projectID = &pid
@@ -394,7 +431,8 @@ func (h *Handler) GetDashboardStats(c *gin.Context) {
 		return
 	}
 
-	row, err := h.q.GetDashboardStats(c.Request.Context(), postgres.GetDashboardStatsParams{
+	row, err := h.q.GetDashboardStatsByOwner(c.Request.Context(), postgres.GetDashboardStatsByOwnerParams{
+		Owner:       &callerID,
 		PeriodStart: pgtype.Timestamp{Time: periodStart, Valid: true},
 		PeriodEnd:   pgtype.Timestamp{Time: periodEnd, Valid: true},
 		PrevStart:   pgtype.Timestamp{Time: prevStart, Valid: true},
@@ -442,11 +480,20 @@ type topRouteItem struct {
 // @Security    BearerAuth
 // @Router      /api/v1/stats/top-routes [get]
 func (h *Handler) GetDashboardTopRoutes(c *gin.Context) {
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	var projectID *uuid.UUID
 	if pidStr := c.Query("project_id"); pidStr != "" {
 		pid, err := uuid.Parse(pidStr)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project_id"})
+			return
+		}
+		if !h.requireProjectOwner(c, pid) {
 			return
 		}
 		projectID = &pid
@@ -464,7 +511,7 @@ func (h *Handler) GetDashboardTopRoutes(c *gin.Context) {
 			items = append(items, topRouteItem{PathPattern: r.PathPattern, PriceUsd: r.PriceUsd, TotalRequests: r.TotalRequests, RevenueUsd: r.RevenueUsd})
 		}
 	} else {
-		rows, err := h.q.GetTopRoutesForDashboard(c.Request.Context())
+		rows, err := h.q.GetTopRoutesForDashboardByOwner(c.Request.Context(), &callerID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -518,11 +565,20 @@ func toRecentItem(id uuid.UUID, path, method string, createdAt pgtype.Timestamp,
 // @Security    BearerAuth
 // @Router      /api/v1/stats/recent-requests [get]
 func (h *Handler) GetDashboardRecentRequests(c *gin.Context) {
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
 	var projectID *uuid.UUID
 	if pidStr := c.Query("project_id"); pidStr != "" {
 		pid, err := uuid.Parse(pidStr)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project_id"})
+			return
+		}
+		if !h.requireProjectOwner(c, pid) {
 			return
 		}
 		projectID = &pid
@@ -540,7 +596,7 @@ func (h *Handler) GetDashboardRecentRequests(c *gin.Context) {
 			items = append(items, toRecentItem(r.ID, r.Path, r.Method, r.CreatedAt, r.StatusCode, r.PaymentChannel, r.AmountUsd))
 		}
 	} else {
-		rows, err := h.q.GetRecentRequestsForDashboard(c.Request.Context())
+		rows, err := h.q.GetRecentRequestsForDashboardByOwner(c.Request.Context(), &callerID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

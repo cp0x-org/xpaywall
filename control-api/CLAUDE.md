@@ -102,9 +102,21 @@ go run ./cmd/control-api --env-file .env install demo
 | `INTERNAL_API_KEY` | Shared secret for xgateway → control-api calls |
 | `JWT_SECRET` | Signs admin JWT tokens |
 | `PROXY_URL` | Public xgateway URL (returned to dashboard) |
-| `SUPERADMIN_USERNAME` / `SUPERADMIN_PASSWORD` | Bootstrap credentials |
 | `PORT` | Default `9090` |
 | `MODE` | `release` or `debug` (Gin mode) |
+| `APP_BASE_URL` | Frontend base URL for password-reset links (default `http://localhost:3000`) |
+| `GOOGLE_CLIENT_ID` | OAuth client ID; audience for verifying Google ID tokens. Required for `POST /auth/google` |
+
+### Roles & data scoping
+- `users.role` is `user` (default) or `superadmin`. There is no env superadmin and no API to
+  change roles — provision one directly in Postgres:
+  `UPDATE users SET role='superadmin' WHERE username='...'`. The role is carried in the JWT.
+- **User-scoped data** (projects, routes, project settings, project-payment-methods, request
+  logs/events, stats) is visible/mutable **only by the owning user** — role grants no access to
+  other users' data.
+- **Global-capable entities** (`payment_methods`, `payment_method_assets`, `facilitators`) carry
+  `is_global` + `owner_user_id`: visible when `is_global` OR owned by the caller (superadmin sees
+  all). Only a superadmin may set `is_global`; deleting a global entity is superadmin-only.
 
 ## Architecture
 
@@ -115,7 +127,8 @@ go run ./cmd/control-api --env-file .env install demo
 
 | Prefix | Auth | Purpose |
 |---|---|---|
-| `/auth/...` | none | Login (`POST /auth/login`), me (`GET /auth/me`) |
+| `/auth/...` | none | Login (`POST /auth/login`), register (`POST /auth/register`), forgot/reset password (`POST /auth/forgot-password`, `POST /auth/reset-password`), Google (`POST /auth/google`) |
+| `/auth/me`, `/auth/change-password` | JWT Bearer | Current user; change password |
 | `/api/v1/...` | JWT Bearer | Admin CRUD — projects, routes, users, logs, stats, payment channels |
 | `/proxy/resolve/*path` | `X-Internal-API-Key` header | xgateway route resolution |
 | `/api/v1/request-logs`, `/api/v1/request-events` | `X-Internal-API-Key` | xgateway log ingestion |
@@ -125,7 +138,7 @@ Admin routes are registered in `internal/http/routes/admin.go`; internal/proxy r
 ### Handler structure
 - `internal/http/handlers/handler.go` — `Handler` struct holding `*postgres.Queries` and `DBTX`; all admin handlers are methods on it.
 - `internal/http/handlers/auth/` — separate `Handler` for login/JWT; holds superadmin credentials.
-- `internal/http/handlers/gateway/` — `ResolveRoute` for xgateway. Path format: `/{projectSlug}/{inboundPath}`. Looks up route + payment channels, returns full proxy rule as JSON.
+- `internal/http/handlers/gateway/` — `ResolveRoute` for xgateway. Path format: `/{username}/{projectSlug}/{inboundPath}`. Looks up route + payment channels, returns full proxy rule as JSON.
 
 ### Database layer
 - All queries live in `internal/storage/postgres/queries/*.sql`.

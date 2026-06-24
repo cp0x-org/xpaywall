@@ -13,16 +13,18 @@ import (
 )
 
 const createFacilitator = `-- name: CreateFacilitator :one
-INSERT INTO facilitators (id, name, url, enabled)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, url, enabled, created_at, updated_at
+INSERT INTO facilitators (id, name, url, enabled, is_global, owner_user_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, name, url, enabled, created_at, updated_at, is_global, owner_user_id
 `
 
 type CreateFacilitatorParams struct {
-	ID      uuid.UUID
-	Name    string
-	Url     string
-	Enabled bool
+	ID          uuid.UUID
+	Name        string
+	Url         string
+	Enabled     bool
+	IsGlobal    bool
+	OwnerUserID *uuid.UUID
 }
 
 func (q *Queries) CreateFacilitator(ctx context.Context, arg CreateFacilitatorParams) (Facilitator, error) {
@@ -31,6 +33,8 @@ func (q *Queries) CreateFacilitator(ctx context.Context, arg CreateFacilitatorPa
 		arg.Name,
 		arg.Url,
 		arg.Enabled,
+		arg.IsGlobal,
+		arg.OwnerUserID,
 	)
 	var i Facilitator
 	err := row.Scan(
@@ -40,14 +44,16 @@ func (q *Queries) CreateFacilitator(ctx context.Context, arg CreateFacilitatorPa
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsGlobal,
+		&i.OwnerUserID,
 	)
 	return i, err
 }
 
 const createPaymentMethod = `-- name: CreatePaymentMethod :one
-INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, method, scheme, enabled)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme
+INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, method, scheme, enabled, is_global, owner_user_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme, is_global, owner_user_id
 `
 
 type CreatePaymentMethodParams struct {
@@ -59,6 +65,8 @@ type CreatePaymentMethodParams struct {
 	Method       pgtype.Text
 	Scheme       pgtype.Text
 	Enabled      bool
+	IsGlobal     bool
+	OwnerUserID  *uuid.UUID
 }
 
 func (q *Queries) CreatePaymentMethod(ctx context.Context, arg CreatePaymentMethodParams) (PaymentMethod, error) {
@@ -71,6 +79,8 @@ func (q *Queries) CreatePaymentMethod(ctx context.Context, arg CreatePaymentMeth
 		arg.Method,
 		arg.Scheme,
 		arg.Enabled,
+		arg.IsGlobal,
+		arg.OwnerUserID,
 	)
 	var i PaymentMethod
 	err := row.Scan(
@@ -84,14 +94,16 @@ func (q *Queries) CreatePaymentMethod(ctx context.Context, arg CreatePaymentMeth
 		&i.UpdatedAt,
 		&i.Method,
 		&i.Scheme,
+		&i.IsGlobal,
+		&i.OwnerUserID,
 	)
 	return i, err
 }
 
 const createPaymentMethodAsset = `-- name: CreatePaymentMethodAsset :one
-INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at
+INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals, is_global, owner_user_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at, is_global, owner_user_id
 `
 
 type CreatePaymentMethodAssetParams struct {
@@ -100,6 +112,8 @@ type CreatePaymentMethodAssetParams struct {
 	Symbol          string
 	ContractAddress pgtype.Text
 	Decimals        int32
+	IsGlobal        bool
+	OwnerUserID     *uuid.UUID
 }
 
 func (q *Queries) CreatePaymentMethodAsset(ctx context.Context, arg CreatePaymentMethodAssetParams) (PaymentMethodAsset, error) {
@@ -109,6 +123,8 @@ func (q *Queries) CreatePaymentMethodAsset(ctx context.Context, arg CreatePaymen
 		arg.Symbol,
 		arg.ContractAddress,
 		arg.Decimals,
+		arg.IsGlobal,
+		arg.OwnerUserID,
 	)
 	var i PaymentMethodAsset
 	err := row.Scan(
@@ -119,6 +135,8 @@ func (q *Queries) CreatePaymentMethodAsset(ctx context.Context, arg CreatePaymen
 		&i.Decimals,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsGlobal,
+		&i.OwnerUserID,
 	)
 	return i, err
 }
@@ -207,7 +225,7 @@ func (q *Queries) DeleteProjectPaymentMethod(ctx context.Context, id uuid.UUID) 
 }
 
 const getFacilitator = `-- name: GetFacilitator :one
-SELECT id, name, url, enabled, created_at, updated_at FROM facilitators WHERE id = $1
+SELECT id, name, url, enabled, created_at, updated_at, is_global, owner_user_id FROM facilitators WHERE id = $1
 `
 
 func (q *Queries) GetFacilitator(ctx context.Context, id uuid.UUID) (Facilitator, error) {
@@ -220,12 +238,14 @@ func (q *Queries) GetFacilitator(ctx context.Context, id uuid.UUID) (Facilitator
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsGlobal,
+		&i.OwnerUserID,
 	)
 	return i, err
 }
 
 const getPaymentMethod = `-- name: GetPaymentMethod :one
-SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme FROM payment_methods WHERE id = $1
+SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme, is_global, owner_user_id FROM payment_methods WHERE id = $1
 `
 
 func (q *Queries) GetPaymentMethod(ctx context.Context, id uuid.UUID) (PaymentMethod, error) {
@@ -242,13 +262,16 @@ func (q *Queries) GetPaymentMethod(ctx context.Context, id uuid.UUID) (PaymentMe
 		&i.UpdatedAt,
 		&i.Method,
 		&i.Scheme,
+		&i.IsGlobal,
+		&i.OwnerUserID,
 	)
 	return i, err
 }
 
 const getPaymentMethodAsset = `-- name: GetPaymentMethodAsset :one
 SELECT
-    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals, pma.created_at, pma.updated_at,
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals,
+    pma.is_global, pma.owner_user_id, pma.created_at, pma.updated_at,
     pm.name AS payment_method_name,
     pm.caip2_chain_id AS payment_method_chain
 FROM payment_method_assets pma
@@ -262,6 +285,8 @@ type GetPaymentMethodAssetRow struct {
 	Symbol             string
 	ContractAddress    pgtype.Text
 	Decimals           int32
+	IsGlobal           bool
+	OwnerUserID        *uuid.UUID
 	CreatedAt          pgtype.Timestamp
 	UpdatedAt          pgtype.Timestamp
 	PaymentMethodName  string
@@ -277,6 +302,8 @@ func (q *Queries) GetPaymentMethodAsset(ctx context.Context, id uuid.UUID) (GetP
 		&i.Symbol,
 		&i.ContractAddress,
 		&i.Decimals,
+		&i.IsGlobal,
+		&i.OwnerUserID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.PaymentMethodName,
@@ -380,8 +407,81 @@ func (q *Queries) ListAllProjectPaymentMethods(ctx context.Context) ([]ListAllPr
 	return items, nil
 }
 
+const listAllProjectPaymentMethodsByOwner = `-- name: ListAllProjectPaymentMethodsByOwner :many
+SELECT
+    ppm.id,
+    ppm.project_id,          p.name   AS project_name,
+    ppm.payment_method_id,   pm.name  AS payment_method_name,
+    ppm.asset_id,            a.symbol AS asset_symbol,
+    ppm.scheme,
+    ppm.facilitator_id,      f.name   AS facilitator_name,
+    ppm.payout_address,
+    ppm.enabled,
+    ppm.created_at,
+    ppm.updated_at
+FROM project_payment_methods ppm
+JOIN projects              p  ON p.id  = ppm.project_id
+JOIN payment_methods       pm ON pm.id = ppm.payment_method_id
+JOIN payment_method_assets a  ON a.id  = ppm.asset_id
+LEFT JOIN facilitators     f  ON f.id  = ppm.facilitator_id
+WHERE p.owner_user_id = $1
+ORDER BY p.name, ppm.created_at DESC
+`
+
+type ListAllProjectPaymentMethodsByOwnerRow struct {
+	ID                uuid.UUID
+	ProjectID         uuid.UUID
+	ProjectName       string
+	PaymentMethodID   uuid.UUID
+	PaymentMethodName string
+	AssetID           uuid.UUID
+	AssetSymbol       string
+	Scheme            string
+	FacilitatorID     *uuid.UUID
+	FacilitatorName   pgtype.Text
+	PayoutAddress     pgtype.Text
+	Enabled           bool
+	CreatedAt         pgtype.Timestamp
+	UpdatedAt         pgtype.Timestamp
+}
+
+func (q *Queries) ListAllProjectPaymentMethodsByOwner(ctx context.Context, ownerUserID *uuid.UUID) ([]ListAllProjectPaymentMethodsByOwnerRow, error) {
+	rows, err := q.db.Query(ctx, listAllProjectPaymentMethodsByOwner, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAllProjectPaymentMethodsByOwnerRow
+	for rows.Next() {
+		var i ListAllProjectPaymentMethodsByOwnerRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.ProjectName,
+			&i.PaymentMethodID,
+			&i.PaymentMethodName,
+			&i.AssetID,
+			&i.AssetSymbol,
+			&i.Scheme,
+			&i.FacilitatorID,
+			&i.FacilitatorName,
+			&i.PayoutAddress,
+			&i.Enabled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listFacilitators = `-- name: ListFacilitators :many
-SELECT id, name, url, enabled, created_at, updated_at FROM facilitators ORDER BY name
+SELECT id, name, url, enabled, created_at, updated_at, is_global, owner_user_id FROM facilitators ORDER BY name
 `
 
 func (q *Queries) ListFacilitators(ctx context.Context) ([]Facilitator, error) {
@@ -400,6 +500,43 @@ func (q *Queries) ListFacilitators(ctx context.Context) ([]Facilitator, error) {
 			&i.Enabled,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.IsGlobal,
+			&i.OwnerUserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFacilitatorsVisible = `-- name: ListFacilitatorsVisible :many
+SELECT id, name, url, enabled, created_at, updated_at, is_global, owner_user_id FROM facilitators
+WHERE is_global = TRUE OR owner_user_id = $1
+ORDER BY name
+`
+
+func (q *Queries) ListFacilitatorsVisible(ctx context.Context, ownerUserID *uuid.UUID) ([]Facilitator, error) {
+	rows, err := q.db.Query(ctx, listFacilitatorsVisible, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Facilitator
+	for rows.Next() {
+		var i Facilitator
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Url,
+			&i.Enabled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.IsGlobal,
+			&i.OwnerUserID,
 		); err != nil {
 			return nil, err
 		}
@@ -413,7 +550,8 @@ func (q *Queries) ListFacilitators(ctx context.Context) ([]Facilitator, error) {
 
 const listPaymentMethodAssets = `-- name: ListPaymentMethodAssets :many
 SELECT
-    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals, pma.created_at, pma.updated_at,
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals,
+    pma.is_global, pma.owner_user_id, pma.created_at, pma.updated_at,
     pm.name AS payment_method_name,
     pm.caip2_chain_id AS payment_method_chain
 FROM payment_method_assets pma
@@ -427,6 +565,8 @@ type ListPaymentMethodAssetsRow struct {
 	Symbol             string
 	ContractAddress    pgtype.Text
 	Decimals           int32
+	IsGlobal           bool
+	OwnerUserID        *uuid.UUID
 	CreatedAt          pgtype.Timestamp
 	UpdatedAt          pgtype.Timestamp
 	PaymentMethodName  string
@@ -448,6 +588,8 @@ func (q *Queries) ListPaymentMethodAssets(ctx context.Context) ([]ListPaymentMet
 			&i.Symbol,
 			&i.ContractAddress,
 			&i.Decimals,
+			&i.IsGlobal,
+			&i.OwnerUserID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.PaymentMethodName,
@@ -516,8 +658,66 @@ func (q *Queries) ListPaymentMethodAssetsByMethod(ctx context.Context, paymentMe
 	return items, nil
 }
 
+const listPaymentMethodAssetsVisible = `-- name: ListPaymentMethodAssetsVisible :many
+SELECT
+    pma.id, pma.payment_method_id, pma.symbol, pma.contract_address, pma.decimals,
+    pma.is_global, pma.owner_user_id, pma.created_at, pma.updated_at,
+    pm.name AS payment_method_name,
+    pm.caip2_chain_id AS payment_method_chain
+FROM payment_method_assets pma
+JOIN payment_methods pm ON pm.id = pma.payment_method_id
+WHERE pma.is_global = TRUE OR pma.owner_user_id = $1
+ORDER BY pma.created_at DESC
+`
+
+type ListPaymentMethodAssetsVisibleRow struct {
+	ID                 uuid.UUID
+	PaymentMethodID    uuid.UUID
+	Symbol             string
+	ContractAddress    pgtype.Text
+	Decimals           int32
+	IsGlobal           bool
+	OwnerUserID        *uuid.UUID
+	CreatedAt          pgtype.Timestamp
+	UpdatedAt          pgtype.Timestamp
+	PaymentMethodName  string
+	PaymentMethodChain pgtype.Text
+}
+
+func (q *Queries) ListPaymentMethodAssetsVisible(ctx context.Context, ownerUserID *uuid.UUID) ([]ListPaymentMethodAssetsVisibleRow, error) {
+	rows, err := q.db.Query(ctx, listPaymentMethodAssetsVisible, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPaymentMethodAssetsVisibleRow
+	for rows.Next() {
+		var i ListPaymentMethodAssetsVisibleRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.PaymentMethodID,
+			&i.Symbol,
+			&i.ContractAddress,
+			&i.Decimals,
+			&i.IsGlobal,
+			&i.OwnerUserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PaymentMethodName,
+			&i.PaymentMethodChain,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPaymentMethods = `-- name: ListPaymentMethods :many
-SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme FROM payment_methods ORDER BY protocol, name
+SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme, is_global, owner_user_id FROM payment_methods ORDER BY protocol, name
 `
 
 func (q *Queries) ListPaymentMethods(ctx context.Context) ([]PaymentMethod, error) {
@@ -540,6 +740,47 @@ func (q *Queries) ListPaymentMethods(ctx context.Context) ([]PaymentMethod, erro
 			&i.UpdatedAt,
 			&i.Method,
 			&i.Scheme,
+			&i.IsGlobal,
+			&i.OwnerUserID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPaymentMethodsVisible = `-- name: ListPaymentMethodsVisible :many
+SELECT id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme, is_global, owner_user_id FROM payment_methods
+WHERE is_global = TRUE OR owner_user_id = $1
+ORDER BY protocol, name
+`
+
+func (q *Queries) ListPaymentMethodsVisible(ctx context.Context, ownerUserID *uuid.UUID) ([]PaymentMethod, error) {
+	rows, err := q.db.Query(ctx, listPaymentMethodsVisible, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PaymentMethod
+	for rows.Next() {
+		var i PaymentMethod
+		if err := rows.Scan(
+			&i.ID,
+			&i.Code,
+			&i.Protocol,
+			&i.Name,
+			&i.Caip2ChainID,
+			&i.Enabled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Method,
+			&i.Scheme,
+			&i.IsGlobal,
+			&i.OwnerUserID,
 		); err != nil {
 			return nil, err
 		}
@@ -621,7 +862,7 @@ SET name       = COALESCE($2, name),
     enabled    = COALESCE($4, enabled),
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, name, url, enabled, created_at, updated_at
+RETURNING id, name, url, enabled, created_at, updated_at, is_global, owner_user_id
 `
 
 type UpdateFacilitatorParams struct {
@@ -646,6 +887,8 @@ func (q *Queries) UpdateFacilitator(ctx context.Context, arg UpdateFacilitatorPa
 		&i.Enabled,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsGlobal,
+		&i.OwnerUserID,
 	)
 	return i, err
 }
@@ -661,7 +904,7 @@ SET code           = COALESCE($2, code),
     enabled        = COALESCE($8, enabled),
     updated_at     = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme
+RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme, is_global, owner_user_id
 `
 
 type UpdatePaymentMethodParams struct {
@@ -698,6 +941,8 @@ func (q *Queries) UpdatePaymentMethod(ctx context.Context, arg UpdatePaymentMeth
 		&i.UpdatedAt,
 		&i.Method,
 		&i.Scheme,
+		&i.IsGlobal,
+		&i.OwnerUserID,
 	)
 	return i, err
 }
@@ -709,7 +954,7 @@ SET symbol           = COALESCE($2, symbol),
     decimals         = COALESCE($4, decimals),
     updated_at       = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at
+RETURNING id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at, is_global, owner_user_id
 `
 
 type UpdatePaymentMethodAssetParams struct {
@@ -735,6 +980,8 @@ func (q *Queries) UpdatePaymentMethodAsset(ctx context.Context, arg UpdatePaymen
 		&i.Decimals,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.IsGlobal,
+		&i.OwnerUserID,
 	)
 	return i, err
 }

@@ -10,12 +10,23 @@ import (
 )
 
 type Facilitator struct {
+	ID          uuid.UUID
+	Name        string
+	Url         string
+	Enabled     bool
+	CreatedAt   pgtype.Timestamp
+	UpdatedAt   pgtype.Timestamp
+	IsGlobal    bool
+	OwnerUserID *uuid.UUID
+}
+
+type PasswordResetToken struct {
 	ID        uuid.UUID
-	Name      string
-	Url       string
-	Enabled   bool
+	UserID    uuid.UUID
+	TokenHash string
+	ExpiresAt pgtype.Timestamp
+	UsedAt    pgtype.Timestamp
 	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
 }
 
 type PaymentMethod struct {
@@ -29,6 +40,8 @@ type PaymentMethod struct {
 	UpdatedAt    pgtype.Timestamp
 	Method       pgtype.Text
 	Scheme       pgtype.Text
+	IsGlobal     bool
+	OwnerUserID  *uuid.UUID
 }
 
 type PaymentMethodAsset struct {
@@ -39,6 +52,8 @@ type PaymentMethodAsset struct {
 	Decimals        int32
 	CreatedAt       pgtype.Timestamp
 	UpdatedAt       pgtype.Timestamp
+	IsGlobal        bool
+	OwnerUserID     *uuid.UUID
 }
 
 type Project struct {
@@ -156,7 +171,12 @@ type RouteDailyStat struct {
 type User struct {
 	ID           uuid.UUID
 	Username     string
-	PasswordHash string
+	PasswordHash pgtype.Text
 	CreatedAt    pgtype.Timestamp
 	UpdatedAt    pgtype.Timestamp
+	Email        pgtype.Text
+	GoogleID     pgtype.Text
+	AuthProvider string
+	AvatarUrl    pgtype.Text
+	Role         string
 }

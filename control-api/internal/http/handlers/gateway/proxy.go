@@ -64,7 +64,7 @@ type errorResponse struct {
 // @Summary     Resolve route
 // @Tags        gateway
 // @Produce     json
-// @Param       path path string true "Path in format {projectSlug}/{inboundPath}"
+// @Param       path path string true "Path in format {username}/{projectSlug}/{inboundPath}"
 // @Success     200 {object} resolveRouteResponse
 // @Failure     404 {object} errorResponse
 // @Failure     500 {object} errorResponse
@@ -74,19 +74,21 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 	fullPath := c.Param("path")
 	fullPath = strings.TrimPrefix(fullPath, "/")
 
-	parts := strings.SplitN(fullPath, "/", 2)
-	if len(parts) < 2 || parts[0] == "" {
-		c.JSON(nethttp.StatusNotFound, gin.H{"error": "invalid path: missing project slug"})
+	parts := strings.SplitN(fullPath, "/", 3)
+	if len(parts) < 3 || parts[0] == "" || parts[1] == "" {
+		c.JSON(nethttp.StatusNotFound, gin.H{"error": "invalid path: expected {username}/{projectSlug}/{inboundPath}"})
 		return
 	}
 
-	projectSlug := parts[0]
-	inboundPath := "/" + parts[1]
+	username := parts[0]
+	projectSlug := parts[1]
+	inboundPath := "/" + parts[2]
 	if len(inboundPath) > 1 {
 		inboundPath = strings.TrimRight(inboundPath, "/")
 	}
 
 	route, err := h.q.ResolveOutboundRoute(c.Request.Context(), postgres.ResolveOutboundRouteParams{
+		Username:    username,
 		Slug:        projectSlug,
 		InboundPath: inboundPath,
 	})
@@ -115,9 +117,10 @@ func (h *Handler) ResolveRoute(c *gin.Context) {
 
 	if !route.Free {
 		dbMethods, err := h.q.GetPaymentMethodsByProjectSlug(c.Request.Context(), postgres.GetPaymentMethodsByProjectSlugParams{
-			Slug:      projectSlug,
-			Enabled:   true,
-			Enabled_2: true,
+			Username:   username,
+			Slug:       projectSlug,
+			PpmEnabled: true,
+			PmEnabled:  true,
 		})
 		if err != nil {
 			c.JSON(nethttp.StatusInternalServerError, gin.H{"error": "failed to load payment methods"})

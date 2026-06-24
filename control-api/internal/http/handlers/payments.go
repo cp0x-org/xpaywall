@@ -15,16 +15,18 @@ import (
 // ─── Payment Methods ──────────────────────────────────────────────────────────
 
 type paymentMethodResponse struct {
-	ID           uuid.UUID `json:"id"`
-	Code         string    `json:"code"`
-	Protocol     string    `json:"protocol"`
-	Name         string    `json:"name"`
-	Caip2ChainID *string   `json:"caip2_chain_id,omitempty"`
-	Method       *string   `json:"method,omitempty"`
-	Scheme       *string   `json:"scheme,omitempty"`
-	Enabled      bool      `json:"enabled"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID           uuid.UUID  `json:"id"`
+	Code         string     `json:"code"`
+	Protocol     string     `json:"protocol"`
+	Name         string     `json:"name"`
+	Caip2ChainID *string    `json:"caip2_chain_id,omitempty"`
+	Method       *string    `json:"method,omitempty"`
+	Scheme       *string    `json:"scheme,omitempty"`
+	Enabled      bool       `json:"enabled"`
+	IsGlobal     bool       `json:"is_global"`
+	OwnerUserID  *uuid.UUID `json:"owner_user_id,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 func toPaymentMethodResponse(m postgres.PaymentMethod) paymentMethodResponse {
@@ -37,6 +39,8 @@ func toPaymentMethodResponse(m postgres.PaymentMethod) paymentMethodResponse {
 		Method:       pgTextPtr(m.Method),
 		Scheme:       pgTextPtr(m.Scheme),
 		Enabled:      m.Enabled,
+		IsGlobal:     m.IsGlobal,
+		OwnerUserID:  m.OwnerUserID,
 		CreatedAt:    m.CreatedAt.Time,
 		UpdatedAt:    m.UpdatedAt.Time,
 	}
@@ -51,7 +55,12 @@ func toPaymentMethodResponse(m postgres.PaymentMethod) paymentMethodResponse {
 // @Security    BearerAuth
 // @Router      /api/v1/payment-methods [get]
 func (h *Handler) ListPaymentMethods(c *gin.Context) {
-	methods, err := h.q.ListPaymentMethods(c.Request.Context())
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	methods, err := h.q.ListPaymentMethodsVisible(c.Request.Context(), &callerID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -84,6 +93,10 @@ func (h *Handler) GetPaymentMethod(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "payment method not found"})
 		return
 	}
+	if !canSeeGlobalEntity(c, m.IsGlobal, m.OwnerUserID) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "payment method not found"})
+		return
+	}
 	c.JSON(http.StatusOK, toPaymentMethodResponse(m))
 }
 
@@ -95,6 +108,7 @@ type createPaymentMethodRequest struct {
 	Method       *string `json:"method"`
 	Scheme       *string `json:"scheme"`
 	Enabled      bool    `json:"enabled"`
+	IsGlobal     bool    `json:"is_global"`
 }
 
 // CreatePaymentMethod creates a new payment method.
@@ -109,6 +123,11 @@ type createPaymentMethodRequest struct {
 // @Security    BearerAuth
 // @Router      /api/v1/payment-methods [post]
 func (h *Handler) CreatePaymentMethod(c *gin.Context) {
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 	var req createPaymentMethodRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -129,6 +148,8 @@ func (h *Handler) CreatePaymentMethod(c *gin.Context) {
 		Method:       ptrToPgText(req.Method),
 		Scheme:       ptrToPgText(req.Scheme),
 		Enabled:      req.Enabled,
+		IsGlobal:     resolveIsGlobal(c, req.IsGlobal),
+		OwnerUserID:  &callerID,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -163,6 +184,14 @@ func (h *Handler) UpdatePaymentMethod(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	existing, err := h.q.GetPaymentMethod(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "payment method not found"})
+		return
+	}
+	if !h.requireGlobalEntityMutate(c, existing.IsGlobal, existing.OwnerUserID, false) {
 		return
 	}
 	var req updatePaymentMethodRequest
@@ -202,6 +231,14 @@ func (h *Handler) DeletePaymentMethod(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	existing, err := h.q.GetPaymentMethod(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "payment method not found"})
+		return
+	}
+	if !h.requireGlobalEntityMutate(c, existing.IsGlobal, existing.OwnerUserID, true) {
+		return
+	}
 	if err := h.q.DeletePaymentMethod(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -212,15 +249,17 @@ func (h *Handler) DeletePaymentMethod(c *gin.Context) {
 // ─── Payment Method Assets ────────────────────────────────────────────────────
 
 type paymentMethodAssetResponse struct {
-	ID                 uuid.UUID `json:"id"`
-	PaymentMethodID    uuid.UUID `json:"payment_method_id"`
-	PaymentMethodName  string    `json:"payment_method_name"`
-	PaymentMethodChain *string   `json:"payment_method_chain,omitempty"`
-	Symbol             string    `json:"symbol"`
-	ContractAddress    *string   `json:"contract_address,omitempty"`
-	Decimals           int32     `json:"decimals"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID                 uuid.UUID  `json:"id"`
+	PaymentMethodID    uuid.UUID  `json:"payment_method_id"`
+	PaymentMethodName  string     `json:"payment_method_name"`
+	PaymentMethodChain *string    `json:"payment_method_chain,omitempty"`
+	Symbol             string     `json:"symbol"`
+	ContractAddress    *string    `json:"contract_address,omitempty"`
+	Decimals           int32      `json:"decimals"`
+	IsGlobal           bool       `json:"is_global"`
+	OwnerUserID        *uuid.UUID `json:"owner_user_id,omitempty"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
 }
 
 func toPaymentMethodAssetResponse(a postgres.ListPaymentMethodAssetsRow) paymentMethodAssetResponse {
@@ -232,6 +271,8 @@ func toPaymentMethodAssetResponse(a postgres.ListPaymentMethodAssetsRow) payment
 		Symbol:             a.Symbol,
 		ContractAddress:    pgTextPtr(a.ContractAddress),
 		Decimals:           a.Decimals,
+		IsGlobal:           a.IsGlobal,
+		OwnerUserID:        a.OwnerUserID,
 		CreatedAt:          a.CreatedAt.Time,
 		UpdatedAt:          a.UpdatedAt.Time,
 	}
@@ -246,6 +287,24 @@ func toPaymentMethodAssetResponseFromGet(a postgres.GetPaymentMethodAssetRow) pa
 		Symbol:             a.Symbol,
 		ContractAddress:    pgTextPtr(a.ContractAddress),
 		Decimals:           a.Decimals,
+		IsGlobal:           a.IsGlobal,
+		OwnerUserID:        a.OwnerUserID,
+		CreatedAt:          a.CreatedAt.Time,
+		UpdatedAt:          a.UpdatedAt.Time,
+	}
+}
+
+func toPaymentMethodAssetResponseFromVisible(a postgres.ListPaymentMethodAssetsVisibleRow) paymentMethodAssetResponse {
+	return paymentMethodAssetResponse{
+		ID:                 a.ID,
+		PaymentMethodID:    a.PaymentMethodID,
+		PaymentMethodName:  a.PaymentMethodName,
+		PaymentMethodChain: pgTextPtr(a.PaymentMethodChain),
+		Symbol:             a.Symbol,
+		ContractAddress:    pgTextPtr(a.ContractAddress),
+		Decimals:           a.Decimals,
+		IsGlobal:           a.IsGlobal,
+		OwnerUserID:        a.OwnerUserID,
 		CreatedAt:          a.CreatedAt.Time,
 		UpdatedAt:          a.UpdatedAt.Time,
 	}
@@ -260,14 +319,19 @@ func toPaymentMethodAssetResponseFromGet(a postgres.GetPaymentMethodAssetRow) pa
 // @Security    BearerAuth
 // @Router      /api/v1/payment-method-assets [get]
 func (h *Handler) ListPaymentMethodAssets(c *gin.Context) {
-	assets, err := h.q.ListPaymentMethodAssets(c.Request.Context())
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	assets, err := h.q.ListPaymentMethodAssetsVisible(c.Request.Context(), &callerID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	result := make([]paymentMethodAssetResponse, len(assets))
 	for i, a := range assets {
-		result[i] = toPaymentMethodAssetResponse(a)
+		result[i] = toPaymentMethodAssetResponseFromVisible(a)
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -293,6 +357,10 @@ func (h *Handler) GetPaymentMethodAsset(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "payment method asset not found"})
 		return
 	}
+	if !canSeeGlobalEntity(c, a.IsGlobal, a.OwnerUserID) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "payment method asset not found"})
+		return
+	}
 	c.JSON(http.StatusOK, toPaymentMethodAssetResponseFromGet(a))
 }
 
@@ -301,6 +369,7 @@ type createPaymentMethodAssetRequest struct {
 	Symbol          string    `json:"symbol" binding:"required"`
 	ContractAddress *string   `json:"contract_address"`
 	Decimals        int32     `json:"decimals" binding:"required"`
+	IsGlobal        bool      `json:"is_global"`
 }
 
 // CreatePaymentMethodAsset creates a new payment method asset.
@@ -315,6 +384,11 @@ type createPaymentMethodAssetRequest struct {
 // @Security    BearerAuth
 // @Router      /api/v1/payment-method-assets [post]
 func (h *Handler) CreatePaymentMethodAsset(c *gin.Context) {
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 	var req createPaymentMethodAssetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -326,6 +400,8 @@ func (h *Handler) CreatePaymentMethodAsset(c *gin.Context) {
 		Symbol:          req.Symbol,
 		ContractAddress: ptrToPgText(req.ContractAddress),
 		Decimals:        req.Decimals,
+		IsGlobal:        resolveIsGlobal(c, req.IsGlobal),
+		OwnerUserID:     &callerID,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -361,6 +437,14 @@ func (h *Handler) UpdatePaymentMethodAsset(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	existing, err := h.q.GetPaymentMethodAsset(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "payment method asset not found"})
+		return
+	}
+	if !h.requireGlobalEntityMutate(c, existing.IsGlobal, existing.OwnerUserID, false) {
 		return
 	}
 	var req updatePaymentMethodAssetRequest
@@ -401,6 +485,14 @@ func (h *Handler) DeletePaymentMethodAsset(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
+	existing, err := h.q.GetPaymentMethodAsset(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "payment method asset not found"})
+		return
+	}
+	if !h.requireGlobalEntityMutate(c, existing.IsGlobal, existing.OwnerUserID, true) {
+		return
+	}
 	if err := h.q.DeletePaymentMethodAsset(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -411,22 +503,26 @@ func (h *Handler) DeletePaymentMethodAsset(c *gin.Context) {
 // ─── Facilitators ─────────────────────────────────────────────────────────────
 
 type facilitatorResponse struct {
-	ID        uuid.UUID `json:"id"`
-	Name      string    `json:"name"`
-	URL       string    `json:"url"`
-	Enabled   bool      `json:"enabled"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          uuid.UUID  `json:"id"`
+	Name        string     `json:"name"`
+	URL         string     `json:"url"`
+	Enabled     bool       `json:"enabled"`
+	IsGlobal    bool       `json:"is_global"`
+	OwnerUserID *uuid.UUID `json:"owner_user_id,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
 }
 
 func toFacilitatorResponse(f postgres.Facilitator) facilitatorResponse {
 	return facilitatorResponse{
-		ID:        f.ID,
-		Name:      f.Name,
-		URL:       f.Url,
-		Enabled:   f.Enabled,
-		CreatedAt: f.CreatedAt.Time,
-		UpdatedAt: f.UpdatedAt.Time,
+		ID:          f.ID,
+		Name:        f.Name,
+		URL:         f.Url,
+		Enabled:     f.Enabled,
+		IsGlobal:    f.IsGlobal,
+		OwnerUserID: f.OwnerUserID,
+		CreatedAt:   f.CreatedAt.Time,
+		UpdatedAt:   f.UpdatedAt.Time,
 	}
 }
 
@@ -439,7 +535,12 @@ func toFacilitatorResponse(f postgres.Facilitator) facilitatorResponse {
 // @Security    BearerAuth
 // @Router      /api/v1/facilitators [get]
 func (h *Handler) ListFacilitators(c *gin.Context) {
-	facilitators, err := h.q.ListFacilitators(c.Request.Context())
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	facilitators, err := h.q.ListFacilitatorsVisible(c.Request.Context(), &callerID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -472,13 +573,18 @@ func (h *Handler) GetFacilitator(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "facilitator not found"})
 		return
 	}
+	if !canSeeGlobalEntity(c, f.IsGlobal, f.OwnerUserID) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "facilitator not found"})
+		return
+	}
 	c.JSON(http.StatusOK, toFacilitatorResponse(f))
 }
 
 type createFacilitatorRequest struct {
-	Name    string `json:"name" binding:"required"`
-	URL     string `json:"url" binding:"required"`
-	Enabled bool   `json:"enabled"`
+	Name     string `json:"name" binding:"required"`
+	URL      string `json:"url" binding:"required"`
+	Enabled  bool   `json:"enabled"`
+	IsGlobal bool   `json:"is_global"`
 }
 
 // CreateFacilitator creates a new facilitator.
@@ -493,16 +599,23 @@ type createFacilitatorRequest struct {
 // @Security    BearerAuth
 // @Router      /api/v1/facilitators [post]
 func (h *Handler) CreateFacilitator(c *gin.Context) {
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
 	var req createFacilitatorRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	f, err := h.q.CreateFacilitator(c.Request.Context(), postgres.CreateFacilitatorParams{
-		ID:      uuid.New(),
-		Name:    req.Name,
-		Url:     req.URL,
-		Enabled: req.Enabled,
+		ID:          uuid.New(),
+		Name:        req.Name,
+		Url:         req.URL,
+		Enabled:     req.Enabled,
+		IsGlobal:    resolveIsGlobal(c, req.IsGlobal),
+		OwnerUserID: &callerID,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -533,6 +646,14 @@ func (h *Handler) UpdateFacilitator(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	existing, err := h.q.GetFacilitator(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "facilitator not found"})
+		return
+	}
+	if !h.requireGlobalEntityMutate(c, existing.IsGlobal, existing.OwnerUserID, false) {
 		return
 	}
 	var req updateFacilitatorRequest
@@ -566,6 +687,14 @@ func (h *Handler) DeleteFacilitator(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+	existing, err := h.q.GetFacilitator(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "facilitator not found"})
+		return
+	}
+	if !h.requireGlobalEntityMutate(c, existing.IsGlobal, existing.OwnerUserID, true) {
 		return
 	}
 	if err := h.q.DeleteFacilitator(c.Request.Context(), id); err != nil {
@@ -626,6 +755,9 @@ func (h *Handler) ListProjectPaymentMethods(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid project_id"})
 		return
 	}
+	if !h.requireProjectOwner(c, pid) {
+		return
+	}
 	rows, err := h.q.ListProjectPaymentMethods(c.Request.Context(), pid)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -655,7 +787,7 @@ type projectPaymentMethodFullResponse struct {
 	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
-func toProjectPaymentMethodFullResponse(r postgres.ListAllProjectPaymentMethodsRow) projectPaymentMethodFullResponse {
+func toProjectPaymentMethodFullResponse(r postgres.ListAllProjectPaymentMethodsByOwnerRow) projectPaymentMethodFullResponse {
 	return projectPaymentMethodFullResponse{
 		ID:                r.ID,
 		ProjectID:         r.ProjectID,
@@ -683,7 +815,12 @@ func toProjectPaymentMethodFullResponse(r postgres.ListAllProjectPaymentMethodsR
 // @Security    BearerAuth
 // @Router      /api/v1/project-payment-methods/all [get]
 func (h *Handler) ListAllProjectPaymentMethods(c *gin.Context) {
-	rows, err := h.q.ListAllProjectPaymentMethods(c.Request.Context())
+	callerID, ok := callerUserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	rows, err := h.q.ListAllProjectPaymentMethodsByOwner(c.Request.Context(), &callerID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -714,6 +851,9 @@ func (h *Handler) GetProjectPaymentMethod(c *gin.Context) {
 	row, err := h.q.GetProjectPaymentMethod(c.Request.Context(), id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "project payment method not found"})
+		return
+	}
+	if !h.requireProjectOwner(c, row.ProjectID) {
 		return
 	}
 	c.JSON(http.StatusOK, toProjectPaymentMethodResponse(row))

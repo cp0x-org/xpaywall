@@ -86,11 +86,16 @@ func SetupRouter(h *handlers.Handler, authHandler *authhandler.Handler, gatewayH
 	// Public auth endpoints
 	auth := router.Group("/auth")
 	auth.POST("/login", authHandler.Login)
+	auth.POST("/register", authHandler.Register)
+	auth.POST("/forgot-password", authHandler.ForgotPassword)
+	auth.POST("/reset-password", authHandler.ResetPassword)
+	auth.POST("/google", authHandler.GoogleAuth)
 
 	// JWT-protected routes
 	protected := router.Group("/")
 	protected.Use(middleware.JWT(jwtSecret))
 	protected.GET("/auth/me", authHandler.Me)
+	protected.POST("/auth/change-password", authHandler.ChangePassword)
 	routes.RegisterAdminRoutes(protected, h)
 
 	// Internal proxy endpoints (gateway → control-api)

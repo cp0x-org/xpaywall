@@ -58,6 +58,32 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 	return i, err
 }
 
+const getActiveProjectByOwnerAndSlug = `-- name: GetActiveProjectByOwnerAndSlug :one
+SELECT id, owner_user_id, name, slug, enabled, created_at, updated_at, archived_at FROM projects
+WHERE owner_user_id = $1 AND slug = $2 AND archived_at IS NULL
+`
+
+type GetActiveProjectByOwnerAndSlugParams struct {
+	OwnerUserID *uuid.UUID
+	Slug        string
+}
+
+func (q *Queries) GetActiveProjectByOwnerAndSlug(ctx context.Context, arg GetActiveProjectByOwnerAndSlugParams) (Project, error) {
+	row := q.db.QueryRow(ctx, getActiveProjectByOwnerAndSlug, arg.OwnerUserID, arg.Slug)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.OwnerUserID,
+		&i.Name,
+		&i.Slug,
+		&i.Enabled,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
 const getProject = `-- name: GetProject :one
 SELECT id, owner_user_id, name, slug, enabled, created_at, updated_at, archived_at FROM projects
 WHERE id = $1 AND archived_at IS NULL
@@ -216,6 +242,74 @@ func (q *Queries) ListProjectsWithConfig(ctx context.Context) ([]ListProjectsWit
 	var items []ListProjectsWithConfigRow
 	for rows.Next() {
 		var i ListProjectsWithConfigRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OwnerUserID,
+			&i.Name,
+			&i.Slug,
+			&i.Enabled,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ArchivedAt,
+			&i.BaseUrl,
+			&i.PaymentMethods,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjectsWithConfigByOwner = `-- name: ListProjectsWithConfigByOwner :many
+SELECT
+    p.id, p.owner_user_id, p.name, p.slug, p.enabled, p.created_at, p.updated_at, p.archived_at,
+    prs.base_url,
+    COALESCE(
+        ARRAY_AGG(DISTINCT pm.protocol) FILTER (WHERE pm.protocol IS NOT NULL),
+        ARRAY[]::VARCHAR[]
+    ) AS payment_methods
+FROM projects p
+         LEFT JOIN project_routes_settings prs
+                   ON prs.project_id = p.id
+         LEFT JOIN project_payment_methods ppm
+                   ON ppm.project_id = p.id
+                       AND ppm.enabled = TRUE
+         LEFT JOIN payment_methods pm
+                   ON pm.id = ppm.payment_method_id
+                       AND pm.enabled = TRUE
+WHERE p.archived_at IS NULL AND p.owner_user_id = $1
+GROUP BY
+    p.id,
+    prs.base_url
+ORDER BY p.name
+`
+
+type ListProjectsWithConfigByOwnerRow struct {
+	ID             uuid.UUID
+	OwnerUserID    *uuid.UUID
+	Name           string
+	Slug           string
+	Enabled        bool
+	CreatedAt      pgtype.Timestamp
+	UpdatedAt      pgtype.Timestamp
+	ArchivedAt     pgtype.Timestamp
+	BaseUrl        pgtype.Text
+	PaymentMethods interface{}
+}
+
+func (q *Queries) ListProjectsWithConfigByOwner(ctx context.Context, ownerUserID *uuid.UUID) ([]ListProjectsWithConfigByOwnerRow, error) {
+	rows, err := q.db.Query(ctx, listProjectsWithConfigByOwner, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListProjectsWithConfigByOwnerRow
+	for rows.Next() {
+		var i ListProjectsWithConfigByOwnerRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.OwnerUserID,

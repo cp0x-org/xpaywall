@@ -59,7 +59,7 @@ func run(ctx context.Context, cfg *appconfig.ControlAPIConfig) error {
 
 	q := postgres.New(pool)
 	h := handlers.New(cfg, q, pool)
-	ah := authhandler.New(q, cfg.JWTSecret, cfg.SuperadminUsername, cfg.SuperadminPassword)
+	ah := authhandler.New(cfg, q, authhandler.LogMailer{})
 	gw := gateway.New(q)
 
 	router := internalhttp.SetupRouter(h, ah, gw, cfg.InternalAPIKey, cfg.JWTSecret, cfg.Debug, cfg.CORSOrigins)

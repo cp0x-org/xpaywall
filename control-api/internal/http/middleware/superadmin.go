@@ -4,21 +4,23 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 )
 
-// SuperadminOnly aborts the request unless the caller is the superadmin.
-// Must be installed after JWT so user_id is present in the gin context.
-// Superadmin is identified by user_id == uuid.Nil (see auth handler login flow).
+// RoleSuperadmin is the users.role value granting global-entity management rights.
+const RoleSuperadmin = "superadmin"
+
+// SuperadminOnly aborts the request unless the caller has the superadmin role.
+// Must be installed after JWT so role is present in the gin context.
+// Superadmin is provisioned directly in Postgres (UPDATE users SET role='superadmin').
 func SuperadminOnly() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		v, exists := c.Get("user_id")
+		v, exists := c.Get("role")
 		if !exists {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
-		id, ok := v.(uuid.UUID)
-		if !ok || id != uuid.Nil {
+		role, ok := v.(string)
+		if !ok || role != RoleSuperadmin {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "superadmin only"})
 			return
 		}

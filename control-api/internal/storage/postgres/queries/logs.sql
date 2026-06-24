@@ -58,6 +58,13 @@ WHERE project_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
 
+-- name: ListRequestLogsByOwner :many
+SELECT rl.* FROM request_logs rl
+JOIN projects p ON p.id = rl.project_id
+WHERE p.owner_user_id = $1
+ORDER BY rl.created_at DESC
+LIMIT $2 OFFSET $3;
+
 -- name: GetRecentRequestsForDashboard :many
 SELECT
     rl.id,
@@ -88,6 +95,24 @@ SELECT
 FROM request_logs rl
 LEFT JOIN payment_methods pm ON pm.id = rl.payment_channel_id
 WHERE rl.project_id = $1
+ORDER BY rl.created_at DESC
+LIMIT 5;
+
+-- name: GetRecentRequestsForDashboardByOwner :many
+SELECT
+    rl.id,
+    rl.path,
+    rl.method,
+    rl.created_at,
+    COALESCE(rl.final_status_code,
+        CASE WHEN rl.payment_required = TRUE AND rl.payment_completed = FALSE THEN 402 ELSE 200 END
+    )::INTEGER                AS status_code,
+    pm.protocol               AS payment_channel,
+    rl.amount_usd
+FROM request_logs rl
+JOIN projects p ON p.id = rl.project_id
+LEFT JOIN payment_methods pm ON pm.id = rl.payment_channel_id
+WHERE p.owner_user_id = $1
 ORDER BY rl.created_at DESC
 LIMIT 5;
 

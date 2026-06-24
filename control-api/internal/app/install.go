@@ -12,6 +12,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	appconfig "github.com/cp0x-org/xpaywall/control-api/config"
+	"github.com/cp0x-org/xpaywall/control-api/internal/validate"
 )
 
 func installCommand() *cli.Command {
@@ -20,11 +21,26 @@ func installCommand() *cli.Command {
 		Usage: "installation utilities",
 		Commands: []*cli.Command{
 			{
-				Name:  "demo",
-				Usage: "seed demo data (admin user, sample project, routes, request logs)",
+				Name:  "payment-methods",
+				Usage: "seed the global x402 + MPP payment methods, assets and facilitator (owned by a superadmin)",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "admin-username", Value: "admin", Usage: "admin login username"},
-					&cli.StringFlag{Name: "admin-password", Value: "admin", Usage: "admin plaintext password (will be hashed)"},
+					&cli.StringFlag{Name: "superadmin", Required: true, Usage: "username of an existing superadmin that will own the global entities"},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					cfg, err := appconfig.NewControlAPIConfig()
+					if err != nil {
+						return err
+					}
+					return runPaymentMethodsSeed(ctx, cfg.DB_DSN, cmd.String("superadmin"))
+				},
+			},
+			{
+				Name:  "demo",
+				Usage: "seed demo data (sample project, routes, request logs) for a user; requires 'install payment-methods' first",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "username", Value: defaultDemoUsername, Usage: "login username (created if missing)"},
+					&cli.StringFlag{Name: "password", Value: defaultDemoPassword, Usage: "plaintext password (will be hashed)"},
+					&cli.StringFlag{Name: "email", Value: defaultDemoEmail, Usage: "email"},
 					&cli.BoolFlag{Name: "skip-logs", Usage: "skip request_logs seed"},
 					&cli.IntFlag{Name: "log-days", Value: 7, Usage: "spread log entries over this many past days"},
 					&cli.IntFlag{Name: "log-count", Value: 75, Usage: "number of request_logs rows to insert"},
@@ -34,21 +50,23 @@ func installCommand() *cli.Command {
 					if err != nil {
 						return err
 					}
-					if err := runDemoSeed(ctx, cfg.DB_DSN, cmd.String("admin-username"), cmd.String("admin-password")); err != nil {
+					if err := runDemoSeed(ctx, cfg.DB_DSN,
+						cmd.String("username"), cmd.String("password"), cmd.String("email")); err != nil {
 						return err
 					}
 					if cmd.Bool("skip-logs") {
 						return nil
 					}
-					return runSeedLogs(ctx, cfg.DB_DSN, "default", demoLogPaths, int(cmd.Int("log-days")), int(cmd.Int("log-count")))
+					return runSeedLogs(ctx, cfg.DB_DSN, cmd.String("username"), "default", demoLogPaths, int(cmd.Int("log-days")), int(cmd.Int("log-count")))
 				},
 			},
 			{
 				Name:  "demo-mpp",
-				Usage: "seed MPP/Tempo charge demo data (admin user, MPP project, routes, request logs)",
+				Usage: "seed MPP/Tempo charge demo data for a user; requires 'install payment-methods' first",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "admin-username", Value: "admin", Usage: "admin login username"},
-					&cli.StringFlag{Name: "admin-password", Value: "admin", Usage: "admin plaintext password (will be hashed)"},
+					&cli.StringFlag{Name: "username", Value: defaultDemoUsername, Usage: "login username (created if missing)"},
+					&cli.StringFlag{Name: "password", Value: defaultDemoPassword, Usage: "plaintext password (will be hashed)"},
+					&cli.StringFlag{Name: "email", Value: defaultDemoEmail, Usage: "email"},
 					&cli.BoolFlag{Name: "skip-logs", Usage: "skip request_logs seed"},
 					&cli.IntFlag{Name: "log-days", Value: 7, Usage: "spread log entries over this many past days"},
 					&cli.IntFlag{Name: "log-count", Value: 75, Usage: "number of request_logs rows to insert"},
@@ -58,13 +76,14 @@ func installCommand() *cli.Command {
 					if err != nil {
 						return err
 					}
-					if err := runDemoMPPSeed(ctx, cfg.DB_DSN, cmd.String("admin-username"), cmd.String("admin-password")); err != nil {
+					if err := runDemoMPPSeed(ctx, cfg.DB_DSN,
+						cmd.String("username"), cmd.String("password"), cmd.String("email")); err != nil {
 						return err
 					}
 					if cmd.Bool("skip-logs") {
 						return nil
 					}
-					return runSeedLogs(ctx, cfg.DB_DSN, mppProjectSlug, demoMPPLogPaths, int(cmd.Int("log-days")), int(cmd.Int("log-count")))
+					return runSeedLogs(ctx, cfg.DB_DSN, cmd.String("username"), mppProjectSlug, demoMPPLogPaths, int(cmd.Int("log-days")), int(cmd.Int("log-count")))
 				},
 			},
 			{
@@ -73,35 +92,86 @@ func installCommand() *cli.Command {
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "username", Required: true, Usage: "login username"},
 					&cli.StringFlag{Name: "password", Required: true, Usage: "plaintext password (will be hashed)"},
+					&cli.StringFlag{Name: "email", Required: true, Usage: "email address"},
+					&cli.StringFlag{Name: "role", Value: roleUser, Usage: "role: 'user' or 'superadmin'"},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					cfg, err := appconfig.NewControlAPIConfig()
 					if err != nil {
 						return err
 					}
-					return runCreateUser(ctx, cfg.DB_DSN, cmd.String("username"), cmd.String("password"))
+					return runCreateUser(ctx, cfg.DB_DSN,
+						cmd.String("username"), cmd.String("password"), cmd.String("email"), cmd.String("role"))
 				},
 			},
 		},
 	}
 }
 
+// paymentMethodsSQL seeds the shared, global payment methods used by the demos.
+// They are owned by a superadmin and marked is_global so every user can attach
+// them to their projects. Idempotent: re-running upserts by code/name.
+const paymentMethodsSQL = `
+DO $$
+DECLARE
+    v_owner     UUID := '%s';
+    v_method_id UUID;
+BEGIN
+    -- x402 Base Sepolia (USDC) + Coinbase facilitator.
+    INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, enabled, is_global, owner_user_id)
+    VALUES (gen_random_uuid(), 'x402_base_sepolia', 'x402', 'Base Sepolia', 'eip155:84532', TRUE, TRUE, v_owner)
+    ON CONFLICT (code) DO UPDATE SET enabled = TRUE, is_global = TRUE, owner_user_id = v_owner
+    RETURNING id INTO v_method_id;
+
+    INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals, is_global, owner_user_id)
+    VALUES (gen_random_uuid(), v_method_id, 'USDC', '0x036CbD53842c5426634e7929541eC2318f3dCF7e', 6, TRUE, v_owner)
+    ON CONFLICT (payment_method_id, symbol) DO UPDATE SET decimals = EXCLUDED.decimals, is_global = TRUE, owner_user_id = v_owner;
+
+    IF NOT EXISTS (SELECT 1 FROM facilitators WHERE name = 'x402 Coinbase') THEN
+        INSERT INTO facilitators (id, name, url, enabled, is_global, owner_user_id)
+        VALUES (gen_random_uuid(), 'x402 Coinbase', 'https://x402.org/facilitator', TRUE, TRUE, v_owner);
+    END IF;
+
+    -- MPP / Tempo charge (pathUSD stablecoin); no facilitator.
+    INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, method, scheme, enabled, is_global, owner_user_id)
+    VALUES (gen_random_uuid(), 'mpp_tempo_charge', 'mpp', 'Tempo Charge', NULL, 'tempo', 'charge', TRUE, TRUE, v_owner)
+    ON CONFLICT (code) DO UPDATE SET enabled = TRUE, method = EXCLUDED.method, scheme = EXCLUDED.scheme, is_global = TRUE, owner_user_id = v_owner
+    RETURNING id INTO v_method_id;
+
+    INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals, is_global, owner_user_id)
+    VALUES (gen_random_uuid(), v_method_id, 'pathUSD', '0x20c0000000000000000000000000000000000000', 6, TRUE, v_owner)
+    ON CONFLICT (payment_method_id, symbol) DO UPDATE SET
+        contract_address = EXCLUDED.contract_address,
+        decimals         = EXCLUDED.decimals,
+        is_global        = TRUE,
+        owner_user_id    = v_owner;
+END $$;
+`
+
+// demoSQL seeds a project, its upstream settings, the project↔payment-method link
+// (referencing the global x402 method created by `install payment-methods`) and
+// routes, all owned by the given user. The x402 method/asset/facilitator must
+// already exist (the caller verifies this before running).
 const demoSQL = `
 DO $$
 DECLARE
-    v_admin_id       UUID := '%s';
+    v_user_id        UUID := '%s';
     v_project_id     UUID;
     v_method_id      UUID;
     v_asset_id       UUID;
     v_facilitator_id UUID;
 BEGIN
+    SELECT id INTO v_method_id FROM payment_methods WHERE code = 'x402_base_sepolia';
+    SELECT id INTO v_asset_id  FROM payment_method_assets WHERE payment_method_id = v_method_id AND symbol = 'USDC';
+    SELECT id INTO v_facilitator_id FROM facilitators WHERE name = 'x402 Coinbase' LIMIT 1;
+
     INSERT INTO projects (id, owner_user_id, name, slug)
-    VALUES (gen_random_uuid(), v_admin_id, 'Default Project', 'default')
-    ON CONFLICT (slug) WHERE archived_at IS NULL DO NOTHING
+    VALUES (gen_random_uuid(), v_user_id, 'Default Project', 'default')
+    ON CONFLICT (owner_user_id, slug) WHERE archived_at IS NULL DO NOTHING
     RETURNING id INTO v_project_id;
 
     IF v_project_id IS NULL THEN
-        SELECT id INTO v_project_id FROM projects WHERE slug = 'default';
+        SELECT id INTO v_project_id FROM projects WHERE slug = 'default' AND owner_user_id = v_user_id;
     END IF;
 
     INSERT INTO project_routes_settings (
@@ -110,24 +180,6 @@ BEGIN
         gen_random_uuid(), v_project_id, 'http://localhost:4021',
         'Authorization', 'Bearer YOUR_UPSTREAM_ACCESS_TOKEN', FALSE
     ) ON CONFLICT (project_id) DO NOTHING;
-
-    INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, enabled)
-    VALUES (gen_random_uuid(), 'x402_base_sepolia', 'x402', 'Base Sepolia', 'eip155:84532', TRUE)
-    ON CONFLICT (code) DO UPDATE SET enabled = TRUE
-    RETURNING id INTO v_method_id;
-
-    INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals)
-    VALUES (gen_random_uuid(), v_method_id, 'USDC', '0x036CbD53842c5426634e7929541eC2318f3dCF7e', 6)
-    ON CONFLICT (payment_method_id, symbol) DO UPDATE SET decimals = EXCLUDED.decimals
-    RETURNING id INTO v_asset_id;
-
-    SELECT id INTO v_facilitator_id FROM facilitators WHERE name = 'x402 Coinbase' LIMIT 1;
-
-    IF v_facilitator_id IS NULL THEN
-        INSERT INTO facilitators (id, name, url, enabled)
-        VALUES (gen_random_uuid(), 'x402 Coinbase', 'https://x402.org/facilitator', TRUE)
-        RETURNING id INTO v_facilitator_id;
-    END IF;
 
     INSERT INTO project_payment_methods (
         id, project_id, payment_method_id, asset_id, scheme, facilitator_id, payout_address, enabled
@@ -184,27 +236,31 @@ const (
         '/echo/v3'`
 )
 
-// demoMPPSQL seeds a self-contained MPP / Tempo "charge" demo: a dedicated
-// project, upstream settings, an MPP payment method (pathUSD stablecoin on
-// Tempo) with method/scheme set, the project↔method link carrying
-// rpc_url/secret_key in its config JSONB and no facilitator, plus paid + free
-// routes. Prices are stored as USD strings; xgateway converts them to raw base
-// units (decimals=6) and then to the human charge amount.
+// demoMPPSQL seeds an MPP / Tempo "charge" demo: a dedicated project, upstream
+// settings, the project↔method link carrying rpc_url/secret_key in its config
+// JSONB (no facilitator), plus paid + free routes — all owned by the given user.
+// The MPP method/asset (created by `install payment-methods`) must already
+// exist (the caller verifies this before running). Prices are stored as USD
+// strings; xgateway converts them to raw base units (decimals=6) and then to
+// the human charge amount.
 const demoMPPSQL = `
 DO $$
 DECLARE
-    v_admin_id   UUID := '%s';
+    v_user_id    UUID := '%s';
     v_project_id UUID;
     v_method_id  UUID;
     v_asset_id   UUID;
 BEGIN
+    SELECT id INTO v_method_id FROM payment_methods WHERE code = 'mpp_tempo_charge';
+    SELECT id INTO v_asset_id  FROM payment_method_assets WHERE payment_method_id = v_method_id AND symbol = 'pathUSD';
+
     INSERT INTO projects (id, owner_user_id, name, slug)
-    VALUES (gen_random_uuid(), v_admin_id, 'Tempo MPP Project', 'mpp-demo')
-    ON CONFLICT (slug) WHERE archived_at IS NULL DO NOTHING
+    VALUES (gen_random_uuid(), v_user_id, 'Tempo MPP Project', 'mpp-demo')
+    ON CONFLICT (owner_user_id, slug) WHERE archived_at IS NULL DO NOTHING
     RETURNING id INTO v_project_id;
 
     IF v_project_id IS NULL THEN
-        SELECT id INTO v_project_id FROM projects WHERE slug = 'mpp-demo';
+        SELECT id INTO v_project_id FROM projects WHERE slug = 'mpp-demo' AND owner_user_id = v_user_id;
     END IF;
 
     INSERT INTO project_routes_settings (
@@ -213,19 +269,6 @@ BEGIN
         gen_random_uuid(), v_project_id, 'http://localhost:4021',
         'Authorization', 'Bearer YOUR_UPSTREAM_ACCESS_TOKEN', FALSE
     ) ON CONFLICT (project_id) DO NOTHING;
-
-    INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, method, scheme, enabled)
-    VALUES (gen_random_uuid(), 'mpp_tempo_charge', 'mpp', 'Tempo Charge', NULL, 'tempo', 'charge', TRUE)
-    ON CONFLICT (code) DO UPDATE SET enabled = TRUE, method = EXCLUDED.method, scheme = EXCLUDED.scheme
-    RETURNING id INTO v_method_id;
-
-    -- pathUSD: the Tempo stablecoin used for charges.
-    INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals)
-    VALUES (gen_random_uuid(), v_method_id, 'pathUSD', '0x20c0000000000000000000000000000000000000', 6)
-    ON CONFLICT (payment_method_id, symbol) DO UPDATE SET
-        contract_address = EXCLUDED.contract_address,
-        decimals         = EXCLUDED.decimals
-    RETURNING id INTO v_asset_id;
 
     -- MPP has no facilitator: facilitator_id stays NULL; rpc_url/secret_key live
     -- in the config JSONB consumed by xgateway's HTTP provider.
@@ -299,9 +342,12 @@ DECLARE
     rid             UUID;
     path_idx        INT;
 BEGIN
-    SELECT id INTO p_id FROM projects WHERE slug = '%s';
+    SELECT p.id INTO p_id
+    FROM projects p
+    JOIN users u ON u.id = p.owner_user_id
+    WHERE p.slug = '%[4]s' AND u.username = '%[5]s';
     IF p_id IS NULL THEN
-        RAISE NOTICE 'no project found for slug, skipping request_logs seed';
+        RAISE NOTICE 'no project found for slug/user, skipping request_logs seed';
         RETURN;
     END IF;
 
@@ -394,9 +440,89 @@ BEGIN
 END $$;
 `
 
-func runCreateUser(ctx context.Context, dsn, username, password string) error {
-	if username == "" || password == "" {
-		return fmt.Errorf("username and password are required")
+// Valid users.role values; mirrors the CHECK constraint in migration 00012.
+const (
+	roleUser       = "user"
+	roleSuperadmin = "superadmin"
+)
+
+// Default (non-superadmin) account the demo seeds run as when no user is given.
+const (
+	defaultDemoUsername = "demo"
+	defaultDemoPassword = "demo"
+	defaultDemoEmail    = "demo@example.com"
+)
+
+// runPaymentMethodsSeed creates the shared global payment methods, owned by an
+// existing superadmin. It fails loudly if that user is missing or not a superadmin.
+func runPaymentMethodsSeed(ctx context.Context, dsn, superadmin string) error {
+	if superadmin == "" {
+		return fmt.Errorf("superadmin username is required")
+	}
+
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		return fmt.Errorf("connect to db: %w", err)
+	}
+	defer pool.Close()
+
+	ownerID, err := lookupSuperadmin(ctx, pool, superadmin)
+	if err != nil {
+		return err
+	}
+
+	if _, err = pool.Exec(ctx, fmt.Sprintf(paymentMethodsSQL, ownerID)); err != nil {
+		return fmt.Errorf("seed payment methods: %w", err)
+	}
+
+	log.Printf("payment methods installed (owner: %s)", superadmin)
+	log.Println("  x402: Base Sepolia (USDC) + facilitator 'x402 Coinbase'")
+	log.Println("  mpp:  Tempo Charge (pathUSD)")
+	return nil
+}
+
+// lookupSuperadmin returns the id of an existing superadmin by username, or a
+// clear error instructing the operator to create one first.
+func lookupSuperadmin(ctx context.Context, pool *pgxpool.Pool, username string) (uuid.UUID, error) {
+	var id uuid.UUID
+	var role string
+	err := pool.QueryRow(ctx, `SELECT id, role FROM users WHERE username = $1`, username).Scan(&id, &role)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.UUID{}, fmt.Errorf("superadmin %q not found — создай сперва суперадмина: "+
+			"install user --username %s --password ... --email ... --role superadmin", username, username)
+	}
+	if err != nil {
+		return uuid.UUID{}, fmt.Errorf("lookup superadmin: %w", err)
+	}
+	if role != roleSuperadmin {
+		return uuid.UUID{}, fmt.Errorf("user %q is not a superadmin (role=%q) — создай сперва суперадмина", username, role)
+	}
+	return id, nil
+}
+
+// requirePaymentMethod returns an error directing the operator to run
+// `install payment-methods` when the given method code is not present yet.
+func requirePaymentMethod(ctx context.Context, pool *pgxpool.Pool, code string) error {
+	var exists bool
+	if err := pool.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM payment_methods WHERE code = $1)`, code).Scan(&exists); err != nil {
+		return fmt.Errorf("check payment method %q: %w", code, err)
+	}
+	if !exists {
+		return fmt.Errorf("payment method %q not found — run `install payment-methods` first", code)
+	}
+	return nil
+}
+
+func runCreateUser(ctx context.Context, dsn, username, password, email, role string) error {
+	if username == "" || password == "" || email == "" {
+		return fmt.Errorf("username, password and email are required")
+	}
+	if !validate.Slug(username) {
+		return fmt.Errorf("username may contain only letters, digits, underscore and hyphen")
+	}
+	if role != roleUser && role != roleSuperadmin {
+		return fmt.Errorf("role must be %q or %q, got %q", roleUser, roleSuperadmin, role)
 	}
 
 	pool, err := pgxpool.New(ctx, dsn)
@@ -406,13 +532,13 @@ func runCreateUser(ctx context.Context, dsn, username, password string) error {
 	defer pool.Close()
 
 	const stmt = `
-INSERT INTO users (id, username, password_hash)
-VALUES (gen_random_uuid(), $1, crypt($2, gen_salt('bf', 10)))
+INSERT INTO users (id, username, email, password_hash, role)
+VALUES (gen_random_uuid(), $1, $2, crypt($3, gen_salt('bf', 10)), $4)
 ON CONFLICT (username) DO NOTHING
 RETURNING id`
 
 	var id uuid.UUID
-	err = pool.QueryRow(ctx, stmt, username, password).Scan(&id)
+	err = pool.QueryRow(ctx, stmt, username, email, password, role).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("user with username %q already exists", username)
 	}
@@ -420,13 +546,13 @@ RETURNING id`
 		return fmt.Errorf("create user: %w", err)
 	}
 
-	log.Printf("user created: %s (id: %s)", username, id)
+	log.Printf("user created: %s (%s, role: %s, id: %s)", username, email, role, id)
 	return nil
 }
 
-func runDemoSeed(ctx context.Context, dsn, username, password string) error {
-	if username == "" || password == "" {
-		return fmt.Errorf("admin-username and admin-password are required")
+func runDemoSeed(ctx context.Context, dsn, username, password, email string) error {
+	if username == "" || password == "" || email == "" {
+		return fmt.Errorf("username, password and email are required")
 	}
 
 	pool, err := pgxpool.New(ctx, dsn)
@@ -435,24 +561,28 @@ func runDemoSeed(ctx context.Context, dsn, username, password string) error {
 	}
 	defer pool.Close()
 
-	adminID, err := ensureAdminUser(ctx, pool, username, password)
+	if err := requirePaymentMethod(ctx, pool, "x402_base_sepolia"); err != nil {
+		return err
+	}
+
+	userID, err := ensureDemoUser(ctx, pool, username, password, email)
 	if err != nil {
 		return err
 	}
 
-	if _, err = pool.Exec(ctx, fmt.Sprintf(demoSQL, adminID)); err != nil {
+	if _, err = pool.Exec(ctx, fmt.Sprintf(demoSQL, userID)); err != nil {
 		return fmt.Errorf("seed demo data: %w", err)
 	}
 
 	log.Println("demo data installed")
-	log.Printf("  user:    %s / %s", username, password)
+	log.Printf("  user:    %s / %s (%s)", username, password, email)
 	log.Println("  project: Default Project (slug: default)")
 	return nil
 }
 
-func runDemoMPPSeed(ctx context.Context, dsn, username, password string) error {
-	if username == "" || password == "" {
-		return fmt.Errorf("admin-username and admin-password are required")
+func runDemoMPPSeed(ctx context.Context, dsn, username, password, email string) error {
+	if username == "" || password == "" || email == "" {
+		return fmt.Errorf("username, password and email are required")
 	}
 
 	pool, err := pgxpool.New(ctx, dsn)
@@ -461,43 +591,53 @@ func runDemoMPPSeed(ctx context.Context, dsn, username, password string) error {
 	}
 	defer pool.Close()
 
-	adminID, err := ensureAdminUser(ctx, pool, username, password)
+	if err := requirePaymentMethod(ctx, pool, "mpp_tempo_charge"); err != nil {
+		return err
+	}
+
+	userID, err := ensureDemoUser(ctx, pool, username, password, email)
 	if err != nil {
 		return err
 	}
 
-	if _, err = pool.Exec(ctx, fmt.Sprintf(demoMPPSQL, adminID)); err != nil {
+	if _, err = pool.Exec(ctx, fmt.Sprintf(demoMPPSQL, userID)); err != nil {
 		return fmt.Errorf("seed mpp demo data: %w", err)
 	}
 
 	log.Println("mpp demo data installed")
-	log.Printf("  user:    %s / %s", username, password)
+	log.Printf("  user:    %s / %s (%s)", username, password, email)
 	log.Printf("  project: Tempo MPP Project (slug: %s)", mppProjectSlug)
 	log.Println("  payment: MPP / Tempo charge (pathUSD stablecoin)")
 	return nil
 }
 
-// ensureAdminUser inserts the admin user (or fetches its id when it already
-// exists) and returns the user id used as the demo project owner.
-func ensureAdminUser(ctx context.Context, pool *pgxpool.Pool, username, password string) (uuid.UUID, error) {
+// ensureDemoUser inserts the demo user (or fetches its id when it already
+// exists) and returns the user id used as the demo project owner. The user is a
+// regular 'user' (never a superadmin); it owns the project, its routes and the
+// project↔payment-method link, while the payment methods themselves are the
+// global ones seeded by `install payment-methods`.
+func ensureDemoUser(ctx context.Context, pool *pgxpool.Pool, username, password, email string) (uuid.UUID, error) {
+	if !validate.Slug(username) {
+		return uuid.UUID{}, fmt.Errorf("username may contain only letters, digits, underscore and hyphen")
+	}
 	const userStmt = `
-INSERT INTO users (id, username, password_hash)
-VALUES (gen_random_uuid(), $1, crypt($2, gen_salt('bf', 10)))
+INSERT INTO users (id, username, email, password_hash, role)
+VALUES (gen_random_uuid(), $1, $2, crypt($3, gen_salt('bf', 10)), 'user')
 ON CONFLICT (username) DO NOTHING
 RETURNING id`
 
-	var adminID uuid.UUID
-	err := pool.QueryRow(ctx, userStmt, username, password).Scan(&adminID)
+	var userID uuid.UUID
+	err := pool.QueryRow(ctx, userStmt, username, email, password).Scan(&userID)
 	if errors.Is(err, pgx.ErrNoRows) {
-		err = pool.QueryRow(ctx, `SELECT id FROM users WHERE username = $1`, username).Scan(&adminID)
+		err = pool.QueryRow(ctx, `SELECT id FROM users WHERE username = $1`, username).Scan(&userID)
 	}
 	if err != nil {
-		return uuid.UUID{}, fmt.Errorf("create or fetch admin user: %w", err)
+		return uuid.UUID{}, fmt.Errorf("create or fetch demo user: %w", err)
 	}
-	return adminID, nil
+	return userID, nil
 }
 
-func runSeedLogs(ctx context.Context, dsn, slug, paths string, days, count int) error {
+func runSeedLogs(ctx context.Context, dsn, username, slug, paths string, days, count int) error {
 	if days <= 0 {
 		return fmt.Errorf("log-days must be > 0")
 	}
@@ -511,10 +651,10 @@ func runSeedLogs(ctx context.Context, dsn, slug, paths string, days, count int) 
 	}
 	defer pool.Close()
 
-	if _, err = pool.Exec(ctx, fmt.Sprintf(seedLogsSQL, count, days, paths, slug)); err != nil {
+	if _, err = pool.Exec(ctx, fmt.Sprintf(seedLogsSQL, count, days, paths, slug, username)); err != nil {
 		return fmt.Errorf("seed request_logs: %w", err)
 	}
 
-	log.Printf("request_logs seeded for project %q: %d rows over last %d days", slug, count, days)
+	log.Printf("request_logs seeded for project %q (user %q): %d rows over last %d days", slug, username, count, days)
 	return nil
 }

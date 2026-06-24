@@ -56,6 +56,52 @@ func (q *Queries) GetDailyStats(ctx context.Context, arg GetDailyStatsParams) ([
 	return items, nil
 }
 
+const getDailyStatsByOwner = `-- name: GetDailyStatsByOwner :many
+SELECT
+    DATE(rl.created_at)                                                        AS day,
+    COUNT(*)::BIGINT                                                           AS total_requests,
+    COALESCE(SUM(rl.amount_usd) FILTER (WHERE rl.payment_completed = TRUE), 0)::FLOAT8 AS total_earnings_usd
+FROM request_logs rl
+JOIN projects p ON p.id = rl.project_id
+WHERE p.owner_user_id = $1
+  AND rl.created_at >= $2
+  AND rl.created_at <  $3
+GROUP BY DATE(rl.created_at)
+ORDER BY DATE(rl.created_at)
+`
+
+type GetDailyStatsByOwnerParams struct {
+	Owner       *uuid.UUID
+	PeriodStart pgtype.Timestamp
+	PeriodEnd   pgtype.Timestamp
+}
+
+type GetDailyStatsByOwnerRow struct {
+	Day              pgtype.Date
+	TotalRequests    int64
+	TotalEarningsUsd float64
+}
+
+func (q *Queries) GetDailyStatsByOwner(ctx context.Context, arg GetDailyStatsByOwnerParams) ([]GetDailyStatsByOwnerRow, error) {
+	rows, err := q.db.Query(ctx, getDailyStatsByOwner, arg.Owner, arg.PeriodStart, arg.PeriodEnd)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetDailyStatsByOwnerRow
+	for rows.Next() {
+		var i GetDailyStatsByOwnerRow
+		if err := rows.Scan(&i.Day, &i.TotalRequests, &i.TotalEarningsUsd); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getDashboardStats = `-- name: GetDashboardStats :one
 SELECT
     -- current period
@@ -137,6 +183,94 @@ func (q *Queries) GetDashboardStats(ctx context.Context, arg GetDashboardStatsPa
 	return i, err
 }
 
+const getDashboardStatsByOwner = `-- name: GetDashboardStatsByOwner :one
+SELECT
+    -- current period
+    (SELECT COUNT(*) FROM projects WHERE projects.owner_user_id = $1 AND projects.created_at >= $2 AND projects.created_at < $3)::BIGINT AS total_projects,
+    (SELECT COUNT(*) FROM routes WHERE routes.project_id IN (SELECT id FROM projects WHERE owner_user_id = $1) AND routes.created_at >= $2 AND routes.created_at < $3)::BIGINT AS total_routes,
+    (COUNT(*) FILTER (WHERE request_logs.created_at >= $2 AND request_logs.created_at < $3))::BIGINT     AS total_requests,
+    COALESCE(
+        SUM(request_logs.amount_usd) FILTER (
+            WHERE request_logs.payment_required = TRUE AND request_logs.payment_completed = TRUE
+              AND request_logs.created_at >= $2 AND request_logs.created_at < $3
+        ),
+        0
+    )::FLOAT8                                                                                                                 AS total_earnings_usd,
+    CASE
+        WHEN (COUNT(*) FILTER (WHERE request_logs.payment_required = TRUE AND request_logs.created_at >= $2 AND request_logs.created_at < $3)) = 0
+        THEN 0.0
+        ELSE (COUNT(*) FILTER (WHERE request_logs.payment_required = TRUE AND request_logs.payment_completed = TRUE
+                AND request_logs.created_at >= $2 AND request_logs.created_at < $3))::FLOAT8
+            * 100.0
+            / (COUNT(*) FILTER (WHERE request_logs.payment_required = TRUE AND request_logs.created_at >= $2 AND request_logs.created_at < $3))::FLOAT8
+    END::FLOAT8                                                                                                               AS success_rate,
+    -- previous period
+    (SELECT COUNT(*) FROM projects WHERE projects.owner_user_id = $1 AND projects.created_at >= $4 AND projects.created_at < $2)::BIGINT AS prev_total_projects,
+    (SELECT COUNT(*) FROM routes WHERE routes.project_id IN (SELECT id FROM projects WHERE owner_user_id = $1) AND routes.created_at >= $4 AND routes.created_at < $2)::BIGINT AS prev_total_routes,
+    (COUNT(*) FILTER (WHERE request_logs.created_at >= $4 AND request_logs.created_at < $2))::BIGINT     AS prev_total_requests,
+    COALESCE(
+        SUM(request_logs.amount_usd) FILTER (
+            WHERE request_logs.payment_required = TRUE AND request_logs.payment_completed = TRUE
+              AND request_logs.created_at >= $4 AND request_logs.created_at < $2
+        ),
+        0
+    )::FLOAT8                                                                                                                 AS prev_total_earnings_usd,
+    CASE
+        WHEN (COUNT(*) FILTER (WHERE request_logs.payment_required = TRUE AND request_logs.created_at >= $4 AND request_logs.created_at < $2)) = 0
+        THEN 0.0
+        ELSE (COUNT(*) FILTER (WHERE request_logs.payment_required = TRUE AND request_logs.payment_completed = TRUE
+                AND request_logs.created_at >= $4 AND request_logs.created_at < $2))::FLOAT8
+            * 100.0
+            / (COUNT(*) FILTER (WHERE request_logs.payment_required = TRUE AND request_logs.created_at >= $4 AND request_logs.created_at < $2))::FLOAT8
+    END::FLOAT8                                                                                                               AS prev_success_rate
+FROM request_logs
+JOIN projects pj ON pj.id = request_logs.project_id
+WHERE pj.owner_user_id = $1 AND request_logs.created_at >= $4 AND request_logs.created_at < $3
+`
+
+type GetDashboardStatsByOwnerParams struct {
+	Owner       *uuid.UUID
+	PeriodStart pgtype.Timestamp
+	PeriodEnd   pgtype.Timestamp
+	PrevStart   pgtype.Timestamp
+}
+
+type GetDashboardStatsByOwnerRow struct {
+	TotalProjects        int64
+	TotalRoutes          int64
+	TotalRequests        int64
+	TotalEarningsUsd     float64
+	SuccessRate          float64
+	PrevTotalProjects    int64
+	PrevTotalRoutes      int64
+	PrevTotalRequests    int64
+	PrevTotalEarningsUsd float64
+	PrevSuccessRate      float64
+}
+
+func (q *Queries) GetDashboardStatsByOwner(ctx context.Context, arg GetDashboardStatsByOwnerParams) (GetDashboardStatsByOwnerRow, error) {
+	row := q.db.QueryRow(ctx, getDashboardStatsByOwner,
+		arg.Owner,
+		arg.PeriodStart,
+		arg.PeriodEnd,
+		arg.PrevStart,
+	)
+	var i GetDashboardStatsByOwnerRow
+	err := row.Scan(
+		&i.TotalProjects,
+		&i.TotalRoutes,
+		&i.TotalRequests,
+		&i.TotalEarningsUsd,
+		&i.SuccessRate,
+		&i.PrevTotalProjects,
+		&i.PrevTotalRoutes,
+		&i.PrevTotalRequests,
+		&i.PrevTotalEarningsUsd,
+		&i.PrevSuccessRate,
+	)
+	return i, err
+}
+
 const getTopRoutesForDashboard = `-- name: GetTopRoutesForDashboard :many
 SELECT
     r.path_pattern,
@@ -166,6 +300,53 @@ func (q *Queries) GetTopRoutesForDashboard(ctx context.Context) ([]GetTopRoutesF
 	var items []GetTopRoutesForDashboardRow
 	for rows.Next() {
 		var i GetTopRoutesForDashboardRow
+		if err := rows.Scan(
+			&i.PathPattern,
+			&i.PriceUsd,
+			&i.TotalRequests,
+			&i.RevenueUsd,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getTopRoutesForDashboardByOwner = `-- name: GetTopRoutesForDashboardByOwner :many
+SELECT
+    r.path_pattern,
+    r.price_usd,
+    COUNT(rl.id)::BIGINT                                                                        AS total_requests,
+    COALESCE(SUM(rl.amount_usd) FILTER (WHERE rl.payment_completed = TRUE), 0)::FLOAT8         AS revenue_usd
+FROM routes r
+JOIN projects p ON p.id = r.project_id
+JOIN request_logs rl ON rl.outbound_route_id = r.id
+WHERE p.owner_user_id = $1
+GROUP BY r.id, r.path_pattern, r.price_usd
+ORDER BY total_requests DESC
+LIMIT 5
+`
+
+type GetTopRoutesForDashboardByOwnerRow struct {
+	PathPattern   string
+	PriceUsd      string
+	TotalRequests int64
+	RevenueUsd    float64
+}
+
+func (q *Queries) GetTopRoutesForDashboardByOwner(ctx context.Context, ownerUserID *uuid.UUID) ([]GetTopRoutesForDashboardByOwnerRow, error) {
+	rows, err := q.db.Query(ctx, getTopRoutesForDashboardByOwner, ownerUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTopRoutesForDashboardByOwnerRow
+	for rows.Next() {
+		var i GetTopRoutesForDashboardByOwnerRow
 		if err := rows.Scan(
 			&i.PathPattern,
 			&i.PriceUsd,
