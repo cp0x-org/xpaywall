@@ -42,8 +42,8 @@ Docker Compose restarts only the services whose configuration changed.
 | `PROXY_URL` | yes | — | Public URL of xgateway. Shown in the admin panel and used to build example requests. |
 | `PORT` | no | `9090` | Listen port inside the container. |
 | `MODE` | no | `release` | Gin mode: `debug` or `release`. |
-| `SUPERADMIN_USERNAME` | no | — | Username for the bootstrap superadmin account. |
-| `SUPERADMIN_PASSWORD` | no | — | Password for the bootstrap superadmin account. |
+| `APP_BASE_URL` | no | `http://localhost:3000` | Frontend base URL used to build password-reset links. |
+| `GOOGLE_CLIENT_ID` | no | — | OAuth client ID; required for Google sign-in. |
 | `DEBUG` | no | `false` | Verbose logs (request bodies included). Disable in production. |
 
 ### admin panel
@@ -105,9 +105,16 @@ openssl rand -hex 32
 
 Then change `JWT_SECRET` in control-api the same way.
 
-### 2. Change the superadmin password
+### 2. Provision a superadmin
 
-Either change `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` in `docker-compose.yml` before the first boot, or log into the running admin panel and update the password from the user form.
+There is no bootstrap-admin env var. Register a user through the admin panel, then grant the
+superadmin role directly in Postgres:
+
+```sql
+UPDATE users SET role='superadmin' WHERE username='your-admin';
+```
+
+Only superadmins can manage global payment methods, assets, and facilitators.
 
 ### 3. Set `PROXY_URL` correctly
 

@@ -58,9 +58,14 @@ Log in.
  You should land on the Dashboard — an empty one, because you have not configured anything yet.
 
 
-> **Important:** the default `admin / admin123` credentials are good for the first login only. Change them right away by editing `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` in `docker-compose.yml` and restarting the `control-api` container. See [09 — Security](./09-security.md) for the production checklist.
+> **First account:** there is no bootstrap-admin env var. Either register a user on the login
+> page, or seed the demo data with `docker compose run --rm control-api install demo` (creates
+> `admin / admin123`). To manage **global** payment methods/assets/facilitators, promote a user to
+> superadmin directly in Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`
+> See [09 — Security](./09-security.md) for the production checklist.
 >
-> Need additional login accounts? The admin panel does not yet have a Users screen — create them with `docker compose run --rm control-api install user`. See [12 — control-api CLI](./12-cli.md).
+> Need additional accounts? Register them on the login page, or create them with
+> `docker compose run --rm control-api install user`. See [12 — control-api CLI](./12-cli.md).
 
 ---
 

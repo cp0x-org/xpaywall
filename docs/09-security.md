@@ -12,8 +12,8 @@ The Docker Compose defaults exist for fast local setup. Every one of these is a 
 |---|---|---|
 | `INTERNAL_API_KEY` | `please-change-me-...` | Anyone who knows it can call control-api as if they were xgateway — i.e. read every route, change resolution behaviour, ingest fake request logs. |
 | `JWT_SECRET` | `please-change-me-...` | Signs admin-panel session tokens. If leaked, an attacker can forge admin sessions and run anything in the admin API. |
-| `SUPERADMIN_PASSWORD` | `admin` | First login uses this. If you do not change it after first login, anyone who reaches the panel can sign in. |
-| Database credentials (`CONTROL_DB_DSN`) | `postgres:postgres@...` | Full read-write to your route, project, and payment-channel data. |
+| Superadmin account | — | The superadmin role (set in Postgres) can manage global payment methods, assets, and facilitators. Guard the credentials of any user you promote. |
+| Database credentials (`CONTROL_DB_DSN`) | `postgres:postgres@...` | Full read-write to your route, project, and payment-channel data — including granting the superadmin role. |
 
 Practical advice:
 

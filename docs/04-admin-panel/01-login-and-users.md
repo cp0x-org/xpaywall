@@ -2,13 +2,18 @@
 
 The admin panel is a small web app at `http://<your-host>:3104` (port `3104` by default). Projects, payment methods and routes are all managed here.
 
-> **Users are not yet managed from the panel.** Creating, editing and deleting login accounts is done from the control-api CLI today. The user management UI is on the [roadmap](./../11-roadmap.md). See [12 — control-api CLI](./../12-cli.md) for the commands you have today.
+> **Accounts** can be self-registered from the login page (with password reset and Google sign-in)
+> or created from the control-api CLI. A full user-management screen is on the [roadmap](./../11-roadmap.md).
+> See [12 — control-api CLI](./../12-cli.md) for the CLI commands.
 
 ## First login
 
-When the stack starts for the first time, control-api creates a single **superadmin** account using the `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` environment variables. In a fresh `docker-compose.yml`, set to `admin/admin123`.
+There is no bootstrap-admin env var. Create your first account one of two ways:
 
-Open the login page, enter the credentials, and submit.
+- **Register on the login page** — the panel has Sign-up, "Forgot password", and Google sign-in.
+- **Seed the demo** — `docker compose run --rm control-api install demo` creates `admin / admin123`.
+
+Open the login page, enter the credentials (username **or** email + password), and submit.
 
 ![Login page](./../images/login.png "small")
 
@@ -16,7 +21,9 @@ After login you land on the Dashboard. The left sidebar gives you access to ever
 
 ![Sidebar menu](./../images/sidebar-menu.png "small")
 
-> **Change the default password before exposing the panel to the internet.** Edit `SUPERADMIN_PASSWORD` in `docker-compose.yml` and restart `control-api` — the bootstrap logic re-syncs the account credentials on the next boot. There is no in-panel password form yet.
+> **Superadmin.** Managing *global* payment methods, assets, and facilitators requires the
+> `superadmin` role, which is granted directly in Postgres:
+> `UPDATE users SET role='superadmin' WHERE username='...';`
 
 ## Creating additional users
 
@@ -51,31 +58,37 @@ That gives you an `admin` / `admin` account plus a **Default Project** with real
 
 ## Roles
 
-Today every login account has the same level of access — there is no separate "superadmin vs user" enforcement on the API side beyond the bootstrap account. Project-level ownership controls who can edit which project:
+Accounts have a `role` of `user` (default) or `superadmin`. **User-scoped data — projects,
+routes, project settings, request logs, and stats — is visible and editable only by its owner;
+this applies to superadmins too (they do not see other users' projects).** The superadmin role
+only adds rights over *global* shared entities:
 
 | Capability | Who can do it |
 |---|---|
 | Log in to the admin panel | Any account in the `users` table. |
 | Create a project | Any logged-in account. The creator becomes the project owner. |
-| Edit / archive a project | The owner of that project. |
-| Manage payment methods, facilitators, assets | Any logged-in account. |
+| View / edit / archive a project | The owner of that project only. |
+| Create a **personal** payment method / facilitator / asset | Any logged-in account (visible only to them). |
+| Mark an entity **global** (visible to all) | Superadmin only. |
+| Delete a **global** entity | Superadmin only. |
 
-Tighter role separation (a dedicated `superadmin` flag, per-project member lists) is on the [roadmap](./../11-roadmap.md).
+Promote a user with `UPDATE users SET role='superadmin' WHERE username='...';` in Postgres.
 
 ## Losing access to the only account
 
-If you lose the password and the bootstrap account is the only one left:
-
-1. Set or update `SUPERADMIN_USERNAME` / `SUPERADMIN_PASSWORD` in `docker-compose.yml`.
-2. Restart control-api: `docker compose restart control-api`.
-
-control-api re-creates the bootstrap account on boot if it is missing, and resyncs the password if it has changed.
-
-If the bootstrap env vars are unset and you cannot log in, restore the database from a backup or create a new account directly with `install user`:
+If you lose the password, create a fresh account directly with `install user`, then promote it
+if you need superadmin rights:
 
 ```bash
 docker compose run --rm control-api install user --username recovery --password '<long-passphrase>'
 ```
+
+```sql
+UPDATE users SET role='superadmin' WHERE username='recovery';
+```
+
+You can also reset an existing account's password by updating its bcrypt `password_hash` in
+Postgres, or restore the database from a backup.
 
 ## What's next?
 

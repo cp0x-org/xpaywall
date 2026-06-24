@@ -38,10 +38,12 @@ These are the host ports the official `docker-compose.yml` binds. If you changed
 | `INTERNAL_API_KEY` | yes | —          | Must match xgateway. |
 | `JWT_SECRET` | yes | —          | Signs admin panel sessions. |
 | `PROXY_URL` | yes | —          | Public xgateway URL — shown in the admin panel. |
-| `SUPERADMIN_USERNAME` | bootstrap | `admin`    | Bootstrap login. Used on first start. |
-| `SUPERADMIN_PASSWORD` | bootstrap | `admin123` | Change immediately after first login. |
 | `PORT` | no | `9091`     | HTTP listen port. |
 | `MODE` | no | `release`  | `debug` for verbose Gin logs. |
+| `APP_BASE_URL` | no | `http://localhost:3000` | Frontend base URL for password-reset links. |
+| `GOOGLE_CLIENT_ID` | no | —          | OAuth client ID; required for Google sign-in. |
+
+> Superadmin is not provisioned via env. Grant it in Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`
 
 ### Admin panel
 

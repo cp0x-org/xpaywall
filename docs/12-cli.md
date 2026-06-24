@@ -98,9 +98,10 @@ Example — create your first non-bootstrap admin:
 docker compose run --rm control-api install user --username alice --password 'choose-a-long-passphrase'
 ```
 
-> **Role.** The current schema does not have a separate `role` column on `users` — every account created this way is treated as a regular admin. A dedicated superadmin flag is on the roadmap.
->
-> **Bootstrap superadmin.** Setting `SUPERADMIN_USERNAME` / `SUPERADMIN_PASSWORD` in `docker-compose.yml` is the other way to create the first login account. control-api recreates that account on boot if it is missing. See [01 — Login & Users](./04-admin-panel/01-login-and-users.md).
+> **Role.** Accounts created this way (and via the login-page registration) have the `user` role.
+> To make one a superadmin — required to manage global payment methods/assets/facilitators — set it
+> in Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`. There is no env var or
+> CLI flag for it. See [01 — Login & Users](./04-admin-panel/01-login-and-users.md).
 
 ---
 
