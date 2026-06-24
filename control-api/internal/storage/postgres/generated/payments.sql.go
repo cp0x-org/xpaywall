@@ -860,16 +860,18 @@ UPDATE facilitators
 SET name       = COALESCE($2, name),
     url        = COALESCE($3, url),
     enabled    = COALESCE($4, enabled),
+    is_global  = $5,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING id, name, url, enabled, created_at, updated_at, is_global, owner_user_id
 `
 
 type UpdateFacilitatorParams struct {
-	ID      uuid.UUID
-	Name    pgtype.Text
-	Url     pgtype.Text
-	Enabled pgtype.Bool
+	ID       uuid.UUID
+	Name     pgtype.Text
+	Url      pgtype.Text
+	Enabled  pgtype.Bool
+	IsGlobal bool
 }
 
 func (q *Queries) UpdateFacilitator(ctx context.Context, arg UpdateFacilitatorParams) (Facilitator, error) {
@@ -878,6 +880,7 @@ func (q *Queries) UpdateFacilitator(ctx context.Context, arg UpdateFacilitatorPa
 		arg.Name,
 		arg.Url,
 		arg.Enabled,
+		arg.IsGlobal,
 	)
 	var i Facilitator
 	err := row.Scan(
@@ -902,6 +905,7 @@ SET code           = COALESCE($2, code),
     method         = COALESCE($6, method),
     scheme         = COALESCE($7, scheme),
     enabled        = COALESCE($8, enabled),
+    is_global      = $9,
     updated_at     = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING id, code, protocol, name, caip2_chain_id, enabled, created_at, updated_at, method, scheme, is_global, owner_user_id
@@ -916,6 +920,7 @@ type UpdatePaymentMethodParams struct {
 	Method       pgtype.Text
 	Scheme       pgtype.Text
 	Enabled      pgtype.Bool
+	IsGlobal     bool
 }
 
 func (q *Queries) UpdatePaymentMethod(ctx context.Context, arg UpdatePaymentMethodParams) (PaymentMethod, error) {
@@ -928,6 +933,7 @@ func (q *Queries) UpdatePaymentMethod(ctx context.Context, arg UpdatePaymentMeth
 		arg.Method,
 		arg.Scheme,
 		arg.Enabled,
+		arg.IsGlobal,
 	)
 	var i PaymentMethod
 	err := row.Scan(
@@ -952,6 +958,7 @@ UPDATE payment_method_assets
 SET symbol           = COALESCE($2, symbol),
     contract_address = COALESCE($3, contract_address),
     decimals         = COALESCE($4, decimals),
+    is_global        = $5,
     updated_at       = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING id, payment_method_id, symbol, contract_address, decimals, created_at, updated_at, is_global, owner_user_id
@@ -962,6 +969,7 @@ type UpdatePaymentMethodAssetParams struct {
 	Symbol          pgtype.Text
 	ContractAddress pgtype.Text
 	Decimals        pgtype.Int4
+	IsGlobal        bool
 }
 
 func (q *Queries) UpdatePaymentMethodAsset(ctx context.Context, arg UpdatePaymentMethodAssetParams) (PaymentMethodAsset, error) {
@@ -970,6 +978,7 @@ func (q *Queries) UpdatePaymentMethodAsset(ctx context.Context, arg UpdatePaymen
 		arg.Symbol,
 		arg.ContractAddress,
 		arg.Decimals,
+		arg.IsGlobal,
 	)
 	var i PaymentMethodAsset
 	err := row.Scan(

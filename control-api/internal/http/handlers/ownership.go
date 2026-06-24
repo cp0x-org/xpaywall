@@ -78,7 +78,7 @@ func (h *Handler) requireGlobalEntityMutate(c *gin.Context, isGlobal bool, owner
 	if isGlobal {
 		msg := "only a superadmin can modify a global entity"
 		if isDelete {
-			msg = "only a superadmin can delete a global entity"
+			msg = "global payments cannot be deleted"
 		}
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": msg})
 		return false

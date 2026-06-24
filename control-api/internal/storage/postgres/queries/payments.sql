@@ -23,6 +23,7 @@ SET code           = COALESCE(sqlc.narg(code), code),
     method         = COALESCE(sqlc.narg(method), method),
     scheme         = COALESCE(sqlc.narg(scheme), scheme),
     enabled        = COALESCE(sqlc.narg(enabled), enabled),
+    is_global      = sqlc.arg(is_global),
     updated_at     = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
@@ -81,6 +82,7 @@ UPDATE payment_method_assets
 SET symbol           = COALESCE(sqlc.narg(symbol), symbol),
     contract_address = COALESCE(sqlc.narg(contract_address), contract_address),
     decimals         = COALESCE(sqlc.narg(decimals), decimals),
+    is_global        = sqlc.arg(is_global),
     updated_at       = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;
@@ -109,6 +111,7 @@ UPDATE facilitators
 SET name       = COALESCE(sqlc.narg(name), name),
     url        = COALESCE(sqlc.narg(url), url),
     enabled    = COALESCE(sqlc.narg(enabled), enabled),
+    is_global  = sqlc.arg(is_global),
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

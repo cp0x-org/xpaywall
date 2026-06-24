@@ -166,6 +166,7 @@ type updatePaymentMethodRequest struct {
 	Method       *string `json:"method"`
 	Scheme       *string `json:"scheme"`
 	Enabled      *bool   `json:"enabled"`
+	IsGlobal     bool    `json:"is_global"`
 }
 
 // UpdatePaymentMethod updates a payment method by ID.
@@ -208,6 +209,7 @@ func (h *Handler) UpdatePaymentMethod(c *gin.Context) {
 		Method:       ptrToPgText(req.Method),
 		Scheme:       ptrToPgText(req.Scheme),
 		Enabled:      boolPtrToPgBool(req.Enabled),
+		IsGlobal:     resolveIsGlobal(c, req.IsGlobal),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -419,6 +421,7 @@ type updatePaymentMethodAssetRequest struct {
 	Symbol          *string `json:"symbol"`
 	ContractAddress *string `json:"contract_address"`
 	Decimals        *int32  `json:"decimals"`
+	IsGlobal        bool    `json:"is_global"`
 }
 
 // UpdatePaymentMethodAsset updates a payment method asset by ID.
@@ -457,6 +460,7 @@ func (h *Handler) UpdatePaymentMethodAsset(c *gin.Context) {
 		Symbol:          ptrToPgText(req.Symbol),
 		ContractAddress: ptrToPgText(req.ContractAddress),
 		Decimals:        int32PtrToPgInt4(req.Decimals),
+		IsGlobal:        resolveIsGlobal(c, req.IsGlobal),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -625,9 +629,10 @@ func (h *Handler) CreateFacilitator(c *gin.Context) {
 }
 
 type updateFacilitatorRequest struct {
-	Name    *string `json:"name"`
-	URL     *string `json:"url"`
-	Enabled *bool   `json:"enabled"`
+	Name     *string `json:"name"`
+	URL      *string `json:"url"`
+	Enabled  *bool   `json:"enabled"`
+	IsGlobal bool    `json:"is_global"`
 }
 
 // UpdateFacilitator updates a facilitator by ID.
@@ -662,10 +667,11 @@ func (h *Handler) UpdateFacilitator(c *gin.Context) {
 		return
 	}
 	f, err := h.q.UpdateFacilitator(c.Request.Context(), postgres.UpdateFacilitatorParams{
-		ID:      id,
-		Name:    ptrToPgText(req.Name),
-		Url:     ptrToPgText(req.URL),
-		Enabled: boolPtrToPgBool(req.Enabled),
+		ID:       id,
+		Name:     ptrToPgText(req.Name),
+		Url:      ptrToPgText(req.URL),
+		Enabled:  boolPtrToPgBool(req.Enabled),
+		IsGlobal: resolveIsGlobal(c, req.IsGlobal),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
