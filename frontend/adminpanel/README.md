@@ -32,6 +32,7 @@ No test suite is configured — `yarn tsc` and `yarn lint` are the primary corre
 |---|---|---|---|
 | `VITE_APP_API_URL` | dev | `http://localhost:3010/` | control-api base URL — used by `src/utils/axios.ts` |
 | `VITE_APP_BASE_NAME` | build | `/` | React Router base path |
+| `VITE_GOOGLE_CLIENT_ID` | no | — | Google OAuth client ID. Empty ⇒ the Google sign-in button is not rendered. Must match control-api's `GOOGLE_CLIENT_ID`. |
 | `API_URL` | runtime | — | Browser-accessible control-api URL (injected via `public/config.js`) |
 | `PROXY_URL` | runtime | — | Browser-accessible xgateway URL (injected via `public/config.js`) |
 
@@ -47,7 +48,7 @@ All HTTP calls go through `src/utils/axios.ts`, which is an axios instance point
 
 ### Auth
 
-JWT-based. `utils/route-guard/AuthGuard` wraps all main routes. The active auth context is `src/contexts/JWTContext.tsx`. The other auth contexts in the template (Firebase, Auth0, AWS, Supabase) are unused leftovers.
+JWT-based, with optional **Google sign-in** (`views/pages/authentication/GoogleLoginButton.tsx`, gated by `VITE_GOOGLE_CLIENT_ID`). `utils/route-guard/AuthGuard` wraps all main routes; the auth context is `src/contexts/JWTContext.tsx`. The login/register pages also drive **Forgot password → Reset password** (the reset token arrives by email when SMTP is configured on control-api, otherwise it is returned by the API and the page redirects to the reset form). The template's other auth providers (Firebase, Auth0, AWS, Supabase) and their demo pages have been **removed** — only JWT + Google remain.
 
 ### Routing
 
@@ -64,12 +65,16 @@ All main pages are lazy-loaded via `ui-component/Loadable`.
 | Route | View | Notes |
 |---|---|---|
 | `/dashboard` | `views/dashboard` | Stats cards + chart |
-| `/projects` | `views/projects` | Full CRUD; archive (soft-delete) preserves request logs |
-| `/routes` | `views/routes-page` | Route CRUD with Formik + Yup validation |
-| `/payment-channels` | `views/payment-channels` | List from `/api/v1/payment-channels` |
-| `/stats` | `views/stats` | Static rows via `EntityListPage` |
+| `/projects` | `views/projects` | Full CRUD; archive (soft-delete) preserves request logs. Slug is unique **per owner**. |
+| `/routes` | `views/routes-page` | Route CRUD with Formik + Yup. The **Proxy URL** column/preview is `/{username}/{slug}/{route}` (username from the logged-in user). |
+| `/payment-methods` | `views/payment-methods` | CRUD; **Global** column. Global rows are view-only for non-superadmins (Edit/Delete superadmin-only). |
+| `/payment-assets` | `views/payment-assets` | CRUD; same Global handling. |
+| `/facilitators` | `views/facilitators` | CRUD; same Global handling. |
+| `/project-payment-methods` | `views/project-payment-methods` | Links a project to a payment method + asset. |
+| `/requests` | `views/requests` | Request logs + per-request events. |
+| `/stats` | `views/stats` | Static rows via `EntityListPage`. |
 
-`views/entity-pages/` contains generic `EntityListPage` / `EntityFormPage` / `EntityTable` components for simple list/form pages.
+The **Global (visible to all users)** toggle on the payment-method / asset / facilitator forms (`ui-component/GlobalScopeToggle.tsx`) is rendered only for superadmins. `views/entity-pages/` holds generic `EntityListPage` / `EntityFormPage` / `EntityTable` components for simple list/form pages.
 
 ### State
 

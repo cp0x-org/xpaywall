@@ -14,6 +14,7 @@ The Docker Compose defaults exist for fast local setup. Every one of these is a 
 | `JWT_SECRET` | `please-change-me-...` | Signs admin-panel session tokens. If leaked, an attacker can forge admin sessions and run anything in the admin API. |
 | Superadmin account | — | The superadmin role (set in Postgres) can manage global payment methods, assets, and facilitators. Guard the credentials of any user you promote. |
 | Database credentials (`CONTROL_DB_DSN`) | `postgres:postgres@...` | Full read-write to your route, project, and payment-channel data — including granting the superadmin role. |
+| `SMTP_PASSWORD` | — | If set, lets control-api send welcome / password-reset email. A leaked SMTP credential lets an attacker send mail as you. Keep it in a secret store, rotate on the provider if leaked. |
 
 Practical advice:
 
@@ -39,16 +40,17 @@ By default Docker Compose binds the admin panel to a host port (e.g. `3104`). Th
 
 Avoid putting the admin panel on a raw public IP. Even with strong superadmin credentials, login pages get scanned constantly.
 
-### Rotate the superadmin credentials
+### Guard the superadmin credentials
 
-The Compose defaults are `admin` / `admin`. After your first deployment:
+There is no default admin account — you create the first superadmin yourself with
+`install user … --role superadmin` (and if you seeded the demo, a non-superadmin `demo` / `demo`
+account also exists — change or remove it before going public). After your first deployment:
 
-1. Log in as `admin`.
-2. Create your own user with `superadmin` role.
-3. Log in as your own user.
-4. Disable or change the default `admin` account.
+1. Create your real superadmin with a strong password (`install user … --role superadmin`).
+2. Remove or change the password of any seeded/demo accounts (`demo`).
+3. Give regular operators the default `user` role, not `superadmin`.
 
-Treat the superadmin role like root — give it only to people who actually need it. Other operators should use a non-superadmin role.
+Treat the superadmin role like root — give it only to people who actually need it. The role is what gates managing **global** payment methods, assets, and facilitators.
 
 ### JWT lifetime
 

@@ -19,13 +19,17 @@ export PROXY_URL="http://127.0.0.1:8081"
 go run ./cmd/control-api --env-file .env
 ```
 
-Or use the bundled `install` subcommand to run migrations once and exit:
+Run migrations and seed data with the CLI (the HTTP server does **not** migrate on boot):
 
 ```bash
-go run ./cmd/control-api --env-file .env install
+go run ./cmd/control-api --env-file .env migrate                       # apply migrations
+go run ./cmd/control-api --env-file .env install user \
+  --username alice --password p --email alice@example.com --role superadmin
+go run ./cmd/control-api --env-file .env install payment-methods --superadmin alice
+go run ./cmd/control-api --env-file .env install demo                   # optional demo workspace
 ```
 
-`install demo` additionally seeds demo data.
+See the [CLI guide](../docs/12-cli.md) for every command, flag, and the full bootstrap order.
 
 ## Environment variables
 
@@ -41,6 +45,10 @@ go run ./cmd/control-api --env-file .env install
 | `CORS_ORIGINS` | no | `*` | Comma-separated allowed origins |
 | `APP_BASE_URL` | no | `http://localhost:3000` | Frontend base URL for password-reset links |
 | `GOOGLE_CLIENT_ID` | no | — | OAuth client ID; required for Google sign-in (`POST /auth/google`) |
+| `SMTP_HOST` | no | — | SMTP server for welcome + password-reset email. Empty ⇒ email disabled (links logged and returned in API responses) |
+| `SMTP_PORT` | no | `587` | SMTP port (STARTTLS) |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | no | — | SMTP credentials (PLAIN auth) |
+| `SMTP_FROM` / `SMTP_FROM_NAME` | no | — / `xpaywall` | From address (defaults to `SMTP_USERNAME`) and display name |
 
 > **Superadmin:** there is no bootstrap-admin env var. Provision the role directly in
 > Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`
@@ -71,9 +79,10 @@ sqlc generate
 
 | Prefix | Auth | Purpose |
 |---|---|---|
-| `/auth/...` | none | Login (`POST /auth/login`), current user (`GET /auth/me`) |
+| `/auth/...` | none | Login, register, Google, forgot/reset password (`/auth/login`, `/auth/register`, `/auth/google`, `/auth/forgot-password`, `/auth/reset-password`) |
+| `/auth/me`, `/auth/change-password` | JWT Bearer | Current user; change password |
 | `/api/v1/...` | JWT Bearer | Admin CRUD — projects, routes, users, logs, stats, payment channels |
-| `/proxy/resolve/*path` | `X-Api-Key` header | xgateway route resolution |
+| `/proxy/resolve/{username}/{slug}/{path}` | `X-Api-Key` header | xgateway route resolution |
 | `/api/v1/request-logs`, `/api/v1/request-events` | `X-Api-Key` header | xgateway log ingestion |
 
 Handlers live in `internal/http/handlers/`. JWT middleware is in `internal/http/middleware/jwt.go`; API-key middleware in `internal/http/middleware/apikey.go`.

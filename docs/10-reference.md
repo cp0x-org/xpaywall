@@ -42,8 +42,12 @@ These are the host ports the official `docker-compose.yml` binds. If you changed
 | `MODE` | no | `release`  | `debug` for verbose Gin logs. |
 | `APP_BASE_URL` | no | `http://localhost:3000` | Frontend base URL for password-reset links. |
 | `GOOGLE_CLIENT_ID` | no | —          | OAuth client ID; required for Google sign-in. |
+| `SMTP_HOST` | no | —          | SMTP server for welcome + reset email. Empty ⇒ email disabled (links logged/returned). |
+| `SMTP_PORT` | no | `587`      | SMTP port (STARTTLS). |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | no | — | SMTP credentials (PLAIN auth). |
+| `SMTP_FROM` / `SMTP_FROM_NAME` | no | — / `xpaywall` | From address (defaults to username) and display name. |
 
-> Superadmin is not provisioned via env. Grant it in Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`
+> Superadmin is not provisioned via env. Create one with `install user … --role superadmin`, or grant it in Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`
 
 ### Admin panel
 
@@ -63,7 +67,7 @@ JWT-authenticated unless noted. All routes are under `/api/v1/`.
 
 | Group | Endpoints |
 |---|---|
-| Auth | `POST /auth/login`, `GET /auth/me` |
+| Auth | `POST /auth/login`, `POST /auth/register`, `POST /auth/google`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `GET /auth/me`, `POST /auth/change-password` |
 | Users | `GET/POST /users`, `PUT/DELETE /users/:id` |
 | Projects | `GET/POST /projects`, `PUT/DELETE /projects/:id`, `GET /projects/:id/payment-methods`, `POST /projects/:id/payment-methods` |
 | Routes | `GET/POST /routes`, `PUT/DELETE /routes/:id` |
@@ -80,7 +84,7 @@ All require `X-Api-Key: <INTERNAL_API_KEY>`.
 
 | Endpoint | Used by xgateway for |
 |---|---|
-| `GET /proxy/resolve/{slug}/{path}` | Looking up the rule for an inbound request. |
+| `GET /proxy/resolve/{username}/{slug}/{path}` | Looking up the rule for an inbound request. |
 | `POST /api/v1/request-logs` | Writing one row per finished request. |
 | `POST /api/v1/request-events` | Writing granular per-stage events. |
 
@@ -150,7 +154,7 @@ Always verify these against the official chain explorer before pointing real mon
 
 **Project Payment Method** — Admin-panel entity: the link between a project and a payment method, with the payout address attached.
 
-**Project Slug** — A short identifier (e.g. `demo`) used in the proxy URL: `/{slug}/{path}`.
+**Project Slug** — A short identifier (e.g. `default`) used in the proxy URL: `/{username}/{slug}/{path}`. Unique **per owner** — two users may each have a `default` project. Slug-safe characters only (letters, digits, `_`, `-`).
 
 **Resource** — The full URL a client paid for. Appears in the 402 response and in the signed authorisation.
 

@@ -44,6 +44,10 @@ Docker Compose restarts only the services whose configuration changed.
 | `MODE` | no | `release` | Gin mode: `debug` or `release`. |
 | `APP_BASE_URL` | no | `http://localhost:3000` | Frontend base URL used to build password-reset links. |
 | `GOOGLE_CLIENT_ID` | no | — | OAuth client ID; required for Google sign-in. |
+| `SMTP_HOST` | no | — | SMTP server for welcome + password-reset email. **Empty ⇒ email disabled** (reset links are logged and returned in the API response instead). |
+| `SMTP_PORT` | no | `587` | SMTP port. STARTTLS is the supported transport. |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | no | — | SMTP credentials (PLAIN auth). |
+| `SMTP_FROM` / `SMTP_FROM_NAME` | no | — / `xpaywall` | From address (defaults to `SMTP_USERNAME`) and display name. |
 | `DEBUG` | no | `false` | Verbose logs (request bodies included). Disable in production. |
 
 ### admin panel

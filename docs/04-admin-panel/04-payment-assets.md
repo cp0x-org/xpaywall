@@ -18,6 +18,7 @@ Open **Payments → Payment Assets** and click **Create Payment Asset**.
 | **Symbol** | A short label, e.g. `USDC` or `USDT`. Free-form, but use the common ticker so it is easy to recognise in dropdowns. |
 | **Contract Address** | The token contract address on the network of the parent payment method. Required for ERC-20 tokens; leave blank only for a native chain token. Example for USDC on Base Mainnet: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. |
 | **Decimals** | The number of decimal places the on-chain amount uses. USDC = `6`, most other ERC-20 tokens = `18`. |
+| **Global (visible to all users)** *(superadmin only)* | Mark the asset shared so every user can use it. Only superadmins see this toggle. The list has a **Global** column (`Global` / `Local`). |
 
 > **Why decimals matter.** Prices in xpaywall are stored as USD strings (e.g. `0.10`). When the gateway tells the client to pay, it multiplies the USD price by `10 ** decimals` to compute the raw on-chain amount. If you set the wrong decimals you will charge the wrong amount. USDC on every EVM network is `6`. ETH is `18`. Always double-check.
 
@@ -33,6 +34,8 @@ For other networks and assets, look up the official token address on the issuer'
 ## Edit / delete
 
 Symbol, contract address and decimals can all be edited. You **cannot delete an asset** that is still referenced by an enabled **Project Payment Method**. Disable or delete those links first.
+
+**Global assets are read-only for regular users** — a non-superadmin sees only **View** on a `Global` row (Edit/Delete are hidden). Only superadmins can edit or delete global assets.
 
 ## What's next?
 

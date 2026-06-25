@@ -104,7 +104,7 @@ When a request arrives, the gateway has to pick which route's rule applies. The 
 
 ### How the path is matched
 
-In **HTTP mode**, the gateway sends the path `/<projectSlug>/<rest>` to control-api, which finds the route in PostgreSQL. PostgreSQL evaluates exact paths first, then patterns.
+In **HTTP mode**, the gateway sends the path `/<username>/<projectSlug>/<rest>` to control-api, which finds the route in PostgreSQL. The `username` scopes the lookup to that owner's project — a slug is unique **per user**, so two users may each own a `default` project. PostgreSQL evaluates exact paths first, then patterns.
 
 In **file mode**, the gateway iterates through the rules in the YAML, in order, and returns the first one whose pattern matches. Glob matching is done with Go's `path.Match` — so `*` matches a single segment.
 

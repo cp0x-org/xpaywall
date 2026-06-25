@@ -68,6 +68,9 @@ Open **Projects → Project List** and click **Create Project**.
 - Leave **Auth Header Name / Value** empty.
 - Leave **Allow Unmatched Routes** unchecked.
 
+> This guide assumes you are logged in as **`alice`**. The proxy URL includes your username, so the
+> examples below use `/alice/demo/...`. Substitute your own login username.
+
 Save. The project appears in the list.
 
 ## Step 5 — Attach a project payment method
@@ -100,7 +103,7 @@ Open **Routes** in the sidebar and click **Create Route**.
 
 Watch the **Proxy URL** and **Target URL** previews at the top of the form. They should look like:
 
-- **Proxy URL:** `http://localhost:3102/demo/weather`
+- **Proxy URL:** `http://localhost:3102/alice/demo/weather`
 - **Target URL:** `http://xpaywall-example-server:4021/weather`
 
 Save.
@@ -110,7 +113,7 @@ Save.
 From a terminal:
 
 ```bash
-curl -i http://localhost:3102/demo/weather
+curl -i http://localhost:3102/alice/demo/weather
 ```
 
 You should see an HTTP `402 Payment Required` response with a JSON body containing payment requirements: network `eip155:84532`, asset USDC, payout address (yours), amount `1000` (= `0.001` USDC at six decimals), facilitator URL.
@@ -120,7 +123,7 @@ Now pay with an x402-aware client. Options:
 - The `x402` Python or TypeScript SDK from the x402 ecosystem.
 - A wallet integration that speaks x402 natively.
 
-Once the client has paid, the same `GET /demo/weather` with the `X-PAYMENT` header attached returns the upstream weather JSON.
+Once the client has paid, the same `GET /alice/demo/weather` with the `X-PAYMENT` header attached returns the upstream weather JSON.
 
 > **Note:** You can open proxy url in browser and test it manually. x402 server shows you the payment form and after payment you will see the upstream server data.
 > 

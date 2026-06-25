@@ -35,17 +35,19 @@ Both can run on the same Docker network, so the URL is typically a container nam
 xgateway calls one endpoint to resolve a route:
 
 ```
-GET /proxy/resolve/{projectSlug}/{inboundPath}
+GET /proxy/resolve/{username}/{projectSlug}/{inboundPath}
 X-Api-Key: <INTERNAL_API_KEY>
 ```
 
-For example, a client request to `http://gateway:8081/demo/weather` causes:
+The path begins with the project **owner's username** followed by the project slug — a slug is unique per user, so the username disambiguates which owner's project to resolve.
+
+For example, a client request to `http://gateway:8081/alice/demo/weather` causes:
 
 ```
-GET /proxy/resolve/demo/weather
+GET /proxy/resolve/alice/demo/weather
 ```
 
-The path after the slug is preserved exactly, including any sub-path segments. So `/demo/api/v1/users/42` becomes `GET /proxy/resolve/demo/api/v1/users/42`.
+The path after the slug is preserved exactly, including any sub-path segments. So `/alice/demo/api/v1/users/42` becomes `GET /proxy/resolve/alice/demo/api/v1/users/42`.
 
 ### Response — route found
 
@@ -152,7 +154,7 @@ If control-api is down or slow, xgateway buffers logs in memory and retries with
 
 ## Caching behaviour
 
-xgateway caches resolve responses by `(projectSlug, inboundPath)` for a short TTL — measured in minutes, not hours. Within that window, repeated requests skip the call to control-api entirely.
+xgateway caches resolve responses by the full request path (`/{username}/{projectSlug}/{inboundPath}`) for a short TTL — measured in minutes, not hours. Within that window, repeated requests skip the call to control-api entirely.
 
 Consequences:
 
@@ -173,7 +175,7 @@ There is no API to explicitly invalidate the cache. If you need to be 100% sure 
 
 ## Replacing control-api
 
-The above is the entire contract. Anything that returns this JSON shape from `GET /proxy/resolve/{slug}/{path}` with `X-Api-Key` auth is a valid drop-in for control-api, as far as xgateway is concerned. The same applies to the two log-ingestion endpoints.
+The above is the entire contract. Anything that returns this JSON shape from `GET /proxy/resolve/{username}/{slug}/{path}` with `X-Api-Key` auth is a valid drop-in for control-api, as far as xgateway is concerned. The same applies to the two log-ingestion endpoints.
 
 If you want a custom backend (e.g. one that pulls routes from your own database), implement those three endpoints and point `CONTROL_API_URL` at it.
 

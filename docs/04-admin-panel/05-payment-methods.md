@@ -22,6 +22,7 @@ Open **Payments → Payment Methods** and click **Create Payment Method**.
 | **Method** *(MPP)* | `tempo` or `stripe`. Only `tempo` works end-to-end today — `stripe` is accepted by the form but rejected by the gateway. |
 | **Scheme** *(MPP)* | `charge` — a one-time on-chain charge. (The `session` scheme is planned; see [11 — Roadmap](./../11-roadmap.md).) |
 | **Enabled** | Leave on. Switching off keeps the row but stops the method appearing in selections. |
+| **Global (visible to all users)** *(superadmin only)* | Mark the method shared so every user can attach it. Only superadmins see this toggle. The list has a **Global** column (`Global` / `Local`). |
 
 ### Network: select vs custom (x402)
 
@@ -45,6 +46,8 @@ Think of payment method as the *protocol/network slot* and asset as the *currenc
 ## Edit / delete
 
 You can rename, change the protocol/network or disable an existing method. You **cannot delete** a method that has assets or active project links pointing at it — clean those up first.
+
+**Global methods are read-only for regular users** — a non-superadmin sees only **View** on a `Global` row (Edit/Delete are hidden; the API rejects the delete with *"global payments cannot be deleted"*). Only superadmins can edit or delete global methods. The global x402 + MPP methods are typically seeded once with `install payment-methods` — see [12 — control-api CLI](./../12-cli.md#install-payment-methods--seed-the-global-payment-methods).
 
 ## What's next?
 

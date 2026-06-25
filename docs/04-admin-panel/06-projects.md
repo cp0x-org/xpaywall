@@ -22,7 +22,7 @@ Open **Projects → Project List** and click **Create Project**. The form has tw
 | Field | What to put |
 |---|---|
 | **Project Name** | A human label for the project, e.g. `Weather API`. |
-| **Slug** | URL-friendly identifier. Lowercase letters, digits and hyphens. Example: `weather-api`. The slug becomes the first path segment on the gateway URL: `https://gateway.example.com/<slug>/...`. The form auto-suggests one from the name; you can edit it. |
+| **Slug** | URL-friendly identifier. Letters, digits, `_` and `-` only. Example: `weather-api`. The slug appears after your username on the gateway URL: `https://gateway.example.com/<username>/<slug>/...`. It is unique **per user** — two users can each own a `weather-api` project. The form auto-suggests one from the name; you can edit it. |
 
 ### Server Route Settings
 
@@ -37,13 +37,13 @@ After saving, the project also gains a **Payment Methods** tab. You add per-proj
 
 ## Slug — why it matters
 
-The slug is part of every request URL the gateway answers. If your gateway is at `https://gateway.example.com` and your project slug is `weather-api`, then a route with path `/forecast` is served at:
+The slug is part of every request URL the gateway answers, after your username. If your gateway is at `https://gateway.example.com`, you log in as `alice`, and your project slug is `weather-api`, then a route with path `/forecast` is served at:
 
 ```
-https://gateway.example.com/weather-api/forecast
+https://gateway.example.com/alice/weather-api/forecast
 ```
 
-You cannot change the slug after a project has been used in production without breaking client URLs. Choose carefully.
+The slug only has to be unique among **your** projects — another user can have their own `weather-api`. You cannot change it after a project has been used in production without breaking client URLs. Choose carefully.
 
 ## Allow Unmatched — what it does
 

@@ -31,8 +31,11 @@ Fill in:
 | **Name** | A label for yourself, shown across the admin panel. Example: `Coinbase x402 Facilitator`. |
 | **URL** | The HTTPS endpoint of the facilitator. Example: `https://x402.org/facilitator`. |
 | **Enabled** | Leave on. Switch it off to keep the row but stop using it. |
+| **Global (visible to all users)** *(superadmin only)* | Mark the facilitator shared so every user can attach it. The toggle is only shown to superadmins. |
 
 Save. The facilitator is now available to attach to payment methods.
+
+The list has a **Global** column (`Global` / `Local`). A regular user sees the global facilitators plus their own; a superadmin sees all.
 
 ## Some public facilitators
 
@@ -46,6 +49,8 @@ Always re-check current URLs against the facilitator operator's own documentatio
 ## Edit / delete
 
 You can edit URL and name at any time. You cannot delete a facilitator that is still referenced by an active project payment method — first detach it from any **Project Payment Method** that uses it.
+
+**Global facilitators are read-only for regular users.** For a `Global` row, a non-superadmin sees only a **View** action — the Edit and Delete buttons are hidden (the API rejects the delete with *"global payments cannot be deleted"*). Only a superadmin can edit or delete global facilitators.
 
 ## What's next?
 

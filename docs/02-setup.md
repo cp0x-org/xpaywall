@@ -58,14 +58,15 @@ Log in.
  You should land on the Dashboard — an empty one, because you have not configured anything yet.
 
 
-> **First account:** there is no bootstrap-admin env var. Either register a user on the login
-> page, or seed the demo data with `docker compose run --rm control-api install demo` (creates
-> `admin / admin123`). To manage **global** payment methods/assets/facilitators, promote a user to
-> superadmin directly in Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`
+> **First account:** there is no bootstrap-admin env var. Register a user on the login page, or
+> create one from the CLI. To manage **global** payment methods/assets/facilitators you need a
+> superadmin — create one directly with `install user … --role superadmin`, or promote an existing
+> user in Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`
 > See [09 — Security](./09-security.md) for the production checklist.
 >
 > Need additional accounts? Register them on the login page, or create them with
-> `docker compose run --rm control-api install user`. See [12 — control-api CLI](./12-cli.md).
+> `docker compose run --rm control-api install user --username U --password P --email E`.
+> See [12 — control-api CLI](./12-cli.md).
 
 ---
 
@@ -97,15 +98,18 @@ Should return a sample weather payload. The example server has no payment enforc
 
 ## Step 4 — (Optional) seed demo data
 
-If you want a stack that already has a project, payment method, routes and a few hundred fake request logs to explore — instead of building everything from scratch — run the demo seeder once:
+If you want a stack that already has a project, routes and a few hundred fake request logs to explore — instead of building everything from scratch — seed it once. The demo workspace attaches to the **global** payment methods, so seed those first (owned by a superadmin):
 
 ```bash
+docker compose run --rm control-api install user \
+  --username alice --password '<passphrase>' --email alice@example.com --role superadmin
+docker compose run --rm control-api install payment-methods --superadmin alice
 docker compose run --rm control-api install demo
 ```
 
-That creates an `admin` / `admin` account, a **Default Project**, six routes against the bundled example-server, and 75 randomised entries in `request_logs`. The seed is idempotent, so re-running it is safe.
+That seeds the global x402 + MPP payment methods, a non-superadmin **`demo` / `demo`** account, a **Default Project** (slug `default`), six routes against the bundled example-server, and 75 randomised `request_logs`. The seed is idempotent, so re-running it is safe. Its proxy URL is `http://localhost:3102/demo/default/weather` — the path format is `/{username}/{project_slug}/{route}`.
 
-Full flag reference and the dedicated `control-api-cli` profile are documented in [12 — control-api CLI](./12-cli.md).
+Full flag reference, the bootstrap order, and the dedicated `control-api-cli` profile are documented in [12 — control-api CLI](./12-cli.md).
 
 ---
 

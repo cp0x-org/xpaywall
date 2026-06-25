@@ -18,7 +18,7 @@ Open **Routes** in the sidebar and click **Create Route**.
 
 At the top of the form you will see two live previews:
 
-- **Proxy URL** — the URL clients will call (gateway + project slug + path).
+- **Proxy URL** — the URL clients will call (gateway + your username + project slug + path), i.e. `/{username}/{slug}/{path}`.
 - **Target URL** — the URL the gateway will forward to (project base URL + path).
 
 These update as you change the project and the path pattern. Use them to confirm the route is wired the way you expect.

@@ -90,7 +90,7 @@ docker compose up -d
 | Admin Panel | http://localhost:3104 |
 | PostgreSQL | localhost:5482 |
 
-Default superadmin credentials: `admin` / `admin123` (change in `docker-compose.yml`). Host ports are mapped in `docker-compose.yml` — adjust them there if you need different externals.
+There is no default admin account — register one on the login page, or create the first **superadmin** with the CLI: `docker compose run --rm control-api install user --username alice --password '<pass>' --email alice@example.com --role superadmin`. Host ports are mapped in `docker-compose.yml` — adjust them there if you need different externals.
 
 ### Local Development
 
@@ -99,8 +99,11 @@ Default superadmin credentials: `admin` / `admin123` (change in `docker-compose.
 **control-api:**
 ```bash
 cd control-api
-go run ./cmd/control-api --env-file .env install   # run migrations
-go run ./cmd/control-api --env-file .env           # start server
+go run ./cmd/control-api --env-file .env migrate                       # run migrations
+go run ./cmd/control-api --env-file .env install user \
+  --username alice --password p --email alice@example.com --role superadmin
+go run ./cmd/control-api --env-file .env install payment-methods --superadmin alice
+go run ./cmd/control-api --env-file .env                               # start server
 ```
 
 **xgateway:**
@@ -171,9 +174,14 @@ adminpanel:
 | `MODE` | No | Gin mode: `release` or `debug` |
 | `APP_BASE_URL` | No | Frontend base URL for password-reset links (default `http://localhost:3000`) |
 | `GOOGLE_CLIENT_ID` | No | OAuth client ID; required for Google sign-in (`POST /auth/google`) |
+| `SMTP_HOST` | No | SMTP server for welcome + password-reset email. Empty ⇒ email disabled (links logged and returned in API responses) |
+| `SMTP_PORT` | No | SMTP port, STARTTLS (default `587`) |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | No | SMTP credentials (PLAIN auth) |
+| `SMTP_FROM` / `SMTP_FROM_NAME` | No | From address (defaults to `SMTP_USERNAME`) and display name (default `xpaywall`) |
 
-> **Superadmin:** there is no bootstrap-admin env var. Register a user, then grant the
-> role directly in Postgres: `UPDATE users SET role='superadmin' WHERE username='...';`
+> **Superadmin:** there is no bootstrap-admin env var. Create one with
+> `install user … --role superadmin`, or grant the role in Postgres:
+> `UPDATE users SET role='superadmin' WHERE username='...';`
 
 ---
 
@@ -235,14 +243,19 @@ See [`xgateway/config.dev.yaml`](xgateway/config.dev.yaml) for the full schema.
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | POST | `/auth/login` | — | Get JWT token |
+| POST | `/auth/register` | — | Self-register a local account |
+| POST | `/auth/google` | — | Sign in with a Google ID token |
+| POST | `/auth/forgot-password` / `/auth/reset-password` | — | Request a reset link / set a new password |
 | GET | `/auth/me` | JWT | Current user info |
 | GET/POST | `/api/v1/projects` | JWT | List / create projects |
 | GET/PUT/DELETE | `/api/v1/projects/:id` | JWT | Get / update / delete project |
 | GET/POST | `/api/v1/outbound-routes` | JWT | Manage payment routes |
-| GET | `/api/v1/payment-channels` | JWT | List payment channels |
+| `*` | `/api/v1/payment-methods`, `/payment-method-assets`, `/facilitators` | JWT | Manage payment building blocks (global ones are superadmin-only to mutate) |
+| `*` | `/api/v1/project-payment-methods` | JWT | Link a project to a payment method + asset |
+| `*` | `/api/v1/users` | JWT (superadmin) | User management |
 | GET | `/api/v1/stats/dashboard` | JWT | Dashboard stats |
 | GET | `/api/v1/request-logs` | JWT | Paginated request logs |
-| GET | `/proxy/resolve/*path` | API Key | Rule resolution (used by xgateway) |
+| GET | `/proxy/resolve/{username}/{slug}/{path}` | API Key | Rule resolution (used by xgateway) |
 | POST | `/api/v1/request-logs` | API Key | Log ingestion (used by xgateway) |
 | POST | `/api/v1/request-events` | API Key | Per-step event ingestion (used by xgateway) |
 

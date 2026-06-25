@@ -10,8 +10,8 @@ The admin panel is a small web app at `http://<your-host>:3104` (port `3104` by 
 
 There is no bootstrap-admin env var. Create your first account one of two ways:
 
-- **Register on the login page** — the panel has Sign-up, "Forgot password", and Google sign-in.
-- **Seed the demo** — `docker compose run --rm control-api install demo` creates `admin / admin123`.
+- **Register on the login page** — the panel has Sign-up, "Forgot password", and Google sign-in. Registration and password reset deliver email when SMTP is configured (see [03 — Configuration](./../03-configuration.md#control-api)); without SMTP the reset link is logged and returned in the API response.
+- **Create one from the CLI** — `install user … --role superadmin` (see below). To manage **global** payment methods/assets/facilitators you need a superadmin.
 
 Open the login page, enter the credentials (username **or** email + password), and submit.
 
@@ -32,29 +32,35 @@ There is no Users screen in the admin panel. Add accounts from the CLI:
 ```bash
 docker compose run --rm control-api install user \
   --username alice \
-  --password 'choose-a-long-passphrase'
+  --password 'choose-a-long-passphrase' \
+  --email alice@example.com \
+  --role superadmin     # omit for a regular user
 ```
 
-The CLI hashes the password with bcrypt before storing it. Run it once per account you want to create. The new account can log in immediately — no restart required.
+`--email` is required and `--role` defaults to `user`. The username must be **slug-safe** (letters,
+digits, `_`, `-`) because it appears in the proxy URL. The CLI hashes the password with bcrypt before
+storing it. Run it once per account. The new account can log in immediately — no restart required.
 
 For local development without Docker:
 
 ```bash
 cd control-api
-go run ./cmd/control-api --env-file .env install user --username alice --password 'choose-a-long-passphrase'
+go run ./cmd/control-api --env-file .env install user \
+  --username alice --password 'choose-a-long-passphrase' --email alice@example.com --role superadmin
 ```
 
 See [12 — control-api CLI](./../12-cli.md) for full flag reference and the dedicated `control-api-cli` Docker Compose profile.
 
 ## Seeding a complete demo workspace
 
-If you want a ready-to-explore stack (admin user, sample project, payment method, routes, and ~75 fake request logs), use the demo seeder:
+If you want a ready-to-explore stack (a project, routes, and ~75 fake request logs), use the demo seeder. It attaches to the **global** payment methods, so seed those first (owned by a superadmin):
 
 ```bash
+docker compose run --rm control-api install payment-methods --superadmin alice
 docker compose run --rm control-api install demo
 ```
 
-That gives you an `admin` / `admin` account plus a **Default Project** with realistic data behind it. Full details in [12 — control-api CLI](./../12-cli.md#install-demo--seed-a-demo-workspace).
+That gives you a non-superadmin **`demo` / `demo`** account plus a **Default Project** (slug `default`) with realistic data behind it. Full details and the bootstrap order are in [12 — control-api CLI](./../12-cli.md).
 
 ## Roles
 
@@ -76,19 +82,16 @@ Promote a user with `UPDATE users SET role='superadmin' WHERE username='...';` i
 
 ## Losing access to the only account
 
-If you lose the password, create a fresh account directly with `install user`, then promote it
-if you need superadmin rights:
+If you lose the password, create a fresh superadmin directly with `install user`:
 
 ```bash
-docker compose run --rm control-api install user --username recovery --password '<long-passphrase>'
-```
-
-```sql
-UPDATE users SET role='superadmin' WHERE username='recovery';
+docker compose run --rm control-api install user \
+  --username recovery --password '<long-passphrase>' --email recovery@example.com --role superadmin
 ```
 
 You can also reset an existing account's password by updating its bcrypt `password_hash` in
-Postgres, or restore the database from a backup.
+Postgres, or restore the database from a backup. If SMTP is configured, the account owner can also
+use the login page's **Forgot password** flow.
 
 ## What's next?
 
