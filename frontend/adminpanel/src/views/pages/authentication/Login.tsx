@@ -1,5 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 // material-ui
 import { Theme } from '@mui/material/styles';
@@ -12,44 +11,15 @@ import Box from '@mui/material/Box';
 // project imports
 import AuthWrapper1 from './AuthWrapper1';
 import AuthCardWrapper from './AuthCardWrapper';
+import AuthLogin from './jwt/AuthLogin';
 
 import Logo from 'ui-component/Logo';
 import AuthFooter from 'ui-component/cards/AuthFooter';
-
-import { APP_AUTH } from 'config';
-
-// Possible auth types
-type AuthType = 'firebase' | 'jwt' | 'aws' | 'auth0' | 'supabase';
-
-// A mapping of auth types to dynamic imports
-const authLoginImports: Record<AuthType, () => Promise<any>> = {
-  firebase: () => import('./firebase/AuthLogin'),
-  jwt: () => import('./jwt/AuthLogin'),
-  aws: () => import('./aws/AuthLogin'),
-  auth0: () => import('./auth0/AuthLogin'),
-  supabase: () => import('./supabase/AuthLogin')
-};
 
 // ================================|| AUTH3 - LOGIN ||================================ //
 
 export default function Login() {
   const downMD = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
-  const [AuthLoginComponent, setAuthLoginComponent] = useState<React.ComponentType | null>(null);
-
-  const [searchParams] = useSearchParams();
-  const authParam = (searchParams.get('auth') as AuthType | null) || '';
-
-  useEffect(() => {
-    const selectedAuth = authParam || (APP_AUTH as AuthType);
-
-    const importAuthLoginComponent = authLoginImports[selectedAuth];
-
-    importAuthLoginComponent()
-      .then((module) => setAuthLoginComponent(() => module.default))
-      .catch((error) => {
-        console.error(`Error loading ${selectedAuth} AuthLogin`, error);
-      });
-  }, [authParam]);
 
   return (
     <AuthWrapper1>
@@ -71,7 +41,9 @@ export default function Login() {
                     Enter your credentials to continue
                   </Typography>
                 </Stack>
-                <Box sx={{ width: 1 }}>{AuthLoginComponent && <AuthLoginComponent />}</Box>
+                <Box sx={{ width: 1 }}>
+                  <AuthLogin />
+                </Box>
                 <Divider sx={{ width: 1 }} />
                 <Stack sx={{ alignItems: 'center' }}>
                   <Typography component={Link} to="/register" variant="subtitle1" sx={{ textDecoration: 'none' }} color="secondary">

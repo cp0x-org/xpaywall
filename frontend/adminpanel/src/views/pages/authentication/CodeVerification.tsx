@@ -1,5 +1,4 @@
-import { Link, useSearchParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 // material-ui
 import { Theme } from '@mui/material/styles';
@@ -13,56 +12,22 @@ import Box from '@mui/material/Box';
 // project imports
 import AuthWrapper1 from './AuthWrapper1';
 import AuthCardWrapper from './AuthCardWrapper';
-import ViewOnlyAlert from './ViewOnlyAlert';
-import LoginProvider from './LoginProvider';
+import AuthCodeVerification from './jwt/AuthCodeVerification';
 
 import Logo from 'ui-component/Logo';
 import AnimateButton from 'ui-component/extended/AnimateButton';
 import AuthFooter from 'ui-component/cards/AuthFooter';
 
-import useAuth from 'hooks/useAuth';
-import { APP_AUTH } from 'config';
-
-// Possible auth types
-type AuthType = 'firebase' | 'jwt' | 'aws' | 'auth0' | 'supabase';
-
-// A mapping of auth types to dynamic imports
-const authCodeVerificationImports: Record<AuthType, () => Promise<any>> = {
-  firebase: () => import('./firebase/AuthCodeVerification'),
-  jwt: () => import('./jwt/AuthCodeVerification'),
-  aws: () => import('./aws/AuthCodeVerification'),
-  auth0: () => import('./auth0/AuthCodeVerification'),
-  supabase: () => import('./supabase/AuthCodeVerification')
-};
-
 // ===========================|| AUTH3 - CODE VERIFICATION ||=========================== //
 
 export default function CodeVerification() {
   const downMD = useMediaQuery((theme: Theme) => theme.breakpoints.down('md'));
-  const [AuthCodeVerificationComponent, setAuthCodeVerificationComponent] = useState<React.ComponentType | null>(null);
-  const { isLoggedIn } = useAuth();
-
-  const [searchParams] = useSearchParams();
-  const authParam = (searchParams.get('auth') as AuthType | null) || '';
-
-  useEffect(() => {
-    const selectedAuth = authParam || (APP_AUTH as AuthType);
-
-    const importAuthCodeVerificationComponent = authCodeVerificationImports[selectedAuth];
-
-    importAuthCodeVerificationComponent()
-      .then((module) => setAuthCodeVerificationComponent(() => module.default))
-      .catch((error) => {
-        console.error(`Error loading ${selectedAuth} AuthCodeVerification`, error);
-      });
-  }, [authParam]);
 
   return (
     <AuthWrapper1>
       <Stack sx={{ justifyContent: 'flex-end', minHeight: '100vh' }}>
         <Stack sx={{ justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 68px)' }}>
           <Box sx={{ m: { xs: 1, sm: 3 }, mb: 0 }}>
-            {!isLoggedIn && <ViewOnlyAlert />}
             <AuthCardWrapper>
               <Stack sx={{ gap: 2, alignItems: 'center', justifyContent: 'center' }}>
                 <Box sx={{ mb: 3 }}>
@@ -83,7 +48,7 @@ export default function CodeVerification() {
                     </Typography>
                   </Stack>
                 </Stack>
-                {AuthCodeVerificationComponent && <AuthCodeVerificationComponent />}
+                <AuthCodeVerification />
                 <Divider sx={{ width: 1 }} />
                 <Typography
                   component={Link}
@@ -102,11 +67,6 @@ export default function CodeVerification() {
                 </Stack>
               </Stack>
             </AuthCardWrapper>
-            {!isLoggedIn && (
-              <Box sx={{ maxWidth: { xs: 400, lg: 475 }, margin: { xs: 2.5, md: 3 }, '& > *': { flexGrow: 1, flexBasis: '50%' } }}>
-                <LoginProvider currentLoginWith={APP_AUTH} />
-              </Box>
-            )}
           </Box>
         </Stack>
         <Box sx={{ px: 3, my: 3 }}>

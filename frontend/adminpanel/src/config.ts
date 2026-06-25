@@ -16,11 +16,7 @@ export enum ThemeMode {
 }
 
 export enum AuthProvider {
-  JWT = 'jwt',
-  FIREBASE = 'firebase',
-  AUTH0 = 'auth0',
-  AWS = 'aws',
-  SUPABASE = 'supabase'
+  JWT = 'jwt'
 }
 
 export const CSS_VAR_PREFIX = 'xpaywall';
