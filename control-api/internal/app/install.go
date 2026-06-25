@@ -488,14 +488,14 @@ func lookupSuperadmin(ctx context.Context, pool *pgxpool.Pool, username string) 
 	var role string
 	err := pool.QueryRow(ctx, `SELECT id, role FROM users WHERE username = $1`, username).Scan(&id, &role)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return uuid.UUID{}, fmt.Errorf("superadmin %q not found — создай сперва суперадмина: "+
+		return uuid.UUID{}, fmt.Errorf("superadmin %q not found — create one first: "+
 			"install user --username %s --password ... --email ... --role superadmin", username, username)
 	}
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("lookup superadmin: %w", err)
 	}
 	if role != roleSuperadmin {
-		return uuid.UUID{}, fmt.Errorf("user %q is not a superadmin (role=%q) — создай сперва суперадмина", username, role)
+		return uuid.UUID{}, fmt.Errorf("user %q is not a superadmin (role=%q) — create a superadmin first", username, role)
 	}
 	return id, nil
 }

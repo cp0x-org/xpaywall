@@ -55,10 +55,10 @@ export default function Login() {
                     Demo credentials
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    username: admin123
+                    username: demo
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    password: admin123
+                    password: demo
                   </Typography>
                 </Stack>
               </Stack>
