@@ -96,8 +96,13 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	// Temporary: surface the link in the response until email delivery exists.
-	resp.ResetURL = link
+	// When SMTP is unconfigured the email is only logged, so surface the link in
+	// the response to keep the dev flow usable. With real delivery the link is
+	// sent only by email and never returned (returning it would let anyone reset
+	// any account).
+	if !h.cfg.MailEnabled() {
+		resp.ResetURL = link
+	}
 	c.JSON(http.StatusOK, resp)
 }
 

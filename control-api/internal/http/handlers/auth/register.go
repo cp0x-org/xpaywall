@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -66,6 +67,11 @@ func (h *Handler) Register(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
 		return
+	}
+
+	// Welcome email is best-effort: a delivery failure must not block signup.
+	if err := h.mailer.SendWelcome(ctx, req.Email, req.Username); err != nil {
+		log.Printf("welcome email to %s failed: %v", req.Email, err)
 	}
 
 	token, err := h.generateToken(user.ID, user.Username, user.Role)

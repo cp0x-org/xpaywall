@@ -59,7 +59,16 @@ func run(ctx context.Context, cfg *appconfig.ControlAPIConfig) error {
 
 	q := postgres.New(pool)
 	h := handlers.New(cfg, q, pool)
-	ah := authhandler.New(cfg, q, authhandler.LogMailer{})
+
+	var mailer authhandler.Mailer = authhandler.LogMailer{}
+	if cfg.MailEnabled() {
+		mailer = authhandler.NewSMTPMailer(cfg)
+		log.Printf("email delivery enabled via SMTP host %s", cfg.SMTPHost)
+	} else {
+		log.Print("email delivery disabled (no SMTP_HOST); reset links are logged and returned in API responses")
+	}
+
+	ah := authhandler.New(cfg, q, mailer)
 	gw := gateway.New(q)
 
 	router := internalhttp.SetupRouter(h, ah, gw, cfg.InternalAPIKey, cfg.JWTSecret, cfg.Debug, cfg.CORSOrigins)

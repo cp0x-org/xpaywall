@@ -21,6 +21,21 @@ type ControlAPIConfig struct {
 	CORSOrigins    []string `env:"CORS_ORIGINS" envSeparator:"," envDefault:"*"`
 	AppBaseURL     string   `env:"APP_BASE_URL" envDefault:"http://localhost:3000"`
 	GoogleClientID string   `env:"GOOGLE_CLIENT_ID"`
+
+	// SMTP delivers transactional email (welcome + password reset). When SMTPHost
+	// is empty, email is disabled: reset links are logged and returned in the API
+	// response instead. STARTTLS on port 587 is the supported transport.
+	SMTPHost     string `env:"SMTP_HOST"`
+	SMTPPort     int    `env:"SMTP_PORT" envDefault:"587"`
+	SMTPUsername string `env:"SMTP_USERNAME"`
+	SMTPPassword string `env:"SMTP_PASSWORD"`
+	SMTPFrom     string `env:"SMTP_FROM"`
+	SMTPFromName string `env:"SMTP_FROM_NAME" envDefault:"xpaywall"`
+}
+
+// MailEnabled reports whether SMTP delivery is configured.
+func (c *ControlAPIConfig) MailEnabled() bool {
+	return c.SMTPHost != ""
 }
 
 func NewControlAPIConfig() (*ControlAPIConfig, error) {

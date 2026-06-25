@@ -106,6 +106,10 @@ go run ./cmd/control-api --env-file .env install demo
 | `MODE` | `release` or `debug` (Gin mode) |
 | `APP_BASE_URL` | Frontend base URL for password-reset links (default `http://localhost:3000`) |
 | `GOOGLE_CLIENT_ID` | OAuth client ID; audience for verifying Google ID tokens. Required for `POST /auth/google` |
+| `SMTP_HOST` | SMTP server for welcome + password-reset email. Empty ⇒ email disabled (links logged and returned in API responses) |
+| `SMTP_PORT` | SMTP port, STARTTLS (default `587`) |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | SMTP credentials (PLAIN auth) |
+| `SMTP_FROM` / `SMTP_FROM_NAME` | From address (defaults to `SMTP_USERNAME`) and display name (default `xpaywall`) |
 
 ### Roles & data scoping
 - `users.role` is `user` (default) or `superadmin`. There is no env superadmin and no API to
