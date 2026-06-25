@@ -2,6 +2,7 @@ import { SyntheticEvent, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 // material-ui
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import FormControl from '@mui/material/FormControl';
 import FormHelperText from '@mui/material/FormHelperText';
@@ -24,9 +25,6 @@ import AnimateButton from 'ui-component/extended/AnimateButton';
 import CustomFormControl from 'ui-component/extended/Form/CustomFormControl';
 import { strengthColor, strengthIndicator } from 'utils/password-strength';
 
-import { dispatch } from 'store';
-import { openSnackbar } from 'store/slices/snackbar';
-
 // assets
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -43,6 +41,8 @@ export default function AuthResetPassword({ ...others }) {
   const [showPassword, setShowPassword] = useState(false);
   const [strength, setStrength] = useState(0);
   const [level, setLevel] = useState<StringColorProps>();
+  const [done, setDone] = useState(false);
+  const [resultMessage, setResultMessage] = useState('');
 
   const { confirmResetPassword } = useAuth();
 
@@ -67,6 +67,15 @@ export default function AuthResetPassword({ ...others }) {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
 
+  // After a successful reset, drop the password fields and show the result.
+  if (done) {
+    return (
+      <Alert severity="success" sx={{ mt: 1 }}>
+        {resultMessage || 'Password updated'}. Redirecting to sign in…
+      </Alert>
+    );
+  }
+
   return (
     <Formik
       initialValues={{
@@ -85,26 +94,15 @@ export default function AuthResetPassword({ ...others }) {
           if (!token) {
             throw new Error('Missing or invalid reset token');
           }
-          await confirmResetPassword?.(token, values.password);
+          const message = await confirmResetPassword(token, values.password);
           if (scriptedRef.current) {
             setStatus({ success: true });
             setSubmitting(false);
-
-            dispatch(
-              openSnackbar({
-                open: true,
-                message: 'Successfully reset password.',
-                variant: 'alert',
-                alert: {
-                  color: 'success'
-                },
-                close: false
-              })
-            );
-
+            setResultMessage(message);
+            setDone(true);
             setTimeout(() => {
               navigate('/login', { replace: true });
-            }, 1500);
+            }, 2500);
           }
         } catch (err: any) {
           console.error(err);
@@ -200,7 +198,7 @@ export default function AuthResetPassword({ ...others }) {
 
           {errors.submit && (
             <Box sx={{ mt: 3 }}>
-              <FormHelperText error>{errors.submit}</FormHelperText>
+              <Alert severity="error">{errors.submit}</Alert>
             </Box>
           )}
           <Box sx={{ mt: 1 }}>

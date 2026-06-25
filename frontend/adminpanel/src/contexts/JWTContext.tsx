@@ -131,16 +131,18 @@ export function JWTProvider({ children }: { children: React.ReactElement }) {
     dispatch({ type: LOGOUT });
   };
 
-  // requestPasswordReset asks for a reset link. Until SMTP is wired up the backend
-  // returns the link directly so it can be surfaced to the user.
-  const requestPasswordReset = async (email: string): Promise<string> => {
+  // requestPasswordReset asks for a reset link. The backend always returns a
+  // generic message; in dev (no SMTP) it also returns the link directly.
+  const requestPasswordReset = async (email: string): Promise<{ message: string; resetUrl?: string }> => {
     const response = await axios.post('/auth/forgot-password', { email });
-    return response.data?.reset_url ?? '';
+    return { message: response.data?.message ?? '', resetUrl: response.data?.reset_url };
   };
 
-  // confirmResetPassword consumes a reset token and sets a new password.
-  const confirmResetPassword = async (token: string, password: string) => {
-    await axios.post('/auth/reset-password', { token, password });
+  // confirmResetPassword consumes a reset token, sets a new password and returns
+  // the backend's confirmation message.
+  const confirmResetPassword = async (token: string, password: string): Promise<string> => {
+    const response = await axios.post('/auth/reset-password', { token, password });
+    return response.data?.message ?? 'Password updated';
   };
 
   // resetPassword kept for context-type compatibility; delegates to requestPasswordReset.

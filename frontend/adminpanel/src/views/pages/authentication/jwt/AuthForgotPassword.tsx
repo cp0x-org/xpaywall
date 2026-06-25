@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // material-ui
+import Alert from '@mui/material/Alert';
 import Button from '@mui/material/Button';
 import FormHelperText from '@mui/material/FormHelperText';
 import InputLabel from '@mui/material/InputLabel';
@@ -17,10 +19,7 @@ import CustomFormControl from 'ui-component/extended/Form/CustomFormControl';
 import useAuth from 'hooks/useAuth';
 import useScriptRef from 'hooks/useScriptRef';
 
-import { useDispatch } from 'store';
-import { openSnackbar } from 'store/slices/snackbar';
-
-// extractToken pulls the `token` query param out of the reset URL returned by the API.
+// extractToken pulls the `token` query param out of the reset URL the API returns in dev (no SMTP).
 function extractToken(resetUrl: string): string | null {
   try {
     return new URL(resetUrl).searchParams.get('token');
@@ -33,10 +32,19 @@ function extractToken(resetUrl: string): string | null {
 
 export default function AuthForgotPassword({ ...others }) {
   const scriptedRef = useScriptRef();
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-
   const { requestPasswordReset } = useAuth();
+
+  const [sentMessage, setSentMessage] = useState<string | null>(null);
+
+  // After a successful request, replace the form with the backend's message.
+  if (sentMessage) {
+    return (
+      <Alert severity="success" sx={{ mt: 1 }}>
+        {sentMessage}
+      </Alert>
+    );
+  }
 
   return (
     <Formik
@@ -50,26 +58,18 @@ export default function AuthForgotPassword({ ...others }) {
       onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
         try {
           // Backend always responds 200 (it never reveals whether the email exists).
-          // Until SMTP is wired up it returns the reset link, which we use to route
-          // straight to the reset page so the flow is usable end-to-end.
-          const resetUrl = (await requestPasswordReset?.(values.email)) ?? '';
+          const { message, resetUrl } = await requestPasswordReset(values.email);
           const token = resetUrl ? extractToken(resetUrl) : null;
 
           if (scriptedRef.current) {
             setStatus({ success: true });
             setSubmitting(false);
-            dispatch(
-              openSnackbar({
-                open: true,
-                message: token ? 'Reset link generated. Redirecting…' : 'If the email is registered, a reset link has been sent.',
-                variant: 'alert',
-                alert: { color: 'success' },
-                close: false
-              })
-            );
-            setTimeout(() => {
-              navigate(token ? `/reset-password?token=${encodeURIComponent(token)}` : '/login', { replace: true });
-            }, 1500);
+            setSentMessage(message || 'If the email is registered, a reset link has been sent.');
+            // Dev convenience: when SMTP is off the backend returns the link, so
+            // jump straight to the reset page after the message is shown.
+            if (token) {
+              setTimeout(() => navigate(`/reset-password?token=${encodeURIComponent(token)}`, { replace: true }), 1500);
+            }
           }
         } catch (err: any) {
           console.error(err);

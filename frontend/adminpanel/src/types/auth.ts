@@ -13,8 +13,8 @@ export type JWTContextType = {
   login: (identifier: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<void>;
   googleLogin: (idToken: string) => Promise<void>;
-  requestPasswordReset: (email: string) => Promise<string>;
-  confirmResetPassword: (token: string, password: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<{ message: string; resetUrl?: string }>;
+  confirmResetPassword: (token: string, password: string) => Promise<string>;
   resetPassword: (email: string) => Promise<void>;
   updateProfile: VoidFunction;
 };
