@@ -117,10 +117,11 @@ DECLARE
     v_owner     UUID := '%s';
     v_method_id UUID;
 BEGIN
-    -- x402 Base Sepolia (USDC) + Coinbase facilitator.
-    INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, enabled, is_global, owner_user_id)
-    VALUES (gen_random_uuid(), 'x402_base_sepolia', 'x402', 'Base Sepolia', 'eip155:84532', TRUE, TRUE, v_owner)
-    ON CONFLICT (code) DO UPDATE SET enabled = TRUE, is_global = TRUE, owner_user_id = v_owner
+    -- x402 Base Sepolia (USDC) + Coinbase facilitator. x402 settles with the
+    -- 'exact' scheme; no method (it uses a facilitator).
+    INSERT INTO payment_methods (id, code, protocol, name, caip2_chain_id, scheme, enabled, is_global, owner_user_id)
+    VALUES (gen_random_uuid(), 'x402_base_sepolia', 'x402', 'Base Sepolia', 'eip155:84532', 'exact', TRUE, TRUE, v_owner)
+    ON CONFLICT (code) DO UPDATE SET scheme = EXCLUDED.scheme, enabled = TRUE, is_global = TRUE, owner_user_id = v_owner
     RETURNING id INTO v_method_id;
 
     INSERT INTO payment_method_assets (id, payment_method_id, symbol, contract_address, decimals, is_global, owner_user_id)

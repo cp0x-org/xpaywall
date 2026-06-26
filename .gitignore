@@ -1,6 +1,8 @@
 # Go
 /xgateway/bin/
 /control-api/bin/
+/external-packages
+
 *.exe
 
 # Config with secrets

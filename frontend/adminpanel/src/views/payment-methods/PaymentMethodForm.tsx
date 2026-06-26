@@ -35,19 +35,29 @@ interface NetworkItem {
   name: string;
 }
 
-// MPP-only option sets. x402 methods use a facilitator + network instead.
-const METHODS = ['tempo', 'stripe'] as const;
-const SCHEMES = ['charge'] as const;
+// Option sets per protocol — kept separate so it's clear what belongs to what:
+//   x402 → scheme only ('exact' / 'upto'); settles via a facilitator + network.
+//   mpp  → method ('tempo') + scheme ('charge').
+const MPP_METHODS = ['tempo'] as const;
+const MPP_SCHEMES = ['charge'] as const;
+const X402_SCHEMES = ['exact', 'upto'] as const;
+
+// Default scheme for a protocol, used on create and to backfill the form when an
+// older row was stored without one.
+const defaultScheme = (protocol: string) => (protocol === 'mpp' ? 'charge' : 'exact');
 
 const emptyValues = {
   code: '',
-  protocol: 'x402',
   name: '',
-  caip2_chain_id: '',
-  method: 'tempo',
-  scheme: 'charge',
+  protocol: 'x402',
   enabled: true,
   is_global: false,
+  // x402-specific
+  caip2_chain_id: '',
+  // mpp-specific
+  method: 'tempo',
+  // scheme applies to both protocols; default matches the default protocol (x402)
+  scheme: 'exact',
   submit: null
 };
 
@@ -97,7 +107,7 @@ export default function PaymentMethodForm() {
             name: d.name,
             caip2_chain_id: d.caip2_chain_id ?? '',
             method: d.method ?? 'tempo',
-            scheme: d.scheme ?? 'charge',
+            scheme: d.scheme ?? defaultScheme(d.protocol),
             enabled: d.enabled,
             is_global: d.is_global ?? false,
             submit: null
@@ -145,14 +155,12 @@ export default function PaymentMethodForm() {
             then: (s) => s,
             otherwise: (s) => s.required('Name is required')
           }),
+          // method is mpp-only; scheme applies to both protocols.
           method: Yup.string().when('protocol', {
             is: 'mpp',
             then: (s) => s.required('Method is required')
           }),
-          scheme: Yup.string().when('protocol', {
-            is: 'mpp',
-            then: (s) => s.required('Scheme is required')
-          })
+          scheme: Yup.string().required('Scheme is required')
         })}
         onSubmit={async (values, { setErrors, setStatus, setSubmitting }) => {
           try {
@@ -161,10 +169,11 @@ export default function PaymentMethodForm() {
               code: values.code,
               protocol: values.protocol,
               name: values.name,
-              // x402 settles via a facilitator + network; MPP via method/scheme.
+              // x402 settles via a facilitator + network (no method); MPP via a method.
+              // scheme is stored for both: x402 → exact/upto, MPP → charge.
               caip2_chain_id: isMPP ? null : values.caip2_chain_id || null,
               method: isMPP ? values.method : null,
-              scheme: isMPP ? values.scheme : null,
+              scheme: values.scheme,
               enabled: values.enabled,
               is_global: values.is_global
             };
@@ -217,7 +226,12 @@ export default function PaymentMethodForm() {
                   value={values.protocol}
                   label="Protocol"
                   disabled={isView}
-                  onChange={(e) => setFieldValue('protocol', e.target.value)}
+                  onChange={(e) => {
+                    const protocol = e.target.value;
+                    setFieldValue('protocol', protocol);
+                    // Reset scheme to the new protocol's default so the two never mix.
+                    setFieldValue('scheme', defaultScheme(protocol));
+                  }}
                 >
                   <MenuItem value="x402">x402</MenuItem>
                   <MenuItem value="mpp">MPP</MenuItem>
@@ -282,6 +296,26 @@ export default function PaymentMethodForm() {
                       helperText="Optional, e.g. eip155:8453"
                     />
                   )}
+
+                  {/* x402 settles with the 'exact' (or 'upto') scheme. */}
+                  <FormControl fullWidth error={Boolean(touched.scheme && errors.scheme)}>
+                    <InputLabel id="x402-scheme-label">Scheme</InputLabel>
+                    <Select
+                      labelId="x402-scheme-label"
+                      name="scheme"
+                      value={values.scheme}
+                      label="Scheme"
+                      disabled={isView}
+                      onChange={(e) => setFieldValue('scheme', e.target.value)}
+                    >
+                      {X402_SCHEMES.map((s) => (
+                        <MenuItem key={s} value={s}>
+                          {s}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                    {touched.scheme && errors.scheme && <FormHelperText>{errors.scheme}</FormHelperText>}
+                  </FormControl>
                 </>
               )}
 
@@ -298,7 +332,7 @@ export default function PaymentMethodForm() {
                       disabled={isView}
                       onChange={(e) => setFieldValue('method', e.target.value)}
                     >
-                      {METHODS.map((m) => (
+                      {MPP_METHODS.map((m) => (
                         <MenuItem key={m} value={m}>
                           {m}
                         </MenuItem>
@@ -316,7 +350,7 @@ export default function PaymentMethodForm() {
                       disabled={isView}
                       onChange={(e) => setFieldValue('scheme', e.target.value)}
                     >
-                      {SCHEMES.map((s) => (
+                      {MPP_SCHEMES.map((s) => (
                         <MenuItem key={s} value={s}>
                           {s}
                         </MenuItem>

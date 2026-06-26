@@ -40,7 +40,7 @@ import { ProjectPaymentMethod } from './types';
 // MPP (Tempo) does a one-time "charge".
 const X402_SCHEMES = ['exact', 'upto', 'batch-payment'] as const;
 const MPP_SCHEMES = ['charge'] as const;
-const MPP_METHODS = ['tempo', 'stripe'] as const;
+const MPP_METHODS = ['tempo'] as const;
 
 interface Props {
   projectId: string;
