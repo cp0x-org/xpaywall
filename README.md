@@ -1,6 +1,6 @@
 # xpaywall
 
-**xpaywall** is a self-hosted HTTP 402 payment gateway that enforces micropayments in front of any API. It sits between clients and your upstream services — no API keys, no billing accounts, no subscriptions. Clients pay per request using the [x402](https://www.x402.org/) protocol, and the gateway proxies the request only after verifying payment proof.
+**xpaywall** is a self-hosted HTTP 402 payment gateway that enforces micropayments in front of any API. It sits between clients and your upstream services — no API keys, no billing accounts, no subscriptions. Clients pay per request using the [x402](https://www.x402.org/) protocol or the [Machine Payments Protocol](https://mpp.dev/) (MPP / Tempo), and the gateway proxies the request only after verifying payment proof.
 
 ---
 
@@ -150,7 +150,7 @@ A project link combines a **payment method** (protocol + network), an **asset** 
 If these building blocks don't exist yet, create them first under the **Payments** menu (global ones may already be seeded):
 
 1. **Payments → Facilitators (x402) → Create** *(x402 only)* — name + facilitator `URL` (settles the on-chain payment), e.g. `https://x402.dexter.cash`.
-2. **Payments → Payment Methods → Create** — set **Protocol** `x402`, pick a **Network** (or enter a custom CAIP-2 chain ID like `eip155:8453`), and a **Scheme** (`exact`). Give it a unique **Code** (e.g. `x402-base-usdc`).
+2. **Payments → Payment Methods → Create** — set the **Protocol** and its options: `x402` takes a **Network** (or a custom CAIP-2 chain ID like `eip155:8453`) and a **Scheme** (`exact`); `mpp` takes a **Method** (`tempo`) and a **Scheme** (`charge`). Give it a unique **Code** (e.g. `x402-base-usdc` or `mpp-tempo-charge`).
 3. **Payments → Payment Assets → Create** — choose the payment method above, then enter the token **Symbol** (e.g. `USDC`), **Contract Address**, and **Decimals** (`6` for USDC).
 
 Back on the project's **Payment Methods** tab, click **Add Payment Method** and select:
@@ -159,8 +159,8 @@ Back on the project's **Payment Methods** tab, click **Add Payment Method** and 
 |---|---|
 | **Payment Method** | The method created above. |
 | **Asset** | A token belonging to that method. |
-| **Scheme** | `exact` for x402. |
-| **Facilitator** | The x402 facilitator that settles payment. |
+| **Scheme** | `exact` for x402, `charge` for MPP. |
+| **Facilitator** | *x402 only.* The facilitator that settles payment. MPP settles directly on Tempo (no facilitator). |
 | **Payout Address** | Wallet that receives payments on this network. |
 | **Enabled** | Must be on for the method to be offered. |
 
@@ -252,13 +252,20 @@ adminpanel:
 When `CONFIG_PROVIDER=file`, rules are loaded from a YAML file at startup:
 
 ```yaml
-x402:
+x402:                           # required when any rule uses an x402 method
   - name: base-exact
     facilitator_url: https://x402.dexter.cash
     network: eip155:8453        # Base mainnet (CAIP-2)
     scheme: exact               # exact
     merchant: "0xYourAddress"        # pay_to address
     asset: "0xUSDCAddress"           # CAIP-19 asset
+
+mpp:                            # required when any rule uses an MPP method
+  - name: tempo-charge
+    method: tempo               # only "tempo" is supported
+    scheme: charge              # one-time charge only (no session)
+    rpc_url: https://rpc.moderato.tempo.xyz   # Tempo JSON-RPC
+    asset: "0x20c0000000000000000000000000000000000000"   # pathUSD (Tempo stablecoin)
 
 outbound:
   target: http://your-upstream:4021
@@ -268,6 +275,11 @@ outbound:
       path: /weather
       price: "$0.10"
       payment_methods: [base-exact]
+
+    - name: usage-api           # paid via MPP Tempo charge
+      path: /api/usage
+      price: "$0.10"
+      payment_methods: [tempo-charge]
 
     - name: health-check
       path: /health
@@ -282,8 +294,8 @@ See [`xgateway/config.dev.yaml`](xgateway/config.dev.yaml) for the full schema.
 
 | Protocol | Status | Description | Networks |
 |---|---|---|---|
-| **x402** | Shipped | EVM-based micropayments (`exact` schemes) | Base, Base Sepolia, any EVM chain with an x402 facilitator |
-| **MPP / Tempo** | Roadmap | Machine Payments Protocol — code is scaffolded but disabled in the current build | Tempo blockchain |
+| **x402** | Shipped | EVM-based micropayments (`exact` scheme), settled via a facilitator | Base, Base Sepolia, any EVM chain with an x402 facilitator |
+| **MPP / Tempo** | Shipped | Machine Payments Protocol — one-time Tempo `charge` payments (pathUSD), no facilitator | Tempo |
 | **Stripe** | Roadmap | Traditional card payments | — |
 
 ---
