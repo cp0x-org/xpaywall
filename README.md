@@ -33,7 +33,7 @@ Client Request
        │ resolves rules
        ▼
 ┌─────────────┐
-│ control-api │  ◄── Admin Panel (React)
+│ control-api │  ◄── + Admin Panel (React)
 │  :9091      │
 └──────┬──────┘
        │
@@ -121,6 +121,68 @@ yarn start
 
 ---
 
+## Setting Up Your First Paywall
+
+Once the services are running, log into the **Admin Panel** and configure your gateway in three steps. Everything below is done through the UI.
+
+### 1. Create a project
+
+**Projects → Create Project**
+
+A project maps a public slug to an upstream server.
+
+| Field | Description                                                                                                                          |
+|---|--------------------------------------------------------------------------------------------------------------------------------------|
+| **Project Name** | Human-readable name. The **Slug** is auto-filled from it (lowercase, hyphenated) — edit if needed.                                   |
+| **Slug** | URL identifier. Requests are served at `<PROXY_URL>/<username>/<slug>/...`.                                                          |
+| **Server Base URL** | Upstream target where verified requests are proxied, e.g. `https://api.example.com`.                                                 |
+| **Auth Header Name / Value** | *Optional.* Injected into every upstream request — use it to attach your own API key to the origin (e.g. `Authorization: Bearer …`). |
+| **Allow Unmatched Routes** | If checked, paths with no matching route are proxied **without** payment. Leave off to block them.                                   |
+
+Save the project, then open it and switch to the **Payment Methods** tab.
+
+### 2. Attach a payment method
+
+**Project → Payment Methods tab → Add Payment Method**
+
+A project link combines a **payment method** (protocol + network), an **asset** (token), and — for x402 — a **facilitator**. A project uses a single protocol; once one method is added, only methods of the same protocol can be added.
+
+If these building blocks don't exist yet, create them first under the **Payments** menu (global ones may already be seeded):
+
+1. **Payments → Facilitators (x402) → Create** *(x402 only)* — name + facilitator `URL` (settles the on-chain payment), e.g. `https://x402.dexter.cash`.
+2. **Payments → Payment Methods → Create** — set **Protocol** `x402`, pick a **Network** (or enter a custom CAIP-2 chain ID like `eip155:8453`), and a **Scheme** (`exact`). Give it a unique **Code** (e.g. `x402-base-usdc`).
+3. **Payments → Payment Assets → Create** — choose the payment method above, then enter the token **Symbol** (e.g. `USDC`), **Contract Address**, and **Decimals** (`6` for USDC).
+
+Back on the project's **Payment Methods** tab, click **Add Payment Method** and select:
+
+| Field | Description |
+|---|---|
+| **Payment Method** | The method created above. |
+| **Asset** | A token belonging to that method. |
+| **Scheme** | `exact` for x402. |
+| **Facilitator** | The x402 facilitator that settles payment. |
+| **Payout Address** | Wallet that receives payments on this network. |
+| **Enabled** | Must be on for the method to be offered. |
+
+### 3. Add routes
+
+**Routes → Create Route**
+
+A route decides which upstream paths require payment and how much.
+
+| Field | Description |
+|---|---|
+| **Project** | The project this route belongs to. |
+| **Route Name** | Label for the route. |
+| **Path Pattern** | Path to match, e.g. `/weather` or `/api/v1/*`. The live **Proxy URL** and **Target URL** preview updates as you type. |
+| **Free** | If checked, the path is proxied with no payment. |
+| **Price (USD)** | Per-request price when not free, e.g. `0.10`. |
+| **Bazaar Discovery** | *Optional (x402).* JSON describing the endpoint for discovery — leave empty for auto-mode. |
+
+That's it. Callers now hit `<PROXY_URL>/<slug>/<path>`, receive `HTTP 402` with payment requirements, pay, and retry with the proof header to reach your upstream.
+
+---
+
 ## Configuration
 
 ### docker-compose.yml
@@ -194,7 +256,7 @@ x402:
   - name: base-exact
     facilitator_url: https://x402.dexter.cash
     network: eip155:8453        # Base mainnet (CAIP-2)
-    scheme: exact               # exact | upto
+    scheme: exact               # exact
     merchant: "0xYourAddress"        # pay_to address
     asset: "0xUSDCAddress"           # CAIP-19 asset
 
@@ -220,7 +282,7 @@ See [`xgateway/config.dev.yaml`](xgateway/config.dev.yaml) for the full schema.
 
 | Protocol | Status | Description | Networks |
 |---|---|---|---|
-| **x402** | Shipped | EVM-based micropayments (`exact` and `upto` schemes) | Base, Base Sepolia, any EVM chain with an x402 facilitator |
+| **x402** | Shipped | EVM-based micropayments (`exact` schemes) | Base, Base Sepolia, any EVM chain with an x402 facilitator |
 | **MPP / Tempo** | Roadmap | Machine Payments Protocol — code is scaffolded but disabled in the current build | Tempo blockchain |
 | **Stripe** | Roadmap | Traditional card payments | — |
 

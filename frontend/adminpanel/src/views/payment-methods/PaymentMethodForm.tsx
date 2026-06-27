@@ -40,7 +40,7 @@ interface NetworkItem {
 //   mpp  → method ('tempo') + scheme ('charge').
 const MPP_METHODS = ['tempo'] as const;
 const MPP_SCHEMES = ['charge'] as const;
-const X402_SCHEMES = ['exact', 'upto'] as const;
+const X402_SCHEMES = ['exact'] as const;
 
 // Default scheme for a protocol, used on create and to backfill the form when an
 // older row was stored without one.

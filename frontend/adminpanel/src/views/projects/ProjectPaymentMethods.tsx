@@ -38,7 +38,7 @@ import { ProjectPaymentMethod } from './types';
 
 // Scheme options are protocol-specific: x402 settles "exact"/"upto"/batched,
 // MPP (Tempo) does a one-time "charge".
-const X402_SCHEMES = ['exact', 'upto', 'batch-payment'] as const;
+const X402_SCHEMES = ['exact'] as const;
 const MPP_SCHEMES = ['charge'] as const;
 const MPP_METHODS = ['tempo'] as const;
 
