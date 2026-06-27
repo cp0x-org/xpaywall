@@ -175,11 +175,13 @@ BEGIN
         SELECT id INTO v_project_id FROM projects WHERE slug = 'default' AND owner_user_id = v_user_id;
     END IF;
 
+    -- auth header injected on every forwarded request; the bundled example
+    -- server's /protected endpoints require exactly this bearer token.
     INSERT INTO project_routes_settings (
         id, project_id, base_url, auth_header_name, auth_header_value, allow_unmatched
     ) VALUES (
         gen_random_uuid(), v_project_id, 'http://localhost:4021',
-        'Authorization', 'Bearer YOUR_UPSTREAM_ACCESS_TOKEN', FALSE
+        'Authorization', 'Bearer demo-secret-token', FALSE
     ) ON CONFLICT (project_id) DO NOTHING;
 
     INSERT INTO project_payment_methods (
@@ -198,7 +200,9 @@ BEGIN
             (gen_random_uuid(), v_project_id, 'weather',            '/weather',           '0.10',  'Get weather data',                                    FALSE),
             (gen_random_uuid(), v_project_id, 'free-endpoint',      '/free-endpoint',     '',      'Free endpoint, no payment required',                  TRUE),
             (gen_random_uuid(), v_project_id, 'free-multipoint',    '/free-multipoint',   '',      'Free multipoint root, no payment required',           TRUE),
-            (gen_random_uuid(), v_project_id, 'free-multipoint-sub','/free-multipoint/*', '',      'Free multipoint with subpath, no payment required',   TRUE);
+            (gen_random_uuid(), v_project_id, 'free-multipoint-sub','/free-multipoint/*', '',      'Free multipoint with subpath, no payment required',   TRUE),
+            (gen_random_uuid(), v_project_id, 'protected',          '/protected',         '0.01',  'Auth-protected upstream; gateway injects bearer token',FALSE),
+            (gen_random_uuid(), v_project_id, 'protected-sub',      '/protected/*',       '0.01',  'Auth-protected upstream with subpath',                FALSE);
     END IF;
 END;
 $$;
@@ -221,7 +225,9 @@ const (
         '/free-endpoint',
         '/free-multipoint',
         '/free-multipoint/v2',
-        '/free-multipoint/v3'`
+        '/free-multipoint/v3',
+        '/protected',
+        '/protected/data'`
 
 	demoMPPLogPaths = `
         '/time',
@@ -234,7 +240,9 @@ const (
         '/ping',
         '/echo',
         '/echo/v2',
-        '/echo/v3'`
+        '/echo/v3',
+        '/protected',
+        '/protected/data'`
 )
 
 // demoMPPSQL seeds an MPP / Tempo "charge" demo: a dedicated project, upstream
@@ -264,11 +272,13 @@ BEGIN
         SELECT id INTO v_project_id FROM projects WHERE slug = 'mpp-demo' AND owner_user_id = v_user_id;
     END IF;
 
+    -- auth header injected on every forwarded request; the bundled example
+    -- server's /protected endpoints require exactly this bearer token.
     INSERT INTO project_routes_settings (
         id, project_id, base_url, auth_header_name, auth_header_value, allow_unmatched
     ) VALUES (
         gen_random_uuid(), v_project_id, 'http://localhost:4021',
-        'Authorization', 'Bearer YOUR_UPSTREAM_ACCESS_TOKEN', FALSE
+        'Authorization', 'Bearer demo-secret-token', FALSE
     ) ON CONFLICT (project_id) DO NOTHING;
 
     -- MPP has no facilitator: facilitator_id stays NULL; rpc_url/secret_key live
@@ -291,7 +301,9 @@ BEGIN
             (gen_random_uuid(), v_project_id, 'quote',     '/quote',        '0.10',  'Get a price quote, paid via Tempo charge',          FALSE),
             (gen_random_uuid(), v_project_id, 'ping',      '/ping',         '',      'Free ping endpoint, no payment required',           TRUE),
             (gen_random_uuid(), v_project_id, 'echo',      '/echo',         '',      'Free echo root, no payment required',               TRUE),
-            (gen_random_uuid(), v_project_id, 'echo-sub',  '/echo/*',       '',      'Free echo with subpath, no payment required',       TRUE);
+            (gen_random_uuid(), v_project_id, 'echo-sub',  '/echo/*',       '',      'Free echo with subpath, no payment required',       TRUE),
+            (gen_random_uuid(), v_project_id, 'protected', '/protected',    '0.01',  'Auth-protected upstream; gateway injects bearer token', FALSE),
+            (gen_random_uuid(), v_project_id, 'protected-sub','/protected/*','0.01',  'Auth-protected upstream with subpath',              FALSE);
     END IF;
 END;
 $$;

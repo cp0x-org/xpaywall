@@ -107,7 +107,7 @@ docker compose run --rm control-api install payment-methods --superadmin alice
 docker compose run --rm control-api install demo
 ```
 
-That seeds the global x402 + MPP payment methods, a non-superadmin **`demo` / `demo`** account, a **Default Project** (slug `default`), six routes against the bundled example-server, and 75 randomised `request_logs`. The seed is idempotent, so re-running it is safe. Its proxy URL is `http://localhost:3102/demo/default/weather` — the path format is `/{username}/{project_slug}/{route}`.
+That seeds the global x402 + MPP payment methods, a non-superadmin **`demo` / `demo`** account, a **Default Project** (slug `default`), eight routes against the bundled example-server (two of them, /protected and /protected/*, demonstrate upstream auth-header injection), and 75 randomised `request_logs`. The seed is idempotent, so re-running it is safe. Its proxy URL is `http://localhost:3102/demo/default/weather` — the path format is `/{username}/{project_slug}/{route}`.
 
 Full flag reference, the bootstrap order, and the dedicated `control-api-cli` profile are documented in [12 — control-api CLI](./12-cli.md).
 

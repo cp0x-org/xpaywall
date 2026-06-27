@@ -3,10 +3,23 @@ package main
 import (
 	"math/rand"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
+
+// demoBearerToken is the bearer token the protected demo endpoints require in
+// the Authorization header. It mirrors what an operator would put in a route's
+// auth_header_value (e.g. "Bearer <token>") so xgateway injects it on the
+// upstream request. Override with DEMO_BEARER_TOKEN.
+func demoBearerToken() string {
+	if t := os.Getenv("DEMO_BEARER_TOKEN"); t != "" {
+		return t
+	}
+	return "demo-secret-token"
+}
 
 func main() {
 	r := gin.Default()
@@ -29,7 +42,42 @@ func main() {
 	r.GET("/ping", handlePing)
 	r.GET("/echo/*path", handleEcho)
 
+	// Auth-protected demo endpoints: require a valid bearer token in the
+	// Authorization header. Configure a route in the admin panel with
+	// auth_header_name="Authorization" and auth_header_value="Bearer <token>"
+	// so xgateway injects the credential after payment is verified. A direct
+	// request without the header gets 401 -- proving the upstream is reachable
+	// only through the gateway.
+	protected := r.Group("/protected", bearerAuthMiddleware)
+	protected.GET("", handleProtected)
+	protected.GET("/*path", handleProtected)
+
 	r.Run(":4021")
+}
+
+// bearerAuthMiddleware rejects requests that don't carry the expected
+// "Authorization: Bearer <token>" header with 401.
+func bearerAuthMiddleware(c *gin.Context) {
+	const prefix = "Bearer "
+	auth := c.GetHeader("Authorization")
+	if !strings.HasPrefix(auth, prefix) || strings.TrimSpace(auth[len(prefix):]) != demoBearerToken() {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error":  "missing or invalid bearer token",
+			"status": http.StatusUnauthorized,
+		})
+		return
+	}
+	c.Next()
+}
+
+func handleProtected(c *gin.Context) {
+	path := c.Param("path")
+	c.JSON(http.StatusOK, gin.H{
+		"status":    "ok",
+		"path":      "/protected" + path,
+		"data":      "authorized: bearer token accepted",
+		"timestamp": time.Now().UTC(),
+	})
 }
 
 // corsMiddleware sets permissive CORS headers so the demo server can be called

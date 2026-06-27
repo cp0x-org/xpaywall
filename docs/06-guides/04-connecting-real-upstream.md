@@ -74,6 +74,35 @@ xpaywall sends exactly one auth header at most: the one you configured on the pr
 
 There is no per-route auth header today — the auth is project-wide.
 
+## Try it locally with the example server
+
+The bundled example server (`examples/server`, port `4021`) exposes a set of
+auth-protected endpoints under `/protected` so you can verify header injection
+end to end without a real upstream. They require `Authorization: Bearer <token>`
+and return `401` otherwise. The expected token defaults to `demo-secret-token`
+and can be overridden with the `DEMO_BEARER_TOKEN` environment variable.
+
+1. A direct call without the header is rejected — this proves the upstream
+   really enforces auth:
+
+   ```bash
+   curl -i http://localhost:4021/protected/data        # 401 Unauthorized
+   ```
+
+2. Configure a route whose path is `/protected/*` (free is fine for the demo)
+   and set the project's auth header to `Authorization` /
+   `Bearer demo-secret-token`. Now call the same upstream **through the
+   gateway**, sending no credential yourself:
+
+   ```bash
+   curl -i http://localhost:3102/<username>/<slug>/protected/data   # 200 OK
+   ```
+
+   The gateway injects the bearer token on the forwarded request, so the
+   protected upstream answers `200`. The net effect is exactly the goal of this
+   feature: the upstream is reachable **only** with the auth header, and only
+   the gateway holds it.
+
 ## What's next?
 
 - Lock down the public surface: [09 — Security](./../09-security.md).
