@@ -32,7 +32,8 @@ services:
   # Gated behind the `cli` profile so it never starts with `docker compose up`.
   # Usage:
   #   docker compose --profile cli run --rm control-api-cli migrate
-  #   docker compose --profile cli run --rm control-api-cli install user --username cp0x --password 'cp0xcegthGFHJKM' --email cp0x@example.com --role superadmin
+  #   docker compose --profile cli run --rm control-api-cli install user --username torys --password '1cntgkth1' --email cp0x@example.com --role superadmin
+  #   docker compose --profile cli run --rm control-api-cli install payment-methods --superadmin torys
   #   docker compose --profile cli run --rm control-api-cli install demo
   #   docker compose --profile cli run --rm control-api-cli install demo-mpp
   control-api-cli:
@@ -74,6 +75,10 @@ services:
       INTERNAL_API_KEY: change-me-internal-secret-key
       GIN_MODE: debug
       DEBUG: true
+      # x402 facilitator timeouts (Go durations). Settlement on mainnet can be
+      # much slower than verify, so it has its own, longer deadline.
+      X402_TIMEOUT: 30s
+      X402_SETTLE_TIMEOUT: 120s
     ports:
       - "3102:8081"
 
