@@ -8,6 +8,7 @@
 # Config with secrets
 /xgateway/config.yaml
 /xgateway/.env
+/examples/mpp-client/.env
 /control-api/.env
 /frontend/adminpanel/.env
 /frontend/adminpanel/.env.qa
